@@ -32,8 +32,8 @@ export const LoginScreen: React.FC = () => {
               <Lock className="w-4 h-4" />
               <span>Güvenli Oturum</span>
             </div>
-            <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-700/60 text-slate-300 font-mono">
-              v2.0 Bulut
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-700/60 text-emerald-400 font-mono font-bold">
+              V1 Pro
             </span>
           </div>
 
