@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { useFinance } from '../../context/FinanceContext';
-import { Menu, Plus, Bell, Cloud, RefreshCw, LogOut, Smartphone } from 'lucide-react';
+import { Menu, Plus, Bell, Cloud, RefreshCw, LogOut, Smartphone, TrendingUp } from 'lucide-react';
 import { ActiveTab } from '../../types/finance';
+import { useLiveCurrency } from '../../services/currencyService';
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -45,6 +46,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
     loginWithGoogle,
     logout,
   } = useFinance();
+
+  const { usd, eur, lastUpdated, isLive, isLoading: isRatesLoading, refreshRates } = useLiveCurrency();
 
   // Listen to keyboard shortcut "N" to quickly open modal
   useEffect(() => {
@@ -150,17 +153,31 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           </button>
         )}
 
-        {/* Currency Rates Ticker */}
-        <div className="hidden xl:flex items-center gap-2.5 px-2.5 py-1 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700/80 rounded-xl text-[11px] font-mono-num font-medium text-slate-600 dark:text-slate-300">
-          <div className="flex items-center gap-1">
+        {/* Live Currency Rates Ticker */}
+        <div
+          className="hidden md:flex items-center gap-2 px-2.5 py-1 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-[11px] font-mono-num font-medium text-slate-700 dark:text-slate-300 shadow-xs"
+          title={`Canlı Döviz Kuru (Güncellenme: ${lastUpdated || 'Anlık'}). Tıklayarak yenileyebilirsiniz.`}
+        >
+          <div className="flex items-center gap-1.5">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+            </span>
             <span className="text-slate-400 font-bold">USD:</span>
-            <span>₺34,25</span>
+            <span className="font-semibold text-slate-900 dark:text-white">₺{usd.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
           <span className="text-slate-300 dark:text-slate-700">·</span>
           <div className="flex items-center gap-1">
             <span className="text-slate-400 font-bold">EUR:</span>
-            <span>₺37,42</span>
+            <span className="font-semibold text-slate-900 dark:text-white">₺{eur.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
+          <button
+            onClick={() => refreshRates(true)}
+            className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 ml-0.5 p-0.5 rounded transition"
+            title="Döviz Kurlarını Şimdi Güncelle"
+          >
+            <RefreshCw className={`w-3 h-3 ${isRatesLoading ? 'animate-spin text-emerald-500' : ''}`} />
+          </button>
         </div>
 
         {/* Notifications / Pending Alert button */}

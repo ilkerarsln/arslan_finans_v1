@@ -1,10 +1,11 @@
-export type TransactionType = 'Gelir' | 'Gider' | 'Transfer';
+export type TransactionType = 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alımı';
 
 export type TransactionStatus = 'Tamamlandı' | 'Beklemede' | 'İptal';
 
 export interface Transaction {
   id: string;
   date: string;
+  dueDate?: string; // Mal alımı için ödeme / vade tarihi
   type: TransactionType;
   category: string;
   cariId?: string;
@@ -34,6 +35,7 @@ export interface Account {
   currency: 'TRY' | 'USD' | 'EUR';
   creditLimit?: number;
   cutOffDay?: number;
+  cutOffDate?: string; // Kredi kartı hesap kesim tarihi
   color: string;
   icon: string;
 }

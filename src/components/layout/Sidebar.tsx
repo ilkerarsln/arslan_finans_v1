@@ -166,7 +166,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         <div className="p-4 border-t border-slate-800/80 text-xs text-slate-500 flex flex-col gap-1">
           <div className="flex items-center justify-between">
             <span className="font-semibold text-slate-400">Arslan Finans</span>
-            <span className="text-[10px] font-mono text-emerald-500">v2.4 Pro</span>
+            <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-1.5 py-0.5 rounded">V1 Pro</span>
           </div>
           <span className="text-[10px] text-slate-500">
             Nakit Akışı ve Mali Yönetim Paneli

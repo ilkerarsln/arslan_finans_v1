@@ -21,6 +21,7 @@ import {
   CreditCard,
   Users,
   Layers,
+  ShoppingBag,
 } from 'lucide-react';
 
 export const DashboardTab: React.FC<{
@@ -343,11 +344,14 @@ export const DashboardTab: React.FC<{
                             ? 'text-emerald-600 dark:text-emerald-400'
                             : tx.type === 'Gider'
                             ? 'text-rose-600 dark:text-rose-400'
+                            : tx.type === 'Mal Alımı'
+                            ? 'text-amber-600 dark:text-amber-400'
                             : 'text-blue-600 dark:text-blue-400'
                         }`}
                       >
                         {tx.type === 'Gelir' && <ArrowDownRight className="w-3 h-3" />}
                         {tx.type === 'Gider' && <ArrowUpRight className="w-3 h-3" />}
+                        {tx.type === 'Mal Alımı' && <ShoppingBag className="w-3 h-3" />}
                         {tx.type === 'Transfer' && <ArrowRightLeft className="w-3 h-3" />}
                         {tx.type}
                       </span>
@@ -362,12 +366,14 @@ export const DashboardTab: React.FC<{
                       className={`py-3 px-4 text-right font-mono-num font-bold ${
                         tx.type === 'Gelir'
                           ? 'text-emerald-600 dark:text-emerald-400'
+                          : tx.type === 'Mal Alımı'
+                          ? 'text-amber-600 dark:text-amber-400'
                           : tx.type === 'Gider'
                           ? 'text-rose-600 dark:text-rose-400'
                           : 'text-blue-600 dark:text-blue-400'
                       }`}
                     >
-                      {tx.type === 'Gelir' ? '+' : tx.type === 'Gider' ? '-' : ''}
+                      {tx.type === 'Gelir' ? '+' : tx.type === 'Gider' ? '-' : tx.type === 'Mal Alımı' ? '-' : ''}
                       {formatCurrency(tx.amount)}
                     </td>
                   </tr>

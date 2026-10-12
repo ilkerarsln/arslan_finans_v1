@@ -23,6 +23,8 @@ export const AccountModal: React.FC<AccountModalProps> = ({
   const [balance, setBalance] = useState('');
   const [creditLimit, setCreditLimit] = useState('');
   const [currency, setCurrency] = useState<'TRY' | 'USD' | 'EUR'>('TRY');
+  const [cutOffDate, setCutOffDate] = useState('');
+  const [cutOffDay, setCutOffDay] = useState('');
   const [color, setColor] = useState('#2563eb');
 
   useEffect(() => {
@@ -33,6 +35,8 @@ export const AccountModal: React.FC<AccountModalProps> = ({
       setIban(editingAccount.iban || '');
       setBalance(editingAccount.balance.toString());
       setCreditLimit(editingAccount.creditLimit ? editingAccount.creditLimit.toString() : '');
+      setCutOffDate(editingAccount.cutOffDate || '');
+      setCutOffDay(editingAccount.cutOffDay ? editingAccount.cutOffDay.toString() : '');
       setCurrency(editingAccount.currency);
       setColor(editingAccount.color);
     } else {
@@ -42,6 +46,10 @@ export const AccountModal: React.FC<AccountModalProps> = ({
       setIban('');
       setBalance('0');
       setCreditLimit('50000');
+      const today = new Date();
+      const defaultCutoff = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-15`;
+      setCutOffDate(defaultCutoff);
+      setCutOffDay('15');
       setCurrency('TRY');
       setColor('#059669');
     }
@@ -61,6 +69,12 @@ export const AccountModal: React.FC<AccountModalProps> = ({
         ? 'CreditCard'
         : 'Building2';
 
+    const derivedDay = cutOffDay
+      ? parseInt(cutOffDay, 10)
+      : cutOffDate
+      ? parseInt(cutOffDate.split('-')[2], 10)
+      : undefined;
+
     if (editingAccount) {
       updateAccount({
         ...editingAccount,
@@ -70,6 +84,8 @@ export const AccountModal: React.FC<AccountModalProps> = ({
         iban: iban.trim() || undefined,
         balance: numBalance,
         creditLimit: numLimit,
+        cutOffDate: type === 'Şirket Kredi Kartı' ? cutOffDate || undefined : undefined,
+        cutOffDay: type === 'Şirket Kredi Kartı' ? derivedDay : undefined,
         currency,
         color,
         icon,
@@ -82,6 +98,8 @@ export const AccountModal: React.FC<AccountModalProps> = ({
         iban: iban.trim() || undefined,
         balance: numBalance,
         creditLimit: numLimit,
+        cutOffDate: type === 'Şirket Kredi Kartı' ? cutOffDate || undefined : undefined,
+        cutOffDay: type === 'Şirket Kredi Kartı' ? derivedDay : undefined,
         currency,
         color,
         icon,
@@ -219,6 +237,56 @@ export const AccountModal: React.FC<AccountModalProps> = ({
               </div>
             )}
           </div>
+
+          {/* Kredi Kartı Hesap Kesim Tarihi */}
+          {type === 'Şirket Kredi Kartı' && (
+            <div className="p-3 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/80 rounded-xl space-y-2">
+              <label className="block text-xs font-semibold text-slate-800 dark:text-slate-200">
+                Hesap Kesim Tarihi
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] text-slate-500 dark:text-slate-400 mb-0.5">
+                    Tarih Seçimi
+                  </label>
+                  <input
+                    type="date"
+                    value={cutOffDate}
+                    onChange={e => {
+                      setCutOffDate(e.target.value);
+                      if (e.target.value) {
+                        const day = parseInt(e.target.value.split('-')[2], 10);
+                        if (!isNaN(day)) setCutOffDay(day.toString());
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500 text-slate-800 dark:text-slate-200"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-slate-500 dark:text-slate-400 mb-0.5">
+                    Ayın Kesim Günü
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      placeholder="15"
+                      value={cutOffDay}
+                      onChange={e => setCutOffDay(e.target.value)}
+                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono-num focus:ring-2 focus:ring-amber-500 text-slate-800 dark:text-slate-200"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">
+                      . Günü
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <p className="text-[10px] text-amber-700 dark:text-amber-400">
+                Ekstre kesim gününde kart harcamalarınızın hesap özeti çıkar ve ödeme takviminde takip edilir.
+              </p>
+            </div>
+          )}
 
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button

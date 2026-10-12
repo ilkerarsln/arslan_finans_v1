@@ -375,6 +375,29 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (newTx.cariId) {
         adjustCariBalance(newTx.cariId, newTx.amount);
       }
+    } else if (newTx.type === 'Mal Alımı') {
+      // Kasadan nakit düşmeden doğrudan ilgili tedarikçiye borç olarak kaydedilir
+      if (newTx.cariId) {
+        adjustCariBalance(newTx.cariId, -newTx.amount);
+      }
+      // Vade tarihi girildiyse otomatik olarak Vade Takvimine (UpcomingDue) de ekle
+      if (newTx.dueDate) {
+        const newDue: UpcomingDue = {
+          id: `due-mal-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+          title: `Mal Alımı Borcu - ${newTx.cariName || newTx.desc || 'Tedarikçi'}`,
+          type: 'Gider',
+          amount: newTx.amount,
+          dueDate: newTx.dueDate,
+          cariId: newTx.cariId,
+          cariName: newTx.cariName,
+          category: newTx.category || 'Mal Alımı',
+          isCompleted: false,
+          recurrence: 'Tek Seferlik',
+          accountId: newTx.accountId || accounts[0]?.id,
+        };
+        setUpcomingDues(prev => [newDue, ...prev]);
+        if (user) syncUpcomingDueToCloud(user.uid, newDue);
+      }
     } else if (newTx.type === 'Transfer' && newTx.targetAccountId) {
       adjustAccountBalance(newTx.accountId, -newTx.amount);
       adjustAccountBalance(newTx.targetAccountId, newTx.amount);
@@ -383,7 +406,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setTransactions(prev => [newTx, ...prev]);
     if (user) syncTransactionToCloud(user.uid, newTx);
 
-    showToast(`Yeni işlem kaydedildi: ₺${newTx.amount.toLocaleString('tr-TR')}`, 'success');
+    showToast(
+      newTx.type === 'Mal Alımı'
+        ? `Mal alımı ve tedarikçi borcu kaydedildi: ₺${newTx.amount.toLocaleString('tr-TR')}`
+        : `Yeni işlem kaydedildi: ₺${newTx.amount.toLocaleString('tr-TR')}`,
+      'success'
+    );
     return newTx;
   };
 
@@ -398,6 +426,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } else if (oldTx.type === 'Gider') {
       adjustAccountBalance(oldTx.accountId, oldTx.amount);
       if (oldTx.cariId) adjustCariBalance(oldTx.cariId, -oldTx.amount);
+    } else if (oldTx.type === 'Mal Alımı') {
+      if (oldTx.cariId) adjustCariBalance(oldTx.cariId, oldTx.amount);
     } else if (oldTx.type === 'Transfer' && oldTx.targetAccountId) {
       adjustAccountBalance(oldTx.accountId, oldTx.amount);
       adjustAccountBalance(oldTx.targetAccountId, -oldTx.amount);
@@ -410,6 +440,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } else if (updatedTx.type === 'Gider') {
       adjustAccountBalance(updatedTx.accountId, -updatedTx.amount);
       if (updatedTx.cariId) adjustCariBalance(updatedTx.cariId, updatedTx.amount);
+    } else if (updatedTx.type === 'Mal Alımı') {
+      if (updatedTx.cariId) adjustCariBalance(updatedTx.cariId, -updatedTx.amount);
     } else if (updatedTx.type === 'Transfer' && updatedTx.targetAccountId) {
       adjustAccountBalance(updatedTx.accountId, -updatedTx.amount);
       adjustAccountBalance(updatedTx.targetAccountId, updatedTx.amount);
@@ -431,6 +463,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } else if (tx.type === 'Gider') {
       adjustAccountBalance(tx.accountId, tx.amount);
       if (tx.cariId) adjustCariBalance(tx.cariId, -tx.amount);
+    } else if (tx.type === 'Mal Alımı') {
+      if (tx.cariId) adjustCariBalance(tx.cariId, tx.amount);
     } else if (tx.type === 'Transfer' && tx.targetAccountId) {
       adjustAccountBalance(tx.accountId, tx.amount);
       adjustAccountBalance(tx.targetAccountId, -tx.amount);

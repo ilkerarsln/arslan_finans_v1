@@ -33,9 +33,10 @@ export function exportToExcel({
       'Tutar': tx.amount,
       'Hesap': account ? account.name : tx.accountId,
       'Hedef Hesap (Virman)': targetAccount ? targetAccount.name : (tx.targetAccountId || '-'),
+      'Vade / Ödeme Tarihi': tx.dueDate || '-',
       'Durum': tx.status,
       'Belge No': tx.documentNo || '',
-      'Taksit No': tx.installmentNumber ? `${tx.installmentNumber}/${tx.installmentTotal}` : '-',
+      'Taksit No': tx.installmentIndex && tx.totalInstallments ? `${tx.installmentIndex}/${tx.totalInstallments}` : '-',
     };
   });
   const txSheet = XLSX.utils.json_to_sheet(txRows);
@@ -51,7 +52,7 @@ export function exportToExcel({
     'Bakiye': acc.balance,
     'Para Birimi': acc.currency,
     'Kredi Limiti': acc.creditLimit || '-',
-    'Hesap Kesim Günü': acc.cutOffDay || '-',
+    'Hesap Kesim Tarihi': acc.cutOffDate || (acc.cutOffDay ? `Her ayın ${acc.cutOffDay}. günü` : '-'),
   }));
   const accSheet = XLSX.utils.json_to_sheet(accRows);
   XLSX.utils.book_append_sheet(workbook, accSheet, 'Hesaplar');

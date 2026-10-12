@@ -6,15 +6,15 @@ import {
   Building2,
   Vault,
   CreditCard,
-  Landmark,
   Plus,
   ArrowRightLeft,
   Copy,
   Check,
   Edit2,
   Trash2,
-  TrendingDown,
-  TrendingUp,
+  Calendar,
+  AlertCircle,
+  Coins,
 } from 'lucide-react';
 
 interface AccountsTabProps {
@@ -31,6 +31,7 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
   const { accounts, transactions, deleteAccount, showToast } = useFinance();
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [copiedIban, setCopiedIban] = useState<string | null>(null);
+  const [viewFilter, setViewFilter] = useState<'all' | 'bank' | 'credit'>('all');
 
   const handleCopyIban = (iban: string) => {
     navigator.clipboard.writeText(iban);
@@ -46,6 +47,18 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
     }
   };
 
+  // Group accounts
+  const bankAccounts = accounts.filter(a => a.type !== 'Şirket Kredi Kartı');
+  const creditCards = accounts.filter(a => a.type === 'Şirket Kredi Kartı');
+
+  // Bank accounts KPIs
+  const totalBankBalance = bankAccounts.reduce((sum, a) => sum + a.balance, 0);
+
+  // Credit cards KPIs
+  const totalCardDebt = creditCards.reduce((sum, a) => sum + Math.abs(Math.min(a.balance, 0)), 0);
+  const totalCreditLimit = creditCards.reduce((sum, a) => sum + (a.creditLimit || 50000), 0);
+  const totalAvailableLimit = Math.max(totalCreditLimit - totalCardDebt, 0);
+
   // Selected account transactions
   const selectedAccount = accounts.find(a => a.id === selectedAccountId);
   const accountTransactions = transactions.filter(
@@ -58,10 +71,10 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-            Banka Hesapları & Kasalar
+            Banka Hesapları & Kredi Kartları
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Tüm vadesiz ticari hesaplar, şirket kredi kartları ve nakit kasaların bakiye yönetimi
+            Vadesiz banka mevduatları, nakit kasalar ve şirket kredi kartlarının bağımsız takibi
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -80,170 +93,366 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
         </div>
       </div>
 
-      {/* Accounts Card Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {accounts.map(acc => {
-          const isSelected = selectedAccountId === acc.id;
-          const isCreditCard = acc.type === 'Şirket Kredi Kartı';
-          const isCash = acc.type === 'Kasa (Nakit)';
+      {/* Top Filter Buttons */}
+      <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl w-fit text-xs font-semibold">
+        <button
+          onClick={() => setViewFilter('all')}
+          className={`px-3 py-1.5 rounded-lg transition ${
+            viewFilter === 'all'
+              ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          Tümü ({accounts.length})
+        </button>
+        <button
+          onClick={() => setViewFilter('bank')}
+          className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+            viewFilter === 'bank'
+              ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <Building2 className="w-3.5 h-3.5 text-blue-500" />
+          Banka Hesapları & Kasalar ({bankAccounts.length})
+        </button>
+        <button
+          onClick={() => setViewFilter('credit')}
+          className={`px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 ${
+            viewFilter === 'credit'
+              ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+              : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <CreditCard className="w-3.5 h-3.5 text-amber-500" />
+          Kredi Kartları ({creditCards.length})
+        </button>
+      </div>
 
-          // Credit card limits calculation
-          const limit = acc.creditLimit || 50000;
-          const usedDebt = Math.abs(Math.min(acc.balance, 0));
-          const availableLimit = Math.max(limit - usedDebt, 0);
-          const usedPercent = Math.min((usedDebt / limit) * 100, 100);
-
-          return (
-            <div
-              key={acc.id}
-              onClick={() => setSelectedAccountId(isSelected ? null : acc.id)}
-              className={`bg-white dark:bg-slate-900 rounded-2xl border p-5 shadow-xs transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
-                isSelected
-                  ? 'border-emerald-500 ring-2 ring-emerald-500/20'
-                  : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-              }`}
-            >
-              {/* Top Accent Line */}
-              <div
-                className="absolute top-0 left-0 right-0 h-1.5"
-                style={{ backgroundColor: acc.color || '#10b981' }}
-              />
-
-              <div>
-                {/* Account Type & Actions */}
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    {acc.type}
-                  </span>
-                  <div
-                    className="flex items-center gap-1"
-                    onClick={e => e.stopPropagation()}
-                  >
-                    <button
-                      onClick={() => onOpenTransfer(acc.id)}
-                      title="Bu hesaptan transfer yap"
-                      className="p-1 text-slate-400 hover:text-blue-500 rounded transition"
-                    >
-                      <ArrowRightLeft className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => onEditAccount(acc)}
-                      title="Düzenle"
-                      className="p-1 text-slate-400 hover:text-emerald-500 rounded transition"
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(acc.id, acc.name)}
-                      title="Sil"
-                      className="p-1 text-slate-400 hover:text-rose-500 rounded transition"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Account Name & Bank */}
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-bold text-slate-900 dark:text-white text-base">
-                      {acc.name}
-                    </h3>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
-                      {acc.bankName || (isCash ? 'Fiziki Nakit Kasası' : 'Vadesiz Hesap')}
-                    </p>
-                  </div>
-                  <div className="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
-                    {isCash ? (
-                      <Vault className="w-5 h-5" />
-                    ) : isCreditCard ? (
-                      <CreditCard className="w-5 h-5" />
-                    ) : (
-                      <Building2 className="w-5 h-5" />
-                    )}
-                  </div>
-                </div>
-
-                {/* Balance display */}
-                <div className="mt-4">
-                  <span className="text-[11px] font-semibold text-slate-400">
-                    {isCreditCard ? 'Güncel Dönem Borcu' : 'Hesap Bakiyesi'}
-                  </span>
-                  <div
-                    className={`text-2xl font-bold font-mono-num mt-0.5 ${
-                      isCreditCard
-                        ? 'text-rose-600 dark:text-rose-400'
-                        : acc.balance < 0
-                        ? 'text-rose-600 dark:text-rose-400'
-                        : 'text-slate-900 dark:text-white'
-                    }`}
-                  >
-                    {formatCurrency(acc.balance, acc.currency)}
-                  </div>
-                </div>
-
-                {/* Credit Card Limit Progress */}
-                {isCreditCard && (
-                  <div className="mt-3 space-y-1.5 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
-                    <div className="flex justify-between text-slate-500">
-                      <span>Kullanılan: {formatCurrency(usedDebt)}</span>
-                      <span>Kalan Limit: {formatCurrency(availableLimit)}</span>
-                    </div>
-                    <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                      <div
-                        className="bg-rose-500 h-full rounded-full transition-all duration-300"
-                        style={{ width: `${usedPercent}%` }}
-                      />
-                    </div>
-                    <div className="flex justify-between text-[11px] text-slate-400">
-                      <span>Toplam Limit: {formatCurrency(limit)}</span>
-                      <span>Kesim Günü: Her ayın {acc.cutOffDay || 15}'i</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* IBAN details for bank accounts */}
-                {acc.iban && (
-                  <div
-                    className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs"
-                    onClick={e => e.stopPropagation()}
-                  >
-                    <span className="font-mono text-[11px] text-slate-500 truncate max-w-[200px]">
-                      {acc.iban}
-                    </span>
-                    <button
-                      onClick={() => handleCopyIban(acc.iban!)}
-                      className="p-1 text-slate-400 hover:text-emerald-500 flex items-center gap-1 text-[11px] font-medium"
-                    >
-                      {copiedIban === acc.iban ? (
-                        <>
-                          <Check className="w-3.5 h-3.5 text-emerald-500" />
-                          <span className="text-emerald-500">Kopyalandı</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="w-3.5 h-3.5" />
-                          <span>Kopyala</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-                )}
+      {/* GROUP 1: Banka Hesapları ve Kasalar */}
+      {(viewFilter === 'all' || viewFilter === 'bank') && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                <Building2 className="w-4 h-4" />
               </div>
-
-              {/* Bottom Card Footer */}
-              <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px]">
-                <span className="text-slate-400">
-                  {transactions.filter(t => t.accountId === acc.id || t.targetAccountId === acc.id).length} hareket
-                </span>
-                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                  {isSelected ? 'Seçimi Kapat' : 'Hareketleri İncele →'}
-                </span>
+              <div>
+                <h3 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base">
+                  Banka Hesapları & Kasalar
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Vadesiz ticari hesaplar, döviz hesapları ve fiziki şirket kasaları
+                </p>
               </div>
             </div>
-          );
-        })}
-      </div>
+            <div className="text-right">
+              <span className="text-[10px] text-slate-400 block font-medium">Toplam Likit Bakiye</span>
+              <span className="font-mono-num font-bold text-sm sm:text-base text-emerald-600 dark:text-emerald-400">
+                {formatCurrency(totalBankBalance)}
+              </span>
+            </div>
+          </div>
+
+          {bankAccounts.length === 0 ? (
+            <div className="p-8 text-center bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-xs text-slate-400">
+              Kayıtlı banka hesabı veya kasa bulunmuyor. "Yeni Hesap Ekle" ile ekleyebilirsiniz.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {bankAccounts.map(acc => {
+                const isSelected = selectedAccountId === acc.id;
+                const isCash = acc.type === 'Kasa (Nakit)';
+
+                return (
+                  <div
+                    key={acc.id}
+                    onClick={() => setSelectedAccountId(isSelected ? null : acc.id)}
+                    className={`bg-white dark:bg-slate-900 rounded-2xl border p-5 shadow-xs transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                      isSelected
+                        ? 'border-blue-500 ring-2 ring-blue-500/20'
+                        : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    <div
+                      className="absolute top-0 left-0 right-0 h-1.5"
+                      style={{ backgroundColor: acc.color || '#2563eb' }}
+                    />
+
+                    <div>
+                      {/* Top Type & Actions */}
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/80 px-2 py-0.5 rounded-md">
+                          {acc.type}
+                        </span>
+                        <div
+                          className="flex items-center gap-1"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <button
+                            onClick={() => onOpenTransfer(acc.id)}
+                            title="Bu hesaptan virman transfer yap"
+                            className="p-1 text-slate-400 hover:text-blue-500 rounded transition"
+                          >
+                            <ArrowRightLeft className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => onEditAccount(acc)}
+                            title="Düzenle"
+                            className="p-1 text-slate-400 hover:text-emerald-500 rounded transition"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(acc.id, acc.name)}
+                            title="Sil"
+                            className="p-1 text-slate-400 hover:text-rose-500 rounded transition"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Account Name & Bank */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h3 className="font-bold text-slate-900 dark:text-white text-base">
+                            {acc.name}
+                          </h3>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {acc.bankName || (isCash ? 'Fiziki Nakit Kasası' : 'Vadesiz Hesap')}
+                          </p>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+                          {isCash ? <Vault className="w-5 h-5" /> : <Building2 className="w-5 h-5" />}
+                        </div>
+                      </div>
+
+                      {/* Balance */}
+                      <div className="mt-4">
+                        <span className="text-[11px] font-semibold text-slate-400">
+                          Hesap Bakiyesi
+                        </span>
+                        <div
+                          className={`text-2xl font-bold font-mono-num mt-0.5 ${
+                            acc.balance < 0
+                              ? 'text-rose-600 dark:text-rose-400'
+                              : 'text-slate-900 dark:text-white'
+                          }`}
+                        >
+                          {formatCurrency(acc.balance, acc.currency)}
+                        </div>
+                      </div>
+
+                      {/* IBAN */}
+                      {acc.iban && (
+                        <div
+                          className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <span className="font-mono text-[11px] text-slate-500 truncate max-w-[200px]">
+                            {acc.iban}
+                          </span>
+                          <button
+                            onClick={() => handleCopyIban(acc.iban!)}
+                            className="p-1 text-slate-400 hover:text-blue-500 flex items-center gap-1 text-[11px] font-medium"
+                          >
+                            {copiedIban === acc.iban ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-blue-500" />
+                                <span className="text-blue-500">Kopyalandı</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>Kopyala</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px]">
+                      <span className="text-slate-400">
+                        {transactions.filter(t => t.accountId === acc.id || t.targetAccountId === acc.id).length} hareket
+                      </span>
+                      <span className="text-blue-600 dark:text-blue-400 font-semibold">
+                        {isSelected ? 'Seçimi Kapat' : 'Ekstreyi İncele →'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* GROUP 2: Şirket Kredi Kartları */}
+      {(viewFilter === 'all' || viewFilter === 'credit') && (
+        <div className="space-y-4 pt-2">
+          <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                <CreditCard className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900 dark:text-white text-sm sm:text-base">
+                  Şirket Kredi Kartları
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  Kart limitleri, harcama bakiyeleri ve hesap kesim tarihleri
+                </p>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-[10px] text-slate-400 block font-medium">Toplam Kart Borcu</span>
+              <span className="font-mono-num font-bold text-sm sm:text-base text-rose-600 dark:text-rose-400">
+                {formatCurrency(totalCardDebt)}
+              </span>
+            </div>
+          </div>
+
+          {creditCards.length === 0 ? (
+            <div className="p-8 text-center bg-slate-50 dark:bg-slate-900/40 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-xs text-slate-400">
+              Kayıtlı şirket kredi kartı bulunmuyor. "Yeni Hesap Ekle" üzerinden kredi kartı tanımlayabilirsiniz.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              {creditCards.map(card => {
+                const isSelected = selectedAccountId === card.id;
+                const limit = card.creditLimit || 50000;
+                const usedDebt = Math.abs(Math.min(card.balance, 0));
+                const availableLimit = Math.max(limit - usedDebt, 0);
+                const usedPercent = Math.min((usedDebt / limit) * 100, 100);
+
+                const cutOffText = card.cutOffDate
+                  ? formatDate(card.cutOffDate)
+                  : card.cutOffDay
+                  ? `Her ayın ${card.cutOffDay}. günü`
+                  : 'Belirtilmedi';
+
+                return (
+                  <div
+                    key={card.id}
+                    onClick={() => setSelectedAccountId(isSelected ? null : card.id)}
+                    className={`bg-white dark:bg-slate-900 rounded-2xl border p-5 shadow-xs transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                      isSelected
+                        ? 'border-amber-500 ring-2 ring-amber-500/20'
+                        : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    <div
+                      className="absolute top-0 left-0 right-0 h-1.5"
+                      style={{ backgroundColor: card.color || '#f59e0b' }}
+                    />
+
+                    <div>
+                      {/* Top Type & Actions */}
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/80 px-2 py-0.5 rounded-md flex items-center gap-1">
+                          <CreditCard className="w-3 h-3" />
+                          Kredi Kartı
+                        </span>
+                        <div
+                          className="flex items-center gap-1"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <button
+                            onClick={() => onOpenTransfer(card.id)}
+                            title="Kart borcu ödeme / virman"
+                            className="p-1 text-slate-400 hover:text-blue-500 rounded transition"
+                          >
+                            <ArrowRightLeft className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => onEditAccount(card)}
+                            title="Düzenle"
+                            className="p-1 text-slate-400 hover:text-emerald-500 rounded transition"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(card.id, card.name)}
+                            title="Sil"
+                            className="p-1 text-slate-400 hover:text-rose-500 rounded transition"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Card Name & Bank */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <h3 className="font-bold text-slate-900 dark:text-white text-base">
+                            {card.name}
+                          </h3>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            {card.bankName || 'Kurumsal Kredi Kartı'}
+                          </p>
+                        </div>
+                        <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                          <CreditCard className="w-5 h-5" />
+                        </div>
+                      </div>
+
+                      {/* Debt Display */}
+                      <div className="mt-4">
+                        <span className="text-[11px] font-semibold text-slate-400">
+                          Güncel Kart Borcu
+                        </span>
+                        <div className="text-2xl font-bold font-mono-num mt-0.5 text-rose-600 dark:text-rose-400">
+                          {formatCurrency(usedDebt, card.currency)}
+                        </div>
+                      </div>
+
+                      {/* Limits & Progress */}
+                      <div className="mt-3 space-y-1.5 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+                        <div className="flex justify-between text-slate-500">
+                          <span>Limit: {formatCurrency(limit, card.currency)}</span>
+                          <span className="font-semibold text-slate-700 dark:text-slate-300">
+                            Kalan: {formatCurrency(availableLimit, card.currency)}
+                          </span>
+                        </div>
+                        <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full rounded-full transition-all duration-300 ${
+                              usedPercent > 80 ? 'bg-rose-500' : 'bg-amber-500'
+                            }`}
+                            style={{ width: `${usedPercent}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Hesap Kesim Tarihi Badge */}
+                      <div className="mt-3 p-2 bg-amber-50/70 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-900/60 rounded-xl flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1.5 text-amber-800 dark:text-amber-300 font-medium text-[11px]">
+                          <Calendar className="w-3.5 h-3.5 text-amber-600" />
+                          <span>Hesap Kesim Tarihi:</span>
+                        </div>
+                        <span className="font-bold text-amber-900 dark:text-amber-200 text-[11px]">
+                          {cutOffText}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px]">
+                      <span className="text-slate-400">
+                        {transactions.filter(t => t.accountId === card.id || t.targetAccountId === card.id).length} harcama
+                      </span>
+                      <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                        {isSelected ? 'Seçimi Kapat' : 'Kart Hareketleri →'}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Selected Account Detailed History */}
       {selectedAccount && (
@@ -257,6 +466,12 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
                 <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
                   {selectedAccount.type}
                 </span>
+                {selectedAccount.type === 'Şirket Kredi Kartı' && (
+                  <span className="px-2 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 flex items-center gap-1">
+                    <Calendar className="w-3 h-3" />
+                    Kesim: {selectedAccount.cutOffDate ? formatDate(selectedAccount.cutOffDate) : (selectedAccount.cutOffDay ? `Her ayın ${selectedAccount.cutOffDay}'i` : '-')}
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-500">
                 Bu hesaba ait son finansal giriş ve çıkışlar
@@ -264,7 +479,9 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
             </div>
             <div className="flex items-center gap-3">
               <div className="text-right">
-                <span className="text-[11px] text-slate-400">Bakiye:</span>
+                <span className="text-[11px] text-slate-400">
+                  {selectedAccount.type === 'Şirket Kredi Kartı' ? 'Dönem Borcu:' : 'Bakiye:'}
+                </span>
                 <div className="text-base font-bold font-mono-num text-slate-900 dark:text-white">
                   {formatCurrency(selectedAccount.balance, selectedAccount.currency)}
                 </div>
@@ -273,7 +490,7 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
                 onClick={() => onOpenTransfer(selectedAccount.id)}
                 className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
               >
-                <ArrowRightLeft className="w-3.5 h-3.5" /> Virman Yap
+                <ArrowRightLeft className="w-3.5 h-3.5" /> Virman / Ödeme Yap
               </button>
             </div>
           </div>
@@ -298,7 +515,6 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
                   {accountTransactions.map(tx => {
                     const isIncomingTransfer =
                       tx.type === 'Transfer' && tx.targetAccountId === selectedAccount.id;
-                    const isOutgoing = tx.type === 'Gider' || (tx.type === 'Transfer' && tx.accountId === selectedAccount.id);
 
                     return (
                       <tr
@@ -311,6 +527,8 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
                             className={
                               isIncomingTransfer || tx.type === 'Gelir'
                                 ? 'text-emerald-600 dark:text-emerald-400'
+                                : tx.type === 'Mal Alımı'
+                                ? 'text-amber-600 dark:text-amber-400'
                                 : 'text-rose-600 dark:text-rose-400'
                             }
                           >

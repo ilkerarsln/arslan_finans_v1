@@ -11,6 +11,8 @@ import {
   Layers,
   Calendar,
   Sparkles,
+  ShoppingBag,
+  AlertCircle,
 } from 'lucide-react';
 import {
   formatCurrency,
@@ -29,6 +31,7 @@ export const TransactionModal: React.FC = () => {
     openInstallmentModal,
     accounts,
     caris,
+    addCari,
     categories,
     addCategory,
   } = useFinance();
@@ -36,6 +39,7 @@ export const TransactionModal: React.FC = () => {
   const [type, setType] = useState<TransactionType>('Gelir');
   const [amount, setAmount] = useState<string>('');
   const [date, setDate] = useState<string>('');
+  const [dueDate, setDueDate] = useState<string>(''); // Mal Alımı vade / ödeme tarihi
   const [category, setCategory] = useState<string>('');
   const [newCategoryName, setNewCategoryName] = useState<string>('');
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
@@ -53,12 +57,17 @@ export const TransactionModal: React.FC = () => {
   useEffect(() => {
     if (isTransactionModalOpen) {
       const today = new Date().toISOString().split('T')[0];
+      const defaultMaturity = new Date();
+      defaultMaturity.setDate(defaultMaturity.getDate() + 30);
+      const defaultMaturityStr = defaultMaturity.toISOString().split('T')[0];
+
       if (prefillTransaction && prefillTransaction.id) {
         // Editing existing
         setEditingId(prefillTransaction.id);
         setType(prefillTransaction.type || 'Gelir');
         setAmount(prefillTransaction.amount?.toString() || '');
         setDate(prefillTransaction.date || today);
+        setDueDate(prefillTransaction.dueDate || defaultMaturityStr);
         setFirstDueDate(prefillTransaction.date || today);
         setCategory(prefillTransaction.category || '');
         setCariName(prefillTransaction.cariName || '');
@@ -75,8 +84,12 @@ export const TransactionModal: React.FC = () => {
         setAmount(prefillTransaction?.amount ? prefillTransaction.amount.toString() : '');
         const targetDate = prefillTransaction?.date || today;
         setDate(targetDate);
+        setDueDate(prefillTransaction?.dueDate || defaultMaturityStr);
         setFirstDueDate(targetDate);
-        setCategory(prefillTransaction?.category || '');
+        setCategory(
+          prefillTransaction?.category ||
+            (prefillTransaction?.type === 'Mal Alımı' ? 'Mal Alımı' : '')
+        );
         setCariName(prefillTransaction?.cariName || '');
         setCariId(prefillTransaction?.cariId || '');
         setAccountId(prefillTransaction?.accountId || accounts[0]?.id || '');
@@ -93,7 +106,11 @@ export const TransactionModal: React.FC = () => {
 
   if (!isTransactionModalOpen) return null;
 
-  const filteredCategories = categories.filter(c => c.type === (type === 'Transfer' ? 'Gider' : type));
+  const filteredCategories = categories.filter(c => {
+    if (type === 'Transfer') return c.type === 'Gider';
+    if (type === 'Mal Alımı') return c.type === 'Gider';
+    return c.type === type;
+  });
 
   const handleCariSelect = (name: string) => {
     setCariName(name);
@@ -108,7 +125,7 @@ export const TransactionModal: React.FC = () => {
   const handleAddNewCategory = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCategoryName.trim()) return;
-    addCategory(newCategoryName.trim(), type === 'Transfer' ? 'Gider' : type);
+    addCategory(newCategoryName.trim(), type === 'Gelir' ? 'Gelir' : 'Gider');
     setCategory(newCategoryName.trim());
     setNewCategoryName('');
     setIsAddingNewCategory(false);
@@ -126,30 +143,52 @@ export const TransactionModal: React.FC = () => {
       }
     }
 
+    // Auto-create or resolve Cari for Mal Alımı if typed
+    let finalCariId = cariId;
+    if (type === 'Mal Alımı' && cariName.trim() && !finalCariId) {
+      const existing = caris.find(c => c.name.toLowerCase() === cariName.trim().toLowerCase());
+      if (existing) {
+        finalCariId = existing.id;
+      } else {
+        const created = addCari({
+          name: cariName.trim(),
+          type: 'Tedarikçi',
+          balance: 0,
+        });
+        finalCariId = created.id;
+      }
+    }
+
     const payload = {
       date: date || new Date().toISOString().split('T')[0],
+      dueDate: type === 'Mal Alımı' ? (dueDate || new Date().toISOString().split('T')[0]) : undefined,
       type,
-      category: type === 'Transfer' ? 'Virman' : category || 'Genel',
-      cariId: cariId || undefined,
-      cariName: cariName || undefined,
-      desc: desc.trim(),
+      category:
+        type === 'Transfer'
+          ? 'Virman'
+          : type === 'Mal Alımı'
+          ? category || 'Mal Alımı'
+          : category || 'Genel',
+      cariId: finalCariId || undefined,
+      cariName: cariName.trim() || undefined,
+      desc: desc.trim() || (type === 'Mal Alımı' ? 'Mal Alımı / Tedarikçi Borçlandırması' : ''),
       amount: numAmount,
-      accountId,
+      accountId: accountId || accounts[0]?.id || 'acc-default',
       targetAccountId: type === 'Transfer' ? targetAccountId : undefined,
       status: 'Tamamlandı' as const,
       documentNo: documentNo.trim() || undefined,
     };
 
-    if (!editingId && isInstallment && type !== 'Transfer') {
+    if (!editingId && isInstallment && type !== 'Transfer' && type !== 'Mal Alımı') {
       const count = Math.max(1, Math.floor(installmentsCount || 1));
       const targetFirstDueDate = firstDueDate || date || new Date().toISOString().split('T')[0];
 
       createInstallmentPlan({
-        type,
+        type: type === 'Gelir' ? 'Gelir' : 'Gider',
         totalAmount: numAmount,
         installmentsCount: count,
         firstDueDate: targetFirstDueDate,
-        cariId: cariId || undefined,
+        cariId: finalCariId || undefined,
         cariName: cariName.trim() || undefined,
         category: category || (type === 'Gelir' ? 'Taksitli Satış' : 'Taksitli Mal Alımı'),
         accountId,
@@ -185,19 +224,28 @@ export const TransactionModal: React.FC = () => {
                   ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
                   : type === 'Gider'
                   ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
+                  : type === 'Mal Alımı'
+                  ? 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
                   : 'bg-blue-100 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400'
               }`}
             >
               {type === 'Gelir' && <ArrowDownRight className="w-5 h-5" />}
               {type === 'Gider' && <ArrowUpRight className="w-5 h-5" />}
+              {type === 'Mal Alımı' && <ShoppingBag className="w-5 h-5" />}
               {type === 'Transfer' && <ArrowRightLeft className="w-5 h-5" />}
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                {editingId ? 'İşlemi Düzenle' : 'Yeni Finansal İşlem'}
+                {editingId
+                  ? 'İşlemi Düzenle'
+                  : type === 'Mal Alımı'
+                  ? 'Yeni Mal Alımı (Tedarikçi Borcu)'
+                  : 'Yeni Finansal İşlem'}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Kasa, banka ve cari hesap hareket kaydı
+                {type === 'Mal Alımı'
+                  ? 'Kasadan nakit düşmeden vadeli tedarikçi borçlandırması'
+                  : 'Kasa, banka ve cari hesap hareket kaydı'}
               </p>
             </div>
           </div>
@@ -209,84 +257,148 @@ export const TransactionModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Transaction Type Selector (Segmented buttons) */}
+        {/* Transaction Type Selector (Segmented buttons - 4 Options) */}
         <div>
           <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5">
             İşlem Türü
           </label>
-          <div className="grid grid-cols-3 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/80 rounded-xl">
             <button
               type="button"
               onClick={() => setType('Gelir')}
-              className={`py-2 px-3 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+              className={`py-2 px-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
                 type === 'Gelir'
                   ? 'bg-emerald-600 text-white shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <ArrowDownRight className="w-4 h-4" /> Gelir (Tahsilat)
+              <ArrowDownRight className="w-3.5 h-3.5" /> Gelir (Tahsilat)
             </button>
             <button
               type="button"
               onClick={() => setType('Gider')}
-              className={`py-2 px-3 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+              className={`py-2 px-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
                 type === 'Gider'
                   ? 'bg-rose-600 text-white shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <ArrowUpRight className="w-4 h-4" /> Gider (Ödeme)
+              <ArrowUpRight className="w-3.5 h-3.5" /> Gider (Ödeme)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setType('Mal Alımı');
+                if (!category) setCategory('Mal Alımı');
+              }}
+              className={`py-2 px-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+                type === 'Mal Alımı'
+                  ? 'bg-amber-600 text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <ShoppingBag className="w-3.5 h-3.5" /> Mal Alımı (Borç)
             </button>
             <button
               type="button"
               onClick={() => setType('Transfer')}
-              className={`py-2 px-3 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
+              className={`py-2 px-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
                 type === 'Transfer'
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <ArrowRightLeft className="w-4 h-4" /> Virman
+              <ArrowRightLeft className="w-3.5 h-3.5" /> Virman
             </button>
           </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Amount & Date */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Tutar (₺) *
-              </label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
-                  ₺
-                </span>
+          {/* Amount & Date(s) */}
+          {type === 'Mal Alımı' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Tutar (₺) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
+                    ₺
+                  </span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    min="0.01"
+                    value={amount}
+                    onChange={e => setAmount(e.target.value)}
+                    placeholder="0,00"
+                    className="w-full pl-8 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-bold font-mono-num outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400 text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Alım / Fatura Tarihi *
+                </label>
                 <input
-                  type="number"
-                  step="0.01"
+                  type="date"
                   required
-                  min="0.01"
-                  value={amount}
-                  onChange={e => setAmount(e.target.value)}
-                  placeholder="0,00"
-                  className="w-full pl-8 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-bold font-mono-num outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 text-slate-900 dark:text-white"
+                  value={date}
+                  onChange={e => setDate(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500 dark:focus:ring-amber-400 text-slate-800 dark:text-slate-200"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-amber-700 dark:text-amber-400 mb-1 flex items-center gap-1">
+                  <Calendar className="w-3.5 h-3.5" />
+                  Ödeme / Vade Tarihi *
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={dueDate}
+                  onChange={e => setDueDate(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-amber-50/60 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 rounded-xl text-sm font-semibold outline-none focus:ring-2 focus:ring-amber-500 text-slate-900 dark:text-white"
                 />
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                İşlem Tarihi *
-              </label>
-              <input
-                type="date"
-                required
-                value={date}
-                onChange={e => setDate(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 text-slate-800 dark:text-slate-200"
-              />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Tutar (₺) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">
+                    ₺
+                  </span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    min="0.01"
+                    value={amount}
+                    onChange={e => setAmount(e.target.value)}
+                    placeholder="0,00"
+                    className="w-full pl-8 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-bold font-mono-num outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  İşlem Tarihi *
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={date}
+                  onChange={e => setDate(e.target.value)}
+                  className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 text-slate-800 dark:text-slate-200"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Conditional: Category & Cari vs Account Transfer */}
           {type !== 'Transfer' ? (
@@ -331,6 +443,7 @@ export const TransactionModal: React.FC = () => {
                     className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 text-slate-800 dark:text-slate-200"
                   >
                     <option value="">Kategori Seçin...</option>
+                    {type === 'Mal Alımı' && <option value="Mal Alımı">Mal Alımı (Stok)</option>}
                     {filteredCategories.map(cat => (
                       <option key={cat.id} value={cat.name}>
                         {cat.name}
@@ -341,18 +454,23 @@ export const TransactionModal: React.FC = () => {
                 )}
               </div>
 
-              {/* Cari / Firma */}
+              {/* Cari / Tedarikçi Firma */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Cari / Firma Adı
+                  {type === 'Mal Alımı' ? 'Tedarikçi Firma / Satıcı *' : 'Cari / Firma Adı'}
                 </label>
                 <div className="relative">
                   <input
                     type="text"
+                    required={type === 'Mal Alımı'}
                     list="cari-datalist"
                     value={cariName}
                     onChange={e => handleCariSelect(e.target.value)}
-                    placeholder="Müşteri, Tedarikçi veya Firma adı..."
+                    placeholder={
+                      type === 'Mal Alımı'
+                        ? 'Mal aldığınız tedarikçi firma adını yazın veya seçin...'
+                        : 'Müşteri, Tedarikçi veya Firma adı...'
+                    }
                     className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 text-slate-800 dark:text-slate-200"
                   />
                   <datalist id="cari-datalist">
@@ -365,24 +483,37 @@ export const TransactionModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Bank Account / Payment account */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  {type === 'Gelir' ? 'Tahsilat Hesabı / Kasa' : 'Ödeme Hesabı / Kasa / Kart'} *
-                </label>
-                <select
-                  value={accountId}
-                  onChange={e => setAccountId(e.target.value)}
-                  required
-                  className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 text-slate-800 dark:text-slate-200 font-medium"
-                >
-                  {accounts.map(acc => (
-                    <option key={acc.id} value={acc.id}>
-                      {acc.name} ({acc.type}) — Mevcut: ₺{acc.balance.toLocaleString('tr-TR')}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Kasadan Düşmeyen Mal Alımı Uyarısı vs Ödeme Hesabı Seçimi */}
+              {type === 'Mal Alımı' ? (
+                <div className="p-3.5 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-xl space-y-1.5">
+                  <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-semibold text-xs">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Kasadan Nakit Düşmez (Doğrudan Tedarikçi Borcu)</span>
+                  </div>
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
+                    Bu işlem kasadan nakit düşmeden doğrudan <strong>{cariName || 'ilgili tedarikçiye'}</strong> borç olarak kaydedilir. Seçilen <strong>{dueDate ? formatDate(dueDate) : 'vade'}</strong> ödeme tarihi ise otomatik olarak Vade Takvimi'ne eklenir.
+                  </p>
+                </div>
+              ) : (
+                /* Bank Account / Payment account */
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {type === 'Gelir' ? 'Tahsilat Hesabı / Kasa' : 'Ödeme Hesabı / Kasa / Kart'} *
+                  </label>
+                  <select
+                    value={accountId}
+                    onChange={e => setAccountId(e.target.value)}
+                    required
+                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 text-slate-800 dark:text-slate-200 font-medium"
+                  >
+                    {accounts.map(acc => (
+                      <option key={acc.id} value={acc.id}>
+                        {acc.name} ({acc.type}) — Mevcut: ₺{acc.balance.toLocaleString('tr-TR')}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </>
           ) : (
             /* Virman Transfer: Source & Target Accounts */
@@ -425,8 +556,8 @@ export const TransactionModal: React.FC = () => {
             </div>
           )}
 
-          {/* Taksitli İşlem Seçeneği */}
-          {!editingId && type !== 'Transfer' && (
+          {/* Taksitli İşlem Seçeneği (Sadece Gelir ve Gider için) */}
+          {!editingId && type !== 'Transfer' && type !== 'Mal Alımı' && (
             <div className="p-4 bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/80 rounded-xl space-y-3.5 transition-all">
               <div className="flex items-center justify-between">
                 <label className="flex items-center gap-2.5 cursor-pointer select-none">
@@ -465,7 +596,6 @@ export const TransactionModal: React.FC = () => {
               {isInstallment && (
                 <div className="pt-3 border-t border-emerald-200/70 dark:border-emerald-800/70 space-y-3 text-xs">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {/* Taksit Sayısı Alanı */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -507,7 +637,6 @@ export const TransactionModal: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* İlk Vade Tarihi Alanı */}
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -545,7 +674,6 @@ export const TransactionModal: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Canlı Format ve Vade Takvimi Önizlemesi */}
                   <div className="p-3 rounded-lg bg-white/90 dark:bg-slate-900/90 border border-emerald-200/90 dark:border-emerald-800/90 space-y-2">
                     <div className="flex items-center justify-between text-[11px]">
                       <span className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
@@ -578,16 +706,6 @@ export const TransactionModal: React.FC = () => {
                         </div>
                       )}
                     </div>
-
-                    <div className="flex flex-wrap items-center justify-between text-[10px] text-slate-500 dark:text-slate-400 pt-0.5">
-                      <span>
-                        1. Vade: <strong>{formatDate(firstDueDate || date)}</strong> ➔ Son Vade:{' '}
-                        <strong>{formatDate(calculateInstallmentDate(firstDueDate || date, installmentsCount - 1))}</strong>
-                      </span>
-                      <span className="text-emerald-700 dark:text-emerald-400 font-semibold flex items-center gap-1">
-                        <Check className="w-3 h-3" /> Vade Takvimi'ne otomatik aktarılır
-                      </span>
-                    </div>
                   </div>
                 </div>
               )}
@@ -604,7 +722,11 @@ export const TransactionModal: React.FC = () => {
                 type="text"
                 value={desc}
                 onChange={e => setDesc(e.target.value)}
-                placeholder="Örn: Ekim ayı kira bedeli, Fatura ödemesi..."
+                placeholder={
+                  type === 'Mal Alımı'
+                    ? 'Örn: Hammadde alımı, Fatura / İrsaliye detayı...'
+                    : 'Örn: Ekim ayı kira bedeli, Fatura ödemesi...'
+                }
                 className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 text-slate-800 dark:text-slate-200"
               />
             </div>
@@ -638,20 +760,17 @@ export const TransactionModal: React.FC = () => {
                   ? 'bg-emerald-600 hover:bg-emerald-700'
                   : type === 'Gider'
                   ? 'bg-rose-600 hover:bg-rose-700'
+                  : type === 'Mal Alımı'
+                  ? 'bg-amber-600 hover:bg-amber-700'
                   : 'bg-blue-600 hover:bg-blue-700'
               }`}
             >
-              {isInstallment && !editingId && type !== 'Transfer' ? (
-                <>
-                  <Layers className="w-4 h-4" />
-                  {installmentsCount} Taksitli Kaydı Vade Takvimine Ekle
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4" />
-                  {editingId ? 'Güncelle' : 'Kaydet'}
-                </>
-              )}
+              <Check className="w-4 h-4" />
+              {editingId
+                ? 'Güncelle'
+                : type === 'Mal Alımı'
+                ? 'Mal Alımını & Borcu Kaydet'
+                : 'Kaydet'}
             </button>
           </div>
         </form>

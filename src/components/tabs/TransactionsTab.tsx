@@ -16,6 +16,7 @@ import {
   ChevronDown,
   FileSpreadsheet,
   Layers,
+  ShoppingBag,
 } from 'lucide-react';
 
 export const TransactionsTab: React.FC = () => {
@@ -221,7 +222,7 @@ export const TransactionsTab: React.FC = () => {
         <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
           {/* Segmented Type Filter */}
           <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
-            {(['All', 'Gelir', 'Gider', 'Transfer'] as const).map(tab => (
+            {(['All', 'Gelir', 'Gider', 'Mal Alımı', 'Transfer'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => setTypeFilter(tab)}
@@ -366,11 +367,14 @@ export const TransactionsTab: React.FC = () => {
                               ? 'text-emerald-600 dark:text-emerald-400'
                               : tx.type === 'Gider'
                               ? 'text-rose-600 dark:text-rose-400'
+                              : tx.type === 'Mal Alımı'
+                              ? 'text-amber-600 dark:text-amber-400'
                               : 'text-blue-600 dark:text-blue-400'
                           }`}
                         >
                           {tx.type === 'Gelir' && <ArrowDownRight className="w-3.5 h-3.5" />}
                           {tx.type === 'Gider' && <ArrowUpRight className="w-3.5 h-3.5" />}
+                          {tx.type === 'Mal Alımı' && <ShoppingBag className="w-3.5 h-3.5" />}
                           {tx.type === 'Transfer' && <ArrowRightLeft className="w-3.5 h-3.5" />}
                           {tx.type}
                         </span>
@@ -386,6 +390,10 @@ export const TransactionsTab: React.FC = () => {
                           <span className="text-[11px]">
                             {sourceAcc?.name} ➔ {targetAcc?.name}
                           </span>
+                        ) : tx.type === 'Mal Alımı' ? (
+                          <span className="text-[11px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/70 border border-amber-200 dark:border-amber-800/60 px-2 py-0.5 rounded-md">
+                            Tedarikçi Borcu
+                          </span>
                         ) : (
                           sourceAcc?.name || '-'
                         )}
@@ -393,6 +401,11 @@ export const TransactionsTab: React.FC = () => {
                       <td className="py-3 px-4 text-slate-500 dark:text-slate-400 max-w-[220px]">
                         <div className="flex flex-wrap items-center gap-1">
                           <span className="truncate">{tx.desc || '-'}</span>
+                          {tx.dueDate && tx.type === 'Mal Alımı' && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0">
+                              Vade: {formatDate(tx.dueDate)}
+                            </span>
+                          )}
                           {tx.installmentIndex && tx.totalInstallments && (
                             <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
                               {tx.installmentIndex}/{tx.totalInstallments} Taksit
@@ -414,13 +427,18 @@ export const TransactionsTab: React.FC = () => {
                         className={`py-3 px-4 text-right font-mono-num font-bold whitespace-nowrap ${
                           tx.type === 'Gelir'
                             ? 'text-emerald-600 dark:text-emerald-400'
+                            : tx.type === 'Mal Alımı'
+                            ? 'text-amber-600 dark:text-amber-400'
                             : tx.type === 'Gider'
                             ? 'text-rose-600 dark:text-rose-400'
                             : 'text-blue-600 dark:text-blue-400'
                         }`}
                       >
-                        {tx.type === 'Gelir' ? '+' : tx.type === 'Gider' ? '-' : ''}
+                        {tx.type === 'Gelir' ? '+' : tx.type === 'Gider' ? '-' : tx.type === 'Mal Alımı' ? '-' : ''}
                         {formatCurrency(tx.amount)}
+                        {tx.type === 'Mal Alımı' && (
+                          <span className="block text-[10px] font-normal text-amber-500">Borç</span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1 opacity-80 group-hover:opacity-100 transition">

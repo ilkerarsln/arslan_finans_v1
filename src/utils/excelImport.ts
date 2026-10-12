@@ -185,7 +185,7 @@ export function parseExcelData(
         ''
     ).trim().toLowerCase();
 
-    let type: 'Gelir' | 'Gider' | 'Transfer' = 'Gider';
+    let type: 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alımı' = 'Gider';
     if (
       typeVal.includes('gelir') ||
       typeVal.includes('tahsilat') ||
@@ -193,6 +193,14 @@ export function parseExcelData(
       typeVal.includes('income')
     ) {
       type = 'Gelir';
+    } else if (
+      typeVal.includes('mal alım') ||
+      typeVal.includes('malalim') ||
+      typeVal.includes('tedarikçi borc') ||
+      typeVal.includes('borçlan') ||
+      typeVal.includes('purchase')
+    ) {
+      type = 'Mal Alımı';
     } else if (
       typeVal.includes('transfer') ||
       typeVal.includes('virman')
@@ -295,12 +303,14 @@ export function parseExcelData(
       } else if (existingCari.type === 'Tedarikçi') {
         if (type === 'Gider') {
           existingCari.balance += amount; // Ödeme yaptıkça borç kapanır
+        } else if (type === 'Mal Alımı') {
+          existingCari.balance -= amount; // Mal alımı yapıldıkça borç artar
         }
       }
     }
 
-    // Update account balance
-    if (targetAcc) {
+    // Update account balance (Kasadan nakit sadece Gelir veya Gider'de değişir, Mal Alımı doğrudan borçtur)
+    if (targetAcc && type !== 'Mal Alımı') {
       if (type === 'Gelir') {
         targetAcc.balance += amount;
       } else if (type === 'Gider') {
@@ -308,10 +318,19 @@ export function parseExcelData(
       }
     }
 
+    // DueDate from row
+    const dueDateVal =
+      rowMap['vadetarihi'] ??
+      rowMap['vade'] ??
+      rowMap['duedate'] ??
+      rowMap['odemetarihi'];
+    const dueDate = dueDateVal ? parseExcelDate(dueDateVal) : undefined;
+
     // Create Transaction
     const newTx: Transaction = {
       id: `tx-excel-${Date.now()}-${idx}`,
       date,
+      dueDate,
       type,
       category,
       amount,
