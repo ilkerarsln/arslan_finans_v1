@@ -6,6 +6,7 @@ import {
   onSnapshot,
   writeBatch,
   Unsubscribe,
+  getDocs,
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import {
@@ -273,5 +274,21 @@ export async function uploadAllInitialDataToCloud(
     await batch.commit();
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function clearAllCloudData(userId: string) {
+  const subcollections = ['transactions', 'caris', 'upcomingDues', 'accounts', 'categories'];
+  for (const sub of subcollections) {
+    try {
+      const snap = await getDocs(collection(db, 'users', userId, sub));
+      if (!snap.empty) {
+        const batch = writeBatch(db);
+        snap.docs.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
+    } catch (e) {
+      console.error(`Error clearing ${sub} in cloud:`, e);
+    }
   }
 }

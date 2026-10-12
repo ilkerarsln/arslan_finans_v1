@@ -19,7 +19,9 @@ import {
   deleteUpcomingDueFromCloud,
   syncCategoryToCloud,
   uploadAllInitialDataToCloud,
+  clearAllCloudData,
 } from '../services/firestoreFinance';
+import { exportToExcel } from '../utils/excelExport';
 import {
   INITIAL_ACCOUNTS,
   INITIAL_CARIS,
@@ -94,10 +96,11 @@ interface FinanceContextType {
   closeInstallmentModal: () => void;
 
   // Data management
-  resetToDefaultData: () => void;
+  exportDataToExcel: () => void;
   exportDataAsJson: () => string;
   importDataFromJson: (jsonStr: string) => boolean;
   importDataFromExcel: (file: File) => Promise<{ transactionsCount: number; carisCount: number }>;
+  clearAllToZero: () => Promise<void>;
 
   // Toast notifications
   toastMessage: { text: string; type: 'success' | 'info' | 'error' } | null;
@@ -224,38 +227,26 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       onAccounts: cloudAccounts => {
         if (cloudAccounts.length > 0) {
           setAccounts(cloudAccounts);
-        } else if (!isInitialCloudSyncDone.current && accounts.length > 0) {
-          // If cloud has 0 accounts, seed current accounts into cloud
-          accounts.forEach(acc => syncAccountToCloud(user.uid, acc));
+        } else if (!isInitialCloudSyncDone.current) {
+          // If cloud has no accounts yet, seed clean zero accounts
+          INITIAL_ACCOUNTS.forEach(acc => syncAccountToCloud(user.uid, acc));
         }
         setIsCloudSyncing(false);
       },
       onTransactions: cloudTxs => {
-        if (cloudTxs.length > 0) {
-          setTransactions(cloudTxs);
-        } else if (!isInitialCloudSyncDone.current && transactions.length > 0) {
-          transactions.forEach(tx => syncTransactionToCloud(user.uid, tx));
-        }
+        setTransactions(cloudTxs);
       },
       onCaris: cloudCaris => {
-        if (cloudCaris.length > 0) {
-          setCaris(cloudCaris);
-        } else if (!isInitialCloudSyncDone.current && caris.length > 0) {
-          caris.forEach(c => syncCariToCloud(user.uid, c));
-        }
+        setCaris(cloudCaris);
       },
       onUpcomingDues: cloudDues => {
-        if (cloudDues.length > 0) {
-          setUpcomingDues(cloudDues);
-        } else if (!isInitialCloudSyncDone.current && upcomingDues.length > 0) {
-          upcomingDues.forEach(d => syncUpcomingDueToCloud(user.uid, d));
-        }
+        setUpcomingDues(cloudDues);
       },
       onCategories: cloudCats => {
         if (cloudCats.length > 0) {
           setCategories(cloudCats);
-        } else if (!isInitialCloudSyncDone.current && categories.length > 0) {
-          categories.forEach(cat => syncCategoryToCloud(user.uid, cat));
+        } else if (!isInitialCloudSyncDone.current) {
+          INITIAL_CATEGORIES.forEach(cat => syncCategoryToCloud(user.uid, cat));
         }
         isInitialCloudSyncDone.current = true;
       },
@@ -617,25 +608,58 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     showToast(`'${name}' kategorisi eklendi`, 'success');
   };
 
-  // Reset to default
-  const resetToDefaultData = () => {
+  // Export to multi-sheet Excel (.xlsx)
+  const exportDataToExcel = () => {
+    try {
+      exportToExcel({
+        transactions,
+        accounts,
+        caris,
+        upcomingDues,
+      });
+      showToast('Excel dosyası başarıyla indirildi (.xlsx)', 'success');
+    } catch (e) {
+      console.error('Excel export error:', e);
+      showToast('Excel dışa aktarılırken bir hata oluştu', 'error');
+    }
+  };
+
+  // Clear all data to clean zero state (both local and cloud)
+  const clearAllToZero = async () => {
     setAccounts(INITIAL_ACCOUNTS);
-    setCaris(INITIAL_CARIS);
-    setTransactions(INITIAL_TRANSACTIONS);
-    setUpcomingDues(INITIAL_UPCOMING_DUES);
+    setCaris([]);
+    setTransactions([]);
+    setUpcomingDues([]);
     setCategories(INITIAL_CATEGORIES);
 
-    if (user) {
-      uploadAllInitialDataToCloud(user.uid, {
-        accounts: INITIAL_ACCOUNTS,
-        transactions: INITIAL_TRANSACTIONS,
-        caris: INITIAL_CARIS,
-        upcomingDues: INITIAL_UPCOMING_DUES,
-        categories: INITIAL_CATEGORIES,
-      });
-    }
+    // Clear local storage
+    localStorage.removeItem(STORAGE_KEYS.TRANSACTIONS);
+    localStorage.removeItem(STORAGE_KEYS.CARIS);
+    localStorage.removeItem(STORAGE_KEYS.UPCOMING_DUES);
+    localStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(INITIAL_ACCOUNTS));
+    localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(INITIAL_CATEGORIES));
 
-    showToast('Varsayılan demo veriler yüklendi', 'info');
+    // Clear cloud
+    if (user) {
+      setIsCloudSyncing(true);
+      try {
+        await clearAllCloudData(user.uid);
+        await uploadAllInitialDataToCloud(user.uid, {
+          accounts: INITIAL_ACCOUNTS,
+          transactions: [],
+          caris: [],
+          upcomingDues: [],
+          categories: INITIAL_CATEGORIES,
+        });
+        showToast('Tüm veriler sıfırlandı ve temizlendi', 'info');
+      } catch (err) {
+        console.error('Clear cloud error:', err);
+      } finally {
+        setIsCloudSyncing(false);
+      }
+    } else {
+      showToast('Tüm veriler sıfırlandı ve temizlendi', 'info');
+    }
   };
 
   // Backup / Restore JSON
@@ -773,10 +797,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         installmentModalPrefill,
         openInstallmentModal,
         closeInstallmentModal,
-        resetToDefaultData,
+        exportDataToExcel,
         exportDataAsJson,
         importDataFromJson,
         importDataFromExcel,
+        clearAllToZero,
         toastMessage,
         showToast,
         user,
