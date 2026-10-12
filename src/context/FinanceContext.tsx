@@ -105,6 +105,7 @@ interface FinanceContextType {
 
   // Cloud Sync & Multi-device state
   user: User | null;
+  isAuthLoading: boolean;
   isCloudConnected: boolean;
   isCloudSyncing: boolean;
   loginWithGoogle: () => Promise<void>;
@@ -119,6 +120,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Firebase Auth state
   const [user, setUser] = useState<User | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
   const isInitialCloudSyncDone = useRef<boolean>(false);
 
@@ -202,6 +204,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, currentUser => {
       setUser(currentUser);
+      setIsAuthLoading(false);
       if (currentUser) {
         setIsCloudSyncing(true);
       }
@@ -777,6 +780,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         toastMessage,
         showToast,
         user,
+        isAuthLoading,
         isCloudConnected: !!user,
         isCloudSyncing,
         loginWithGoogle,

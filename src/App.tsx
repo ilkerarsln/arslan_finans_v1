@@ -16,9 +16,10 @@ import { CariDetailModal } from './components/modals/CariDetailModal';
 import { TransferModal } from './components/modals/TransferModal';
 import { Toast } from './components/ui/Toast';
 import { Account, Cari } from './types/finance';
+import { LoginScreen } from './components/auth/LoginScreen';
 
 const MainAppContent: React.FC = () => {
-  const { activeTab } = useFinance();
+  const { activeTab, user, isAuthLoading } = useFinance();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Modal states
@@ -56,6 +57,26 @@ const MainAppContent: React.FC = () => {
     setTransferSourceAccountId(sourceAccountId);
     setIsTransferModalOpen(true);
   };
+
+  // If Firebase Auth is still determining current session (1-2 seconds on load)
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-slate-200">
+        <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mb-4" />
+        <p className="text-sm font-medium tracking-wide text-slate-400">Güvenlik kontrolü yapılıyor...</p>
+      </div>
+    );
+  }
+
+  // If user is not logged in, strictly show the Login Screen (No finance data leaked)
+  if (!user) {
+    return (
+      <>
+        <LoginScreen />
+        <Toast />
+      </>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-100/60 dark:bg-slate-950 text-slate-800 dark:text-slate-100">
