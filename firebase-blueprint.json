@@ -1,0 +1,127 @@
+{
+  "entities": {
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Financial transaction record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "date": { "type": "string" },
+        "type": { "type": "string", "enum": ["Gelir", "Gider", "Transfer"] },
+        "category": { "type": "string" },
+        "cariId": { "type": "string" },
+        "cariName": { "type": "string" },
+        "desc": { "type": "string" },
+        "amount": { "type": "number" },
+        "accountId": { "type": "string" },
+        "targetAccountId": { "type": "string" },
+        "status": { "type": "string", "enum": ["Tamamlandı", "Beklemede", "İptal"] },
+        "documentNo": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "installmentIndex": { "type": "number" },
+        "totalInstallments": { "type": "number" },
+        "installmentGroupId": { "type": "string" }
+      },
+      "required": ["id", "userId", "date", "type", "category", "amount", "accountId", "status"]
+    },
+    "Account": {
+      "title": "Account",
+      "description": "Bank account or cash register",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "bankName": { "type": "string" },
+        "accountNumber": { "type": "string" },
+        "iban": { "type": "string" },
+        "balance": { "type": "number" },
+        "currency": { "type": "string", "enum": ["TRY", "USD", "EUR"] },
+        "creditLimit": { "type": "number" },
+        "cutOffDay": { "type": "number" },
+        "color": { "type": "string" },
+        "icon": { "type": "string" }
+      },
+      "required": ["id", "userId", "name", "type", "balance", "currency"]
+    },
+    "Cari": {
+      "title": "Cari",
+      "description": "Customer, vendor, or contact account",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["Müşteri", "Tedarikçi", "Personel", "Diğer"] },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "taxNumber": { "type": "string" },
+        "taxOffice": { "type": "string" },
+        "city": { "type": "string" },
+        "balance": { "type": "number" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "userId", "name", "type", "balance"]
+    },
+    "UpcomingDue": {
+      "title": "UpcomingDue",
+      "description": "Upcoming debt or receivable due item",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "type": { "type": "string", "enum": ["Gelir", "Gider"] },
+        "amount": { "type": "number" },
+        "dueDate": { "type": "string" },
+        "cariId": { "type": "string" },
+        "cariName": { "type": "string" },
+        "category": { "type": "string" },
+        "isCompleted": { "type": "boolean" },
+        "recurrence": { "type": "string", "enum": ["Tek Seferlik", "Aylık", "Yıllık"] },
+        "accountId": { "type": "string" },
+        "installmentIndex": { "type": "number" },
+        "totalInstallments": { "type": "number" },
+        "installmentGroupId": { "type": "string" }
+      },
+      "required": ["id", "userId", "title", "type", "amount", "dueDate", "category", "isCompleted"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Finance category",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string", "enum": ["Gelir", "Gider"] },
+        "color": { "type": "string" }
+      },
+      "required": ["id", "userId", "name", "type"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/accounts/{accountId}": {
+      "schema": "Account",
+      "description": "User bank and cash accounts"
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "User income, expense, and transfer transactions"
+    },
+    "/users/{userId}/caris/{cariId}": {
+      "schema": "Cari",
+      "description": "User customer and vendor contacts"
+    },
+    "/users/{userId}/upcomingDues/{dueId}": {
+      "schema": "UpcomingDue",
+      "description": "User payment calendar and installment dues"
+    },
+    "/users/{userId}/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "User income/expense categories"
+    }
+  }
+}

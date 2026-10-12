@@ -1,0 +1,178 @@
+import React from 'react';
+import { useFinance } from '../../context/FinanceContext';
+import { ActiveTab } from '../../types/finance';
+import {
+  LayoutDashboard,
+  ArrowLeftRight,
+  Building2,
+  Users,
+  CalendarDays,
+  FileBarChart2,
+  Wallet,
+  X,
+  CreditCard,
+} from 'lucide-react';
+import { formatCurrency } from '../../utils/formatters';
+
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
+  const {
+    activeTab,
+    setActiveTab,
+    transactions,
+    upcomingDues,
+    accounts,
+  } = useFinance();
+
+  const navItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: number | string }[] = [
+    {
+      id: 'dashboard',
+      label: 'Özet Panel',
+      icon: <LayoutDashboard className="w-4 h-4" />,
+    },
+    {
+      id: 'transactions',
+      label: 'Gelir / Gider',
+      icon: <ArrowLeftRight className="w-4 h-4" />,
+      badge: transactions.length,
+    },
+    {
+      id: 'accounts',
+      label: 'Bankalar & Kartlar',
+      icon: <Building2 className="w-4 h-4" />,
+      badge: accounts.length,
+    },
+    {
+      id: 'currents',
+      label: 'Cari Hesaplar',
+      icon: <Users className="w-4 h-4" />,
+    },
+    {
+      id: 'upcoming',
+      label: 'Vade Takvimi',
+      icon: <CalendarDays className="w-4 h-4" />,
+      badge: upcomingDues.filter(d => !d.isCompleted).length || undefined,
+    },
+    {
+      id: 'reports',
+      label: 'Raporlar & Yedek',
+      icon: <FileBarChart2 className="w-4 h-4" />,
+    },
+  ];
+
+  // Quick total balance calculation for sidebar
+  const totalBalance = accounts.reduce((acc, curr) => acc + curr.balance, 0);
+
+  const handleSelectTab = (tab: ActiveTab) => {
+    setActiveTab(tab);
+    onClose();
+  };
+
+  return (
+    <>
+      {/* Mobile Backdrop */}
+      {isOpen && (
+        <div
+          onClick={onClose}
+          className="fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-xs md:hidden"
+        />
+      )}
+
+      <aside
+        className={`fixed md:static inset-y-0 left-0 z-40 w-64 bg-slate-950 text-slate-300 flex flex-col border-r border-slate-800 transition-transform duration-300 ease-in-out ${
+          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
+        }`}
+      >
+        {/* Brand Header */}
+        <div className="p-5 flex items-center justify-between border-b border-slate-800/80">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shadow-inner">
+              <Wallet className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div>
+              <span className="text-base font-bold text-white tracking-tight block">
+                Arslan Finans
+              </span>
+              <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider block">
+                Nakit Akış Sistemi
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="md:hidden text-slate-400 hover:text-white p-1"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Quick Balance Mini-Card */}
+        <div className="mx-4 my-3 p-3 bg-slate-900/80 rounded-xl border border-slate-800/80">
+          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+            Net Likit Varlık
+          </span>
+          <div className="text-base font-bold font-mono-num text-emerald-400 mt-0.5">
+            {formatCurrency(totalBalance)}
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 px-3 space-y-1 overflow-y-auto py-2">
+          {navItems.map(item => {
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleSelectTab(item.id)}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition group ${
+                  isActive
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-900'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span
+                    className={
+                      isActive
+                        ? 'text-white'
+                        : 'text-slate-400 group-hover:text-emerald-400 transition-colors'
+                    }
+                  >
+                    {item.icon}
+                  </span>
+                  <span>{item.label}</span>
+                </div>
+                {item.badge !== undefined && (
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-medium ${
+                      isActive
+                        ? 'bg-emerald-700/80 text-white'
+                        : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+
+        {/* Sidebar Footer */}
+        <div className="p-4 border-t border-slate-800/80 text-xs text-slate-500 flex flex-col gap-1">
+          <div className="flex items-center justify-between">
+            <span className="font-semibold text-slate-400">Arslan Finans</span>
+            <span className="text-[10px] font-mono text-emerald-500">v2.4 Pro</span>
+          </div>
+          <span className="text-[10px] text-slate-500">
+            Nakit Akışı ve Mali Yönetim Paneli
+          </span>
+        </div>
+      </aside>
+    </>
+  );
+};

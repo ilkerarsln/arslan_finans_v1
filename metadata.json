@@ -1,0 +1,6 @@
+{
+  "name": "Arslan Finans - Modern Finans ve Nakit Akış Yönetimi",
+  "description": "Gelir-gider, banka hesapları, kredi kartları, cari hesap takibi ve nakit akışı analiz platformu.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
