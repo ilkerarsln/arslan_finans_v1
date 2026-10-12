@@ -289,7 +289,7 @@ export const DashboardTab: React.FC<{
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-7 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-          <MonthlyFlowChart transactions={transactions} />
+          <MonthlyFlowChart transactions={transactions} upcomingDues={upcomingDues} />
         </div>
         <div className="lg:col-span-5 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <CategoryBreakdownChart transactions={currentMonthTxs} type="Gider" />
