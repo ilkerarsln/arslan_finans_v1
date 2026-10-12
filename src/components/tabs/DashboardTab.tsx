@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { useFinance } from '../../context/FinanceContext';
 import {
   formatCurrency,
@@ -18,11 +18,17 @@ import {
   AlertCircle,
   Plus,
   TrendingUp,
+  TrendingDown,
   CreditCard,
   Users,
   Layers,
   ShoppingBag,
 } from 'lucide-react';
+
+const MONTH_NAMES_TR = [
+  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+];
 
 export const DashboardTab: React.FC<{
   onOpenTransfer: () => void;
@@ -40,22 +46,49 @@ export const DashboardTab: React.FC<{
     toggleUpcomingDue,
   } = useFinance();
 
-  // Current month calculation
+  // Dynamic available months from transactions
   const now = new Date();
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
-  const currentMonthTxs = transactions.filter(
-    tx => tx.date.startsWith(currentMonthKey) && tx.status !== 'İptal'
-  );
+  const availableMonths = useMemo(() => {
+    const set = new Set<string>();
+    set.add(currentMonthKey);
+    transactions.forEach(t => {
+      if (t.date && t.date.length >= 7) set.add(t.date.slice(0, 7));
+    });
+    return Array.from(set).sort().reverse();
+  }, [transactions, currentMonthKey]);
 
-  const totalIncomeThisMonth = currentMonthTxs
-    .filter(tx => tx.type === 'Gelir')
-    .reduce((sum, tx) => sum + tx.amount, 0);
+  const [selectedMonthKey, setSelectedMonthKey] = useState<string>(currentMonthKey);
 
-  const totalExpenseThisMonth = currentMonthTxs
-    .filter(tx => tx.type === 'Gider')
-    .reduce((sum, tx) => sum + tx.amount, 0);
+  const selectedMonthLabel = useMemo(() => {
+    const [y, m] = selectedMonthKey.split('-');
+    const mIdx = parseInt(m, 10) - 1;
+    return `${MONTH_NAMES_TR[mIdx] || m} ${y}`;
+  }, [selectedMonthKey]);
 
+  const isCurrentMonth = selectedMonthKey === currentMonthKey;
+
+  // Selected month calculations
+  const currentMonthTxs = useMemo(() => {
+    return transactions.filter(
+      tx => tx.date.startsWith(selectedMonthKey) && tx.status !== 'İptal'
+    );
+  }, [transactions, selectedMonthKey]);
+
+  const totalIncomeThisMonth = useMemo(() => {
+    return currentMonthTxs
+      .filter(tx => tx.type === 'Gelir')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+  }, [currentMonthTxs]);
+
+  const totalExpenseThisMonth = useMemo(() => {
+    return currentMonthTxs
+      .filter(tx => tx.type === 'Gider')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+  }, [currentMonthTxs]);
+
+  // Net Liquid Status / Net Cash Flow for the selected month (Gelirler - Giderler)
   const netCashFlowThisMonth = totalIncomeThisMonth - totalExpenseThisMonth;
 
   // Liquid cash (bank + cash boxes, ignoring credit card debt)
@@ -89,11 +122,32 @@ export const DashboardTab: React.FC<{
       {/* Top Banner & Quick Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-700/80 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
         <div className="relative z-10">
-          <div className="flex items-center gap-2 text-xs font-semibold text-emerald-400">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-emerald-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            Finansal Durum Raporu · Ekim 2026
+            <span>Finansal Durum Raporu · {selectedMonthLabel}</span>
+            {availableMonths.length > 1 && (
+              <div className="flex items-center gap-1.5 ml-1 bg-slate-800/90 border border-slate-700/80 rounded-lg px-2 py-0.5">
+                <Calendar className="w-3 h-3 text-emerald-400" />
+                <select
+                  value={selectedMonthKey}
+                  onChange={e => setSelectedMonthKey(e.target.value)}
+                  className="bg-transparent text-emerald-300 text-[11px] font-semibold outline-none cursor-pointer"
+                  title="Görüntülenecek ayı seçin"
+                >
+                  {availableMonths.map(ym => {
+                    const [y, m] = ym.split('-');
+                    const mIdx = parseInt(m, 10) - 1;
+                    return (
+                      <option key={ym} value={ym} className="bg-slate-900 text-white">
+                        {MONTH_NAMES_TR[mIdx] || m} {y} {ym === currentMonthKey ? '(Güncel Ay)' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            )}
           </div>
-          <h2 className="text-xl md:text-2xl font-bold tracking-tight mt-1">
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight mt-1.5">
             Nakit Akışı ve Mali Kontrol Paneli
           </h2>
           <p className="text-xs text-slate-300 mt-1 max-w-xl">
@@ -106,14 +160,23 @@ export const DashboardTab: React.FC<{
           <button
             onClick={() => openTransactionModal({ type: 'Gelir' })}
             className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
+            title="Yeni Gelir / Tahsilat Kaydı"
           >
             <ArrowDownRight className="w-3.5 h-3.5" /> Gelir Ekle
           </button>
           <button
             onClick={() => openTransactionModal({ type: 'Gider' })}
             className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
+            title="Yeni Gider / Ödeme Kaydı"
           >
             <ArrowUpRight className="w-3.5 h-3.5" /> Gider Ekle
+          </button>
+          <button
+            onClick={() => openTransactionModal({ type: 'Mal Alımı' })}
+            className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
+            title="Tedarikçiden Vadeli Mal Alımı (Kasadan düşmeden borçlandırır)"
+          >
+            <ShoppingBag className="w-3.5 h-3.5" /> Mal Alımı Ekle
           </button>
           <button
             onClick={() => openInstallmentModal()}
@@ -146,18 +209,24 @@ export const DashboardTab: React.FC<{
             {formatCurrency(totalLiquidAssets)}
           </h3>
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <span>Net Varlık (Kart borcu dahil):</span>
-            <span className="font-mono-num font-semibold text-slate-700 dark:text-slate-300">
-              {formatCurrency(totalNetBalance)}
+            <span>Net Likit Durum ({selectedMonthLabel}):</span>
+            <span
+              className={`font-mono-num font-semibold ${
+                netCashFlowThisMonth >= 0
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-rose-600 dark:text-rose-400'
+              }`}
+            >
+              {netCashFlowThisMonth > 0 ? '+' : ''}{formatCurrency(netCashFlowThisMonth)}
             </span>
           </div>
         </div>
 
-        {/* Card 2: Bu Ayın Toplam Geliri */}
+        {/* Card 2: Seçilen Ayın Toplam Geliri */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
-              Bu Ayın Toplam Geliri
+              {selectedMonthLabel} Toplam Gelir
             </span>
             <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
               <ArrowDownRight className="w-4 h-4" />
@@ -174,11 +243,11 @@ export const DashboardTab: React.FC<{
           </div>
         </div>
 
-        {/* Card 3: Bu Ayın Toplam Gideri */}
+        {/* Card 3: Seçilen Ayın Toplam Gideri */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
-              Bu Ayın Toplam Gideri
+              {selectedMonthLabel} Toplam Gider
             </span>
             <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center">
               <ArrowUpRight className="w-4 h-4" />
@@ -195,45 +264,51 @@ export const DashboardTab: React.FC<{
           </div>
         </div>
 
-        {/* Card 4: Net Nakit Akışı */}
+        {/* Card 4: Net Likit Varlık (Dinamik Kırmızı/Yeşil Renklendirme) */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition">
           <div className="flex items-center justify-between">
             <span
               className={`text-xs font-semibold uppercase tracking-wider ${
                 netCashFlowThisMonth >= 0
                   ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-amber-600 dark:text-amber-400'
+                  : 'text-rose-600 dark:text-rose-400'
               }`}
             >
-              Net Nakit Akışı (Bu Ay)
+              Net Likit Varlık ({selectedMonthLabel})
             </span>
             <div
-              className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
                 netCashFlowThisMonth >= 0
-                  ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600'
-                  : 'bg-amber-50 dark:bg-amber-950/50 text-amber-600'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400'
               }`}
             >
-              <TrendingUp className="w-4 h-4" />
+              {netCashFlowThisMonth >= 0 ? (
+                <TrendingUp className="w-4 h-4" />
+              ) : (
+                <TrendingDown className="w-4 h-4" />
+              )}
             </div>
           </div>
           <h3
-            className={`text-2xl font-bold font-mono-num mt-2 ${
+            className={`text-2xl font-bold font-mono-num mt-2 transition-colors ${
               netCashFlowThisMonth >= 0
-                ? 'text-slate-900 dark:text-white'
-                : 'text-amber-600 dark:text-amber-400'
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-rose-600 dark:text-rose-400'
             }`}
           >
-            {formatCurrency(netCashFlowThisMonth)}
+            {netCashFlowThisMonth > 0 ? '+' : ''}{formatCurrency(netCashFlowThisMonth)}
           </h3>
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <span>Nakit Pozisyonu:</span>
+            <span>Aylık Net Pozisyon:</span>
             <span
               className={`font-semibold ${
-                netCashFlowThisMonth >= 0 ? 'text-emerald-600' : 'text-amber-600'
+                netCashFlowThisMonth >= 0
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-rose-600 dark:text-rose-400'
               }`}
             >
-              {netCashFlowThisMonth >= 0 ? 'Pozitif Artı Bakiye' : 'Negatif Açık'}
+              {netCashFlowThisMonth >= 0 ? '+ Pozitif Durum (Artı)' : '- Negatif Durum (Açık)'}
             </span>
           </div>
         </div>

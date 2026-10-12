@@ -64,8 +64,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     },
   ];
 
-  // Quick total balance calculation for sidebar
+  // Quick total balance & current month net calculation for sidebar
   const totalBalance = accounts.reduce((acc, curr) => acc + curr.balance, 0);
+
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const currentMonthNet = transactions
+    .filter(t => t.date.startsWith(currentMonthKey) && t.status !== 'İptal')
+    .reduce((sum, t) => {
+      if (t.type === 'Gelir') return sum + t.amount;
+      if (t.type === 'Gider') return sum - t.amount;
+      return sum;
+    }, 0);
 
   const handleSelectTab = (tab: ActiveTab) => {
     setActiveTab(tab);
@@ -110,13 +120,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* Quick Balance Mini-Card */}
+        {/* Quick Balance Mini-Card: Net Likit Varlık */}
         <div className="mx-4 my-3 p-3 bg-slate-900/80 rounded-xl border border-slate-800/80">
-          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-            Net Likit Varlık
-          </span>
-          <div className="text-base font-bold font-mono-num text-emerald-400 mt-0.5">
-            {formatCurrency(totalBalance)}
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+              Net Likit Varlık
+            </span>
+            <span className="text-[9px] text-slate-500 font-medium">Bu Ay</span>
+          </div>
+          <div
+            className={`text-base font-bold font-mono-num mt-0.5 ${
+              currentMonthNet >= 0 ? 'text-emerald-400' : 'text-rose-400'
+            }`}
+          >
+            {currentMonthNet > 0 ? '+' : ''}{formatCurrency(currentMonthNet)}
+          </div>
+          <div className="text-[10px] text-slate-400 mt-1.5 flex justify-between pt-1.5 border-t border-slate-800/60">
+            <span>Toplam Kasa/Banka:</span>
+            <span className="font-mono-num text-slate-300">{formatCurrency(totalBalance)}</span>
           </div>
         </div>
 

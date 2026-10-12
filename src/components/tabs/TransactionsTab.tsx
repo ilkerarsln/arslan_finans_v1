@@ -210,6 +210,13 @@ export const TransactionsTab: React.FC = () => {
               <Layers className="w-3.5 h-3.5" /> Taksitlendir
             </button>
             <button
+              onClick={() => openTransactionModal({ type: 'Mal Alımı' })}
+              className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
+              title="Tedarikçiden Vadeli Mal Alımı Ekle"
+            >
+              <ShoppingBag className="w-3.5 h-3.5" /> Mal Alımı Ekle
+            </button>
+            <button
               onClick={() => openTransactionModal()}
               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
             >

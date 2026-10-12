@@ -172,12 +172,9 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
             <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm md:text-base">
               Aylık Gelir ve Gider Dağılımı
             </h4>
-            <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/80 px-2 py-0.5 rounded-full">
-              Merkezde Güncel Ay
-            </span>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Önceki aylar (geçmiş) ➔ İçinde bulunduğumuz ay ➔ Sonraki aylar (planlanan)
+            Geçmiş aylar ➔ İçinde bulunduğumuz ay ➔ Gelecek aylar (planlanan)
           </p>
         </div>
 
@@ -191,9 +188,9 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
                   ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
                   : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
               }`}
-              title="Sol: Önceki 2 Ay, Merkez: Güncel Ay, Sağ: Sonraki 3 Ay"
+              title="6 Aylık Akış (Geçmiş ve Gelecek Vadeler)"
             >
-              6 Ay (Merkezde Bu Ay)
+              6 Aylık Dönem
             </button>
             <button
               onClick={() => setRangeMode('past6')}
