@@ -118,9 +118,30 @@
         "assignedBy": { "type": "string" }
       },
       "required": ["uid", "email", "role"]
+    },
+    "StaffAccount": {
+      "title": "StaffAccount",
+      "description": "Personnel username/password authentication record and role",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["Admin", "Standart"] },
+        "password": { "type": "string" },
+        "email": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "lastLoginAt": { "type": "string" },
+        "createdBy": { "type": "string" }
+      },
+      "required": ["id", "username", "role", "password"]
     }
   },
   "firestore": {
+    "/staff_accounts/{staffId}": {
+      "schema": "StaffAccount",
+      "description": "Personnel accounts for username/password authentication"
+    },
     "/users/{userId}": {
       "schema": "UserProfile",
       "description": "User profiles and role access information"

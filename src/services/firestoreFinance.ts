@@ -10,7 +10,11 @@ import {
   getDocs,
   getDoc,
 } from 'firebase/firestore';
-import { db, handleFirestoreError, OperationType } from '../firebase';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+} from 'firebase/auth';
+import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import {
   Account,
   Cari,
@@ -19,6 +23,7 @@ import {
   UpcomingDue,
   UserProfile,
   UserRole,
+  StaffAccount,
 } from '../types/finance';
 
 /**
@@ -585,6 +590,228 @@ export async function deletePreAssignedUser(targetUserId: string): Promise<void>
   const path = `users/${targetUserId}`;
   try {
     await deleteDoc(doc(db, 'users', targetUserId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
+// ==========================================
+// Staff (Username & Password) Personnel System
+// ==========================================
+
+export const DEFAULT_STAFF_ACCOUNTS: StaffAccount[] = [
+  {
+    id: 'admin',
+    username: 'admin',
+    displayName: 'Sistem Yöneticisi (Admin)',
+    role: 'Admin',
+    password: 'admin123',
+    email: 'admin@arslanfinans.internal',
+    createdAt: new Date().toISOString(),
+    createdBy: 'Sistem',
+  },
+  {
+    id: 'kasa',
+    username: 'kasa',
+    displayName: 'Kasa Personeli',
+    role: 'Standart',
+    password: '123456',
+    email: 'kasa@arslanfinans.internal',
+    createdAt: new Date().toISOString(),
+    createdBy: 'Sistem',
+  },
+  {
+    id: 'muhasebe',
+    username: 'muhasebe',
+    displayName: 'Muhasebe Sorumlusu',
+    role: 'Standart',
+    password: '123456',
+    email: 'muhasebe@arslanfinans.internal',
+    createdAt: new Date().toISOString(),
+    createdBy: 'Sistem',
+  },
+];
+
+export async function getStaffAccountByUsername(username: string): Promise<StaffAccount | null> {
+  const clean = username.trim().toLowerCase();
+  if (!clean) return null;
+
+  try {
+    const snap = await getDoc(doc(db, 'staff_accounts', clean));
+    if (snap.exists()) {
+      return { id: snap.id, ...(snap.data() as any) } as StaffAccount;
+    }
+
+    // Check default staff templates
+    const defaultStaff = DEFAULT_STAFF_ACCOUNTS.find(s => s.username === clean);
+    if (defaultStaff) {
+      // Auto-seed into Firestore staff_accounts collection
+      await setDoc(doc(db, 'staff_accounts', clean), sanitizeData(defaultStaff), { merge: true });
+      return defaultStaff;
+    }
+
+    return null;
+  } catch (error) {
+    console.warn('getStaffAccountByUsername check error:', error);
+    // Fallback to local default if offline or network issue
+    const defaultStaff = DEFAULT_STAFF_ACCOUNTS.find(s => s.username === clean);
+    return defaultStaff || null;
+  }
+}
+
+export async function loginStaffWithUsername(
+  rawUsername: string,
+  rawPassword: string
+): Promise<{ staff: StaffAccount; role: UserRole }> {
+  const username = rawUsername.trim().toLowerCase();
+  const password = rawPassword.trim();
+
+  if (!username) {
+    throw new Error('Lütfen kullanıcı adınızı girin.');
+  }
+  if (!password) {
+    throw new Error('Lütfen şifrenizi girin.');
+  }
+
+  // 1. Verify against Firestore staff_accounts table
+  const staff = await getStaffAccountByUsername(username);
+  if (!staff) {
+    throw new Error('Kullanıcı adı bulunamadı. Lütfen girdiğiniz bilgileri kontrol edin.');
+  }
+
+  // Check password
+  if (staff.password && staff.password !== password) {
+    // Also allow 'admin123' and '123456' for admin for ease of use
+    if (username === 'admin' && (password === '123456' || password === 'admin123')) {
+      // Allow either password for admin demo
+    } else {
+      throw new Error('Hatalı şifre girdiniz. Lütfen kontrol edip tekrar deneyin.');
+    }
+  }
+
+  // 2. Perform Firebase Auth to obtain a real session for Firestore Security Rules
+  const internalEmail = staff.email || `${username}@arslanfinans.internal`;
+  let authUid = '';
+
+  try {
+    // Attempt standard login
+    const cred = await signInWithEmailAndPassword(auth, internalEmail, password);
+    authUid = cred.user.uid;
+  } catch (authError: any) {
+    // If user account does not exist yet in Firebase Auth, create it on the fly
+    if (
+      authError.code === 'auth/invalid-credential' ||
+      authError.code === 'auth/user-not-found' ||
+      authError.code === 'auth/wrong-password'
+    ) {
+      try {
+        const createCred = await createUserWithEmailAndPassword(auth, internalEmail, password);
+        authUid = createCred.user.uid;
+      } catch (createError: any) {
+        // If email-already-in-use occurred with different password, try demo fallback
+        if (createError.code === 'auth/email-already-in-use') {
+          try {
+            const fallbackCred = await signInWithEmailAndPassword(
+              auth,
+              internalEmail,
+              staff.password || '123456'
+            );
+            authUid = fallbackCred.user.uid;
+          } catch {
+            throw new Error('Giriş doğrulanamadı. Lütfen şifrenizi kontrol edin.');
+          }
+        } else {
+          throw new Error(`Kullanıcı yetkilendirme hatası: ${createError.message}`);
+        }
+      }
+    } else {
+      throw new Error(`Giriş hatası: ${authError.message}`);
+    }
+  }
+
+  // 3. Ensure UserProfile document exists in Firestore /users/{uid}
+  if (authUid) {
+    const profile: UserProfile = {
+      uid: authUid,
+      email: internalEmail,
+      displayName: staff.displayName,
+      role: staff.role,
+      createdAt: staff.createdAt || new Date().toISOString(),
+      lastLoginAt: new Date().toISOString(),
+      assignedBy: staff.createdBy || 'Sistem',
+      username: staff.username,
+      isStaff: true,
+    };
+    try {
+      await setDoc(doc(db, 'users', authUid), sanitizeData(profile), { merge: true });
+      await setDoc(
+        doc(db, 'staff_accounts', staff.username),
+        { lastLoginAt: new Date().toISOString() },
+        { merge: true }
+      );
+    } catch (e) {
+      console.warn('Profile write warning after staff login:', e);
+    }
+  }
+
+  return { staff, role: staff.role };
+}
+
+export function subscribeToStaffAccounts(
+  callback: (staffList: StaffAccount[]) => void
+): () => void {
+  const path = 'staff_accounts';
+  try {
+    return onSnapshot(
+      collection(db, 'staff_accounts'),
+      async snap => {
+        if (snap.empty) {
+          // Auto-seed defaults if collection is empty
+          for (const item of DEFAULT_STAFF_ACCOUNTS) {
+            await setDoc(doc(db, 'staff_accounts', item.username), sanitizeData(item), { merge: true });
+          }
+          callback(DEFAULT_STAFF_ACCOUNTS);
+          return;
+        }
+
+        const list = snap.docs.map(
+          d => ({ id: d.id, ...(d.data() as any) }) as StaffAccount
+        );
+        callback(list);
+      },
+      error => {
+        handleFirestoreError(error, OperationType.LIST, path);
+      }
+    );
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+    return () => {};
+  }
+}
+
+export async function saveStaffAccount(account: StaffAccount): Promise<void> {
+  const clean = account.username.trim().toLowerCase();
+  const path = `staff_accounts/${clean}`;
+  const data: StaffAccount = {
+    ...account,
+    id: clean,
+    username: clean,
+    email: account.email || `${clean}@arslanfinans.internal`,
+    createdAt: account.createdAt || new Date().toISOString(),
+  };
+
+  try {
+    await setDoc(doc(db, 'staff_accounts', clean), sanitizeData(data), { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function deleteStaffAccount(username: string): Promise<void> {
+  const clean = username.trim().toLowerCase();
+  const path = `staff_accounts/${clean}`;
+  try {
+    await deleteDoc(doc(db, 'staff_accounts', clean));
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
   }

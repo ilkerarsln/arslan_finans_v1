@@ -114,6 +114,20 @@ export interface UserProfile {
   lastLoginAt: string;
   assignedBy?: string;
   isPreAssigned?: boolean;
+  username?: string;
+  isStaff?: boolean;
+}
+
+export interface StaffAccount {
+  id: string; // normalized username
+  username: string;
+  displayName: string;
+  role: UserRole;
+  password?: string;
+  email?: string;
+  createdAt: string;
+  lastLoginAt?: string;
+  createdBy?: string;
 }
 
 export type ActiveTab = 'dashboard' | 'transactions' | 'accounts' | 'currents' | 'upcoming' | 'reports' | 'users';

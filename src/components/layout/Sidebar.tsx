@@ -33,6 +33,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     userRole,
     allUsers,
     user,
+    userProfile,
   } = useFinance();
 
   const navItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: number | string }[] = [
@@ -206,10 +207,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             <div className="bg-slate-900/90 rounded-xl p-2.5 border border-slate-800 flex items-center justify-between">
               <div className="min-w-0 pr-2">
                 <span className="font-semibold text-slate-200 block text-[11px] truncate">
-                  {user.displayName || user.email?.split('@')[0]}
+                  {userProfile?.displayName || user.displayName || userProfile?.username || user.email?.split('@')[0]}
                 </span>
                 <span className="text-[10px] text-slate-400 block truncate">
-                  {user.email}
+                  {userProfile?.username ? `Personel: @${userProfile.username}` : user.email}
                 </span>
               </div>
               {isAdmin ? (

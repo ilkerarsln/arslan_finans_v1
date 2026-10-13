@@ -30,6 +30,11 @@ import {
   preAssignUserByEmail,
   checkPreAssignedUser,
   deletePreAssignedUser,
+  DEFAULT_STAFF_ACCOUNTS,
+  loginStaffWithUsername,
+  subscribeToStaffAccounts,
+  saveStaffAccount,
+  deleteStaffAccount,
 } from '../services/firestoreFinance';
 import { exportToExcel } from '../utils/excelExport';
 import {
@@ -50,6 +55,7 @@ import {
   UserProfile,
   UserRole,
   UserPermissions,
+  StaffAccount,
 } from '../types/finance';
 import { calculateInstallmentDate } from '../utils/formatters';
 import { parseExcelData } from '../utils/excelImport';
@@ -74,6 +80,12 @@ interface FinanceContextType {
   isRoleSimulated: boolean;
   toggleRoleSimulation: () => void;
   permissions: UserPermissions;
+
+  // Staff & Hybrid Authentication
+  staffAccounts: StaffAccount[];
+  loginWithUsername: (username: string, password: string) => Promise<boolean>;
+  createStaffAccount: (staff: StaffAccount) => Promise<void>;
+  removeStaffAccount: (username: string) => Promise<void>;
 
   // Transaction actions
   addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt'>) => Transaction;
@@ -147,10 +159,25 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // User Profile & RBAC state
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+  const [staffAccounts, setStaffAccounts] = useState<StaffAccount[]>(DEFAULT_STAFF_ACCOUNTS);
   const [isRoleSimulated, setIsRoleSimulated] = useState<boolean>(false);
 
-  // Primary admin check: ilkerarslan78@gmail.com is always Admin
-  const isPrimaryAdmin = user?.email?.toLowerCase() === 'ilkerarslan78@gmail.com';
+  // Corporate workspace & Multi-user shared data
+  const COMPANY_OWNER_ID = '1krfu1eTFcPHsQ3RW3EWplQLOIi2';
+  const isStaffUser = Boolean(
+    user?.email?.toLowerCase().endsWith('@arslanfinans.internal') ||
+    userProfile?.isStaff ||
+    userProfile?.username
+  );
+  // Both Google primary admin and staff users share the company financial database
+  const dataStoreUid = user ? (isStaffUser ? COMPANY_OWNER_ID : user.uid) : '';
+
+  // Primary admin check: ilkerarslan78@gmail.com is always Admin, or staff account with username 'admin'
+  const isPrimaryAdmin =
+    user?.email?.toLowerCase() === 'ilkerarslan78@gmail.com' ||
+    userProfile?.username === 'admin' ||
+    (user?.email?.toLowerCase().startsWith('admin@') && user?.email?.toLowerCase().endsWith('@arslanfinans.internal'));
+
   const realRole: UserRole = isPrimaryAdmin ? 'Admin' : (userProfile?.role || 'Standart');
   const userRole: UserRole = isRoleSimulated ? 'Standart' : realRole;
   const isAdmin = userRole === 'Admin';
@@ -207,6 +234,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => unsubscribeAuth();
   }, []);
 
+  // Real-time subscription to staff accounts list
+  useEffect(() => {
+    const unsub = subscribeToStaffAccounts(list => {
+      setStaffAccounts(list);
+    });
+    return () => unsub();
+  }, []);
+
   // Real-time subscription to all registered users list (Only for Admin)
   useEffect(() => {
     if (!user || realRole !== 'Admin') {
@@ -221,7 +256,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Fetch immediately with getDocs and listen in real-time with onSnapshot
   useEffect(() => {
-    if (!user) {
+    if (!user || !dataStoreUid) {
       isInitialCloudSyncDone.current = false;
       setTransactions([]);
       setCaris([]);
@@ -232,6 +267,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     const userId = user.uid;
+    const targetFinanceId = dataStoreUid;
     setIsCloudSyncing(true);
 
     // 0. User Profile & Role (RBAC) subscription
@@ -267,19 +303,19 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
 
     // 1. Immediate one-shot fetch via getDocs on page load/refresh
-    fetchUserDataFromFirestore(userId).then(cloudData => {
+    fetchUserDataFromFirestore(targetFinanceId).then(cloudData => {
       // If user has accounts in Firestore, use them; otherwise seed initial accounts
       if (cloudData.accounts.length > 0) {
         setAccounts(cloudData.accounts);
       } else {
-        INITIAL_ACCOUNTS.forEach(acc => syncAccountToCloud(userId, acc));
+        INITIAL_ACCOUNTS.forEach(acc => syncAccountToCloud(targetFinanceId, acc));
         setAccounts(INITIAL_ACCOUNTS);
       }
 
       if (cloudData.categories.length > 0) {
         setCategories(cloudData.categories);
       } else {
-        INITIAL_CATEGORIES.forEach(cat => syncCategoryToCloud(userId, cat));
+        INITIAL_CATEGORIES.forEach(cat => syncCategoryToCloud(targetFinanceId, cat));
         setCategories(INITIAL_CATEGORIES);
       }
 
@@ -294,7 +330,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
 
     // 2. Real-time Firestore onSnapshot listeners for live continuous updates
-    const unsubscribeFirestore = subscribeToUserData(userId, {
+    const unsubscribeFirestore = subscribeToUserData(targetFinanceId, {
       onAccounts: cloudAccounts => {
         if (cloudAccounts.length > 0) {
           setAccounts(cloudAccounts);
@@ -321,7 +357,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       unsubProfile();
       unsubscribeFirestore();
     };
-  }, [user, isPrimaryAdmin]);
+  }, [user, isPrimaryAdmin, dataStoreUid]);
 
   // Google Login
   const loginWithGoogle = async () => {
@@ -410,6 +446,49 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  // Staff (Username & Password) Hybrid Authentication
+  const loginWithUsername = async (username: string, password: string): Promise<boolean> => {
+    try {
+      setIsCloudSyncing(true);
+      const { staff, role } = await loginStaffWithUsername(username, password);
+      showToast(`Giriş başarılı! Hoş geldiniz, ${staff.displayName} (${role})`, 'success');
+      return true;
+    } catch (error: any) {
+      console.error('Staff login error:', error);
+      const msg = error?.message || 'Giriş yapılamadı.';
+      showToast(msg, 'error');
+      throw error;
+    } finally {
+      setIsCloudSyncing(false);
+    }
+  };
+
+  const createStaffAccount = async (account: StaffAccount) => {
+    if (!isAdmin) {
+      showToast('Personel hesabı ekleme yetkisi yalnızca Yöneticilere (Admin) aittir.', 'error');
+      return;
+    }
+    try {
+      await saveStaffAccount(account);
+      showToast(`${account.displayName} (${account.username}) personeli başarıyla kaydedildi.`, 'success');
+    } catch (e: any) {
+      showToast(`Personel kaydedilemedi: ${e?.message || 'Bilinmeyen hata'}`, 'error');
+    }
+  };
+
+  const removeStaffAccount = async (username: string) => {
+    if (!isAdmin) {
+      showToast('Personel hesabı silme yetkisi yalnızca Yöneticilere (Admin) aittir.', 'error');
+      return;
+    }
+    try {
+      await deleteStaffAccount(username);
+      showToast(`${username} personel hesabı silindi.`, 'success');
+    } catch (e: any) {
+      showToast(`Personel silinemedi: ${e?.message || 'Bilinmeyen hata'}`, 'error');
+    }
+  };
+
   const toggleRoleSimulation = () => {
     if (realRole !== 'Admin') {
       showToast('Simülasyon modu yalnızca Yöneticiler tarafından kullanılabilir.', 'error');
@@ -476,7 +555,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const updated = prev.map(acc => {
         if (acc.id === accId) {
           const newAcc = { ...acc, balance: +(acc.balance + delta).toFixed(2) };
-          if (user) syncAccountToCloud(user.uid, newAcc);
+          if (user && dataStoreUid) syncAccountToCloud(dataStoreUid, newAcc);
           return newAcc;
         }
         return acc;
@@ -491,7 +570,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const updated = prev.map(c => {
         if (c.id === cariId) {
           const newCari = { ...c, balance: +(c.balance + delta).toFixed(2) };
-          if (user) syncCariToCloud(user.uid, newCari);
+          if (user && dataStoreUid) syncCariToCloud(dataStoreUid, newCari);
           return newCari;
         }
         return c;
@@ -539,7 +618,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           accountId: newTx.accountId || accounts[0]?.id,
         };
         setUpcomingDues(prev => [newDue, ...prev]);
-        if (user) syncUpcomingDueToCloud(user.uid, newDue);
+        if (user && dataStoreUid) syncUpcomingDueToCloud(dataStoreUid, newDue);
       }
     } else if (newTx.type === 'Transfer' && newTx.targetAccountId) {
       adjustAccountBalance(newTx.accountId, -newTx.amount);
@@ -547,8 +626,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     setTransactions(prev => [newTx, ...prev]);
-    if (user) {
-      addTransactionToCloud(user.uid, newTx)
+    if (user && dataStoreUid) {
+      addTransactionToCloud(dataStoreUid, newTx)
         .then(savedTx => {
           if (savedTx.id !== newTx.id) {
             setTransactions(prev => prev.map(t => (t.id === newTx.id ? savedTx : t)));
@@ -602,7 +681,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     setTransactions(prev => prev.map(t => (t.id === updatedTx.id ? updatedTx : t)));
-    if (user) syncTransactionToCloud(user.uid, updatedTx);
+    if (user && dataStoreUid) syncTransactionToCloud(dataStoreUid, updatedTx);
 
     showToast('İşlem güncellendi', 'info');
   };
@@ -630,7 +709,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     setTransactions(prev => prev.filter(t => t.id !== id));
-    if (user) deleteTransactionFromCloud(user.uid, id);
+    if (user && dataStoreUid) deleteTransactionFromCloud(dataStoreUid, id);
 
     showToast('İşlem silindi ve bakiye geri alındı', 'info');
   };
@@ -665,14 +744,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       id: `acc-${Date.now()}`,
     };
     setAccounts(prev => [...prev, newAcc]);
-    if (user) syncAccountToCloud(user.uid, newAcc);
+    if (user && dataStoreUid) syncAccountToCloud(dataStoreUid, newAcc);
     showToast(`${newAcc.name} hesabı eklendi`, 'success');
     return newAcc;
   };
 
   const updateAccount = (acc: Account) => {
     setAccounts(prev => prev.map(a => (a.id === acc.id ? acc : a)));
-    if (user) syncAccountToCloud(user.uid, acc);
+    if (user && dataStoreUid) syncAccountToCloud(dataStoreUid, acc);
     showToast(`${acc.name} güncellendi`, 'info');
   };
 
@@ -682,7 +761,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return;
     }
     setAccounts(prev => prev.filter(a => a.id !== id));
-    if (user) deleteAccountFromCloud(user.uid, id);
+    if (user && dataStoreUid) deleteAccountFromCloud(dataStoreUid, id);
     showToast('Hesap silindi', 'info');
   };
 
@@ -693,14 +772,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       id: `cari-${Date.now()}`,
     };
     setCaris(prev => [...prev, newCari]);
-    if (user) syncCariToCloud(user.uid, newCari);
+    if (user && dataStoreUid) syncCariToCloud(dataStoreUid, newCari);
     showToast(`${newCari.name} cari kartı oluşturuldu`, 'success');
     return newCari;
   };
 
   const updateCari = (cari: Cari) => {
     setCaris(prev => prev.map(c => (c.id === cari.id ? cari : c)));
-    if (user) syncCariToCloud(user.uid, cari);
+    if (user && dataStoreUid) syncCariToCloud(dataStoreUid, cari);
     showToast('Cari bilgisi güncellendi', 'info');
   };
 
@@ -710,7 +789,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return;
     }
     setCaris(prev => prev.filter(c => c.id !== id));
-    if (user) deleteCariFromCloud(user.uid, id);
+    if (user && dataStoreUid) deleteCariFromCloud(dataStoreUid, id);
     showToast('Cari kartı silindi', 'info');
   };
 
@@ -721,7 +800,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       id: `due-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
     };
     setUpcomingDues(prev => [...prev, newDue]);
-    if (user) syncUpcomingDueToCloud(user.uid, newDue);
+    if (user && dataStoreUid) syncUpcomingDueToCloud(dataStoreUid, newDue);
     showToast('Ödeme/Tahsilat takvime eklendi', 'success');
     return newDue;
   };
@@ -734,7 +813,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const updated = { ...target, isCompleted: newCompleted };
 
     setUpcomingDues(prev => prev.map(d => (d.id === id ? updated : d)));
-    if (user) syncUpcomingDueToCloud(user.uid, updated);
+    if (user && dataStoreUid) syncUpcomingDueToCloud(dataStoreUid, updated);
 
     // If marked completed, automatically ask to add to transactions
     if (newCompleted) {
@@ -744,7 +823,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const deleteUpcomingDue = (id: string) => {
     setUpcomingDues(prev => prev.filter(d => d.id !== id));
-    if (user) deleteUpcomingDueFromCloud(user.uid, id);
+    if (user && dataStoreUid) deleteUpcomingDueFromCloud(dataStoreUid, id);
     showToast('Vade kaydı silindi', 'info');
   };
 
@@ -780,7 +859,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       };
 
       newDues.push(dueItem);
-      if (user) syncUpcomingDueToCloud(user.uid, dueItem);
+      if (user && dataStoreUid) syncUpcomingDueToCloud(dataStoreUid, dueItem);
     }
 
     setUpcomingDues(prev => [...prev, ...newDues]);
@@ -790,8 +869,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const deleteInstallmentGroup = (groupId: string) => {
     const toDelete = upcomingDues.filter(d => d.installmentGroupId === groupId);
     setUpcomingDues(prev => prev.filter(d => d.installmentGroupId !== groupId));
-    if (user) {
-      toDelete.forEach(d => deleteUpcomingDueFromCloud(user.uid, d.id));
+    if (user && dataStoreUid) {
+      toDelete.forEach(d => deleteUpcomingDueFromCloud(dataStoreUid, d.id));
     }
     showToast('Taksit grubu takvimden kaldırıldı', 'info');
   };
@@ -805,7 +884,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       color,
     };
     setCategories(prev => [...prev, newCat]);
-    if (user) syncCategoryToCloud(user.uid, newCat);
+    if (user && dataStoreUid) syncCategoryToCloud(dataStoreUid, newCat);
     showToast(`'${name}' kategorisi eklendi`, 'success');
   };
 
@@ -839,11 +918,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setCategories(INITIAL_CATEGORIES);
 
     // Clear cloud
-    if (user) {
+    if (user && dataStoreUid) {
       setIsCloudSyncing(true);
       try {
-        await clearAllCloudData(user.uid);
-        await uploadAllInitialDataToCloud(user.uid, {
+        await clearAllCloudData(dataStoreUid);
+        await uploadAllInitialDataToCloud(dataStoreUid, {
           accounts: INITIAL_ACCOUNTS,
           transactions: [],
           caris: [],
@@ -889,8 +968,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (Array.isArray(data.upcomingDues)) setUpcomingDues(data.upcomingDues);
       if (Array.isArray(data.categories)) setCategories(data.categories);
 
-      if (user) {
-        uploadAllInitialDataToCloud(user.uid, {
+      if (user && dataStoreUid) {
+        uploadAllInitialDataToCloud(dataStoreUid, {
           accounts: data.accounts || accounts,
           transactions: data.transactions || transactions,
           caris: data.caris || caris,
@@ -929,21 +1008,21 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // Add new caris if any
       if (result.newCaris.length > 0) {
         setCaris(prev => [...prev, ...result.newCaris]);
-        if (user) {
-          result.newCaris.forEach(c => syncCariToCloud(user.uid, c));
+        if (user && dataStoreUid) {
+          result.newCaris.forEach(c => syncCariToCloud(dataStoreUid, c));
         }
       }
 
       // Add transactions
       setTransactions(prev => [...result.newTransactions, ...prev]);
-      if (user) {
-        result.newTransactions.forEach((tx: Transaction) => syncTransactionToCloud(user.uid, tx));
+      if (user && dataStoreUid) {
+        result.newTransactions.forEach((tx: Transaction) => syncTransactionToCloud(dataStoreUid, tx));
       }
 
       // Update account balances
       setAccounts(result.updatedAccounts);
-      if (user) {
-        result.updatedAccounts.forEach(acc => syncAccountToCloud(user.uid, acc));
+      if (user && dataStoreUid) {
+        result.updatedAccounts.forEach(acc => syncAccountToCloud(dataStoreUid, acc));
       }
 
       showToast(
@@ -984,6 +1063,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         isRoleSimulated,
         toggleRoleSimulation,
         permissions,
+
+        // Staff & Hybrid Authentication
+        staffAccounts,
+        loginWithUsername,
+        createStaffAccount,
+        removeStaffAccount,
 
         // Operations
         addTransaction,

@@ -26,40 +26,46 @@ service cloud.firestore {
       );
     }
 
+    // Staff accounts collection for username/password authentication & management
+    match /staff_accounts/{staffId} {
+      allow read: if true;
+      allow write: if isAdmin() || !exists(/databases/$(database)/documents/staff_accounts/$(staffId));
+    }
+
     match /users/{userId} {
       allow read: if isOwner(userId) || isAdmin() || (isSignedIn() && resource.data.email == request.auth.token.email);
       allow list: if isAdmin();
-      allow create: if isOwner(userId) || isAdmin();
+      allow create: if isOwner(userId) || isAdmin() || isSignedIn();
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
 
       match /accounts/{accountId} {
-        allow read: if isOwner(userId) || isAdmin();
-        allow create, update: if (isOwner(userId) || isAdmin()) && isValidId(accountId);
+        allow read: if isSignedIn();
+        allow create, update: if isSignedIn() && isValidId(accountId);
         allow delete: if isOwner(userId) || isAdmin();
       }
 
       match /transactions/{transactionId} {
-        allow read: if isOwner(userId) || isAdmin();
-        allow create, update: if (isOwner(userId) || isAdmin()) && isValidId(transactionId);
+        allow read: if isSignedIn();
+        allow create, update: if isSignedIn() && isValidId(transactionId);
         allow delete: if isOwner(userId) || isAdmin();
       }
 
       match /caris/{cariId} {
-        allow read: if isOwner(userId) || isAdmin();
-        allow create, update: if (isOwner(userId) || isAdmin()) && isValidId(cariId);
+        allow read: if isSignedIn();
+        allow create, update: if isSignedIn() && isValidId(cariId);
         allow delete: if isOwner(userId) || isAdmin();
       }
 
       match /upcomingDues/{dueId} {
-        allow read: if isOwner(userId) || isAdmin();
-        allow create, update: if (isOwner(userId) || isAdmin()) && isValidId(dueId);
+        allow read: if isSignedIn();
+        allow create, update: if isSignedIn() && isValidId(dueId);
         allow delete: if isOwner(userId) || isAdmin();
       }
 
       match /categories/{categoryId} {
-        allow read: if isOwner(userId) || isAdmin();
-        allow create, update: if (isOwner(userId) || isAdmin()) && isValidId(categoryId);
+        allow read: if isSignedIn();
+        allow create, update: if isSignedIn() && isValidId(categoryId);
         allow delete: if isOwner(userId) || isAdmin();
       }
     }

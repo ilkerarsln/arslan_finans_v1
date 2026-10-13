@@ -46,6 +46,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
     upcomingDues,
     setActiveTab,
     user,
+    userProfile,
     userRole,
     isAdmin,
     isRoleSimulated,
@@ -149,8 +150,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
 
             <div className="h-3 w-px bg-emerald-200 dark:bg-emerald-800 hidden md:block" />
 
-            <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300 max-w-[120px] truncate hidden md:inline">
-              {user.displayName || user.email}
+            <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300 max-w-[140px] truncate hidden md:inline">
+              {userProfile?.displayName || user.displayName || (userProfile?.username ? `@${userProfile.username}` : user.email)}
             </span>
 
             <button
