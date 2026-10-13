@@ -9,6 +9,8 @@ import {
 } from '../firebase';
 import {
   subscribeToUserData,
+  fetchUserDataFromFirestore,
+  addTransactionToCloud,
   syncAccountToCloud,
   deleteAccountFromCloud,
   syncTransactionToCloud,
@@ -20,6 +22,14 @@ import {
   syncCategoryToCloud,
   uploadAllInitialDataToCloud,
   clearAllCloudData,
+  fetchUserProfile,
+  saveUserProfile,
+  subscribeToUserProfile,
+  subscribeToAllUsers,
+  updateUserRoleInFirestore,
+  preAssignUserByEmail,
+  checkPreAssignedUser,
+  deletePreAssignedUser,
 } from '../services/firestoreFinance';
 import { exportToExcel } from '../utils/excelExport';
 import {
@@ -37,17 +47,12 @@ import {
   InstallmentPlanRequest,
   Transaction,
   UpcomingDue,
+  UserProfile,
+  UserRole,
+  UserPermissions,
 } from '../types/finance';
 import { calculateInstallmentDate } from '../utils/formatters';
 import { parseExcelData } from '../utils/excelImport';
-
-const STORAGE_KEYS = {
-  ACCOUNTS: 'arslan_finans_accounts_v2',
-  TRANSACTIONS: 'arslan_finans_transactions_v2',
-  CARIS: 'arslan_finans_caris_v2',
-  UPCOMING_DUES: 'arslan_finans_upcoming_dues_v2',
-  CATEGORIES: 'arslan_finans_categories_v2',
-};
 
 interface FinanceContextType {
   activeTab: ActiveTab;
@@ -57,6 +62,18 @@ interface FinanceContextType {
   caris: Cari[];
   upcomingDues: UpcomingDue[];
   categories: CategoryItem[];
+
+  // Role & Authorization state (RBAC)
+  userProfile: UserProfile | null;
+  userRole: UserRole;
+  isAdmin: boolean;
+  allUsers: UserProfile[];
+  updateUserRole: (targetUserId: string, newRole: UserRole) => Promise<void>;
+  preAssignUserRole: (email: string, role: UserRole, displayName?: string) => Promise<void>;
+  deleteUserInvitation: (targetUserId: string) => Promise<void>;
+  isRoleSimulated: boolean;
+  toggleRoleSimulation: () => void;
+  permissions: UserPermissions;
 
   // Transaction actions
   addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt'>) => Transaction;
@@ -119,7 +136,7 @@ interface FinanceContextType {
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+  const [activeTab, setActiveTabState] = useState<ActiveTab>('dashboard');
 
   // Firebase Auth state
   const [user, setUser] = useState<User | null>(null);
@@ -127,51 +144,41 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
   const isInitialCloudSyncDone = useRef<boolean>(false);
 
-  // Financial state with local storage fallback
-  const [transactions, setTransactions] = useState<Transaction[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.TRANSACTIONS);
-      return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
-    } catch {
-      return INITIAL_TRANSACTIONS;
-    }
-  });
+  // User Profile & RBAC state
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
+  const [isRoleSimulated, setIsRoleSimulated] = useState<boolean>(false);
 
-  const [accounts, setAccounts] = useState<Account[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.ACCOUNTS);
-      return saved ? JSON.parse(saved) : INITIAL_ACCOUNTS;
-    } catch {
-      return INITIAL_ACCOUNTS;
-    }
-  });
+  // Primary admin check: ilkerarslan78@gmail.com is always Admin
+  const isPrimaryAdmin = user?.email?.toLowerCase() === 'ilkerarslan78@gmail.com';
+  const realRole: UserRole = isPrimaryAdmin ? 'Admin' : (userProfile?.role || 'Standart');
+  const userRole: UserRole = isRoleSimulated ? 'Standart' : realRole;
+  const isAdmin = userRole === 'Admin';
 
-  const [caris, setCaris] = useState<Cari[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.CARIS);
-      return saved ? JSON.parse(saved) : INITIAL_CARIS;
-    } catch {
-      return INITIAL_CARIS;
-    }
-  });
+  const permissions: UserPermissions = {
+    canManageUsers: isAdmin,
+    canDeleteAccounts: isAdmin,
+    canClearDatabase: isAdmin,
+    canExportImport: true,
+    canDeleteTransactions: isAdmin,
+    canDeleteCaris: isAdmin,
+  };
 
-  const [upcomingDues, setUpcomingDues] = useState<UpcomingDue[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.UPCOMING_DUES);
-      return saved ? JSON.parse(saved) : INITIAL_UPCOMING_DUES;
-    } catch {
-      return INITIAL_UPCOMING_DUES;
-    }
-  });
+  // Financial state - 100% cloud-backed by Firebase Firestore
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>(INITIAL_ACCOUNTS);
+  const [caris, setCaris] = useState<Cari[]>([]);
+  const [upcomingDues, setUpcomingDues] = useState<UpcomingDue[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>(INITIAL_CATEGORIES);
 
-  const [categories, setCategories] = useState<CategoryItem[]>(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEYS.CATEGORIES);
-      return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
-    } catch {
-      return INITIAL_CATEGORIES;
+  // Guard active tab navigation
+  const setActiveTab = (tab: ActiveTab) => {
+    if (tab === 'users' && !isAdmin) {
+      showToast('Kullanıcı Yönetimi sayfasına yalnızca Yöneticiler (Admin) erişebilir.', 'error');
+      return;
     }
-  });
+    setActiveTabState(tab);
+  };
 
   // Modal controls
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
@@ -190,46 +197,107 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }, 4000);
   };
 
-  // Sync to local storage
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEYS.TRANSACTIONS, JSON.stringify(transactions));
-      localStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(accounts));
-      localStorage.setItem(STORAGE_KEYS.CARIS, JSON.stringify(caris));
-      localStorage.setItem(STORAGE_KEYS.UPCOMING_DUES, JSON.stringify(upcomingDues));
-      localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(categories));
-    } catch (e) {
-      console.error('LocalStorage save error:', e);
-    }
-  }, [transactions, accounts, caris, upcomingDues, categories]);
-
-  // Auth listener & Firestore live sync
+  // Auth listener & live Firestore connection
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, currentUser => {
       setUser(currentUser);
       setIsAuthLoading(false);
-      if (currentUser) {
-        setIsCloudSyncing(true);
-      }
     });
 
     return () => unsubscribeAuth();
   }, []);
 
-  // Real-time Firestore listeners when user is logged in
+  // Real-time subscription to all registered users list (Only for Admin)
+  useEffect(() => {
+    if (!user || realRole !== 'Admin') {
+      setAllUsers([]);
+      return;
+    }
+    const unsub = subscribeToAllUsers(usersList => {
+      setAllUsers(usersList);
+    });
+    return () => unsub();
+  }, [user, realRole]);
+
+  // Fetch immediately with getDocs and listen in real-time with onSnapshot
   useEffect(() => {
     if (!user) {
       isInitialCloudSyncDone.current = false;
+      setTransactions([]);
+      setCaris([]);
+      setUpcomingDues([]);
+      setAccounts(INITIAL_ACCOUNTS);
+      setCategories(INITIAL_CATEGORIES);
       return;
     }
 
-    const unsubscribeFirestore = subscribeToUserData(user.uid, {
+    const userId = user.uid;
+    setIsCloudSyncing(true);
+
+    // 0. User Profile & Role (RBAC) subscription
+    const unsubProfile = subscribeToUserProfile(userId, async cloudProfile => {
+      if (cloudProfile) {
+        if (isPrimaryAdmin && cloudProfile.role !== 'Admin') {
+          cloudProfile.role = 'Admin';
+          await saveUserProfile(cloudProfile);
+        }
+        setUserProfile(cloudProfile);
+      } else {
+        // Check if role was pre-assigned by an admin before user first logged in
+        const preAssigned = await checkPreAssignedUser(user.email || '');
+        const roleToAssign: UserRole = isPrimaryAdmin
+          ? 'Admin'
+          : (preAssigned?.role || 'Standart');
+        const assignedBy = preAssigned?.assignedBy || (isPrimaryAdmin ? 'Sistem (Ana Yönetici)' : undefined);
+
+        const newProfile: UserProfile = {
+          uid: userId,
+          email: user.email || '',
+          displayName: user.displayName || preAssigned?.displayName || user.email?.split('@')[0] || 'Kullanıcı',
+          photoURL: user.photoURL || undefined,
+          role: roleToAssign,
+          createdAt: new Date().toISOString(),
+          lastLoginAt: new Date().toISOString(),
+          assignedBy,
+          isPreAssigned: false,
+        };
+        await saveUserProfile(newProfile);
+        setUserProfile(newProfile);
+      }
+    });
+
+    // 1. Immediate one-shot fetch via getDocs on page load/refresh
+    fetchUserDataFromFirestore(userId).then(cloudData => {
+      // If user has accounts in Firestore, use them; otherwise seed initial accounts
+      if (cloudData.accounts.length > 0) {
+        setAccounts(cloudData.accounts);
+      } else {
+        INITIAL_ACCOUNTS.forEach(acc => syncAccountToCloud(userId, acc));
+        setAccounts(INITIAL_ACCOUNTS);
+      }
+
+      if (cloudData.categories.length > 0) {
+        setCategories(cloudData.categories);
+      } else {
+        INITIAL_CATEGORIES.forEach(cat => syncCategoryToCloud(userId, cat));
+        setCategories(INITIAL_CATEGORIES);
+      }
+
+      setTransactions(cloudData.transactions);
+      setCaris(cloudData.caris);
+      setUpcomingDues(cloudData.upcomingDues);
+      setIsCloudSyncing(false);
+      isInitialCloudSyncDone.current = true;
+    }).catch(err => {
+      console.error('Initial getDocs error:', err);
+      setIsCloudSyncing(false);
+    });
+
+    // 2. Real-time Firestore onSnapshot listeners for live continuous updates
+    const unsubscribeFirestore = subscribeToUserData(userId, {
       onAccounts: cloudAccounts => {
         if (cloudAccounts.length > 0) {
           setAccounts(cloudAccounts);
-        } else if (!isInitialCloudSyncDone.current) {
-          // If cloud has no accounts yet, seed clean zero accounts
-          INITIAL_ACCOUNTS.forEach(acc => syncAccountToCloud(user.uid, acc));
         }
         setIsCloudSyncing(false);
       },
@@ -245,17 +313,15 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       onCategories: cloudCats => {
         if (cloudCats.length > 0) {
           setCategories(cloudCats);
-        } else if (!isInitialCloudSyncDone.current) {
-          INITIAL_CATEGORIES.forEach(cat => syncCategoryToCloud(user.uid, cat));
         }
-        isInitialCloudSyncDone.current = true;
       },
     });
 
     return () => {
+      unsubProfile();
       unsubscribeFirestore();
     };
-  }, [user]);
+  }, [user, isPrimaryAdmin]);
 
   // Google Login
   const loginWithGoogle = async () => {
@@ -277,10 +343,87 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const logout = async () => {
     try {
       await firebaseSignOut(auth);
-      showToast('Oturum kapatıldı. Veriler bu cihazda tutulmaya devam ediyor.', 'info');
+      setUserProfile(null);
+      setAllUsers([]);
+      setTransactions([]);
+      setCaris([]);
+      setUpcomingDues([]);
+      setAccounts(INITIAL_ACCOUNTS);
+      setCategories(INITIAL_CATEGORIES);
+      setIsRoleSimulated(false);
+      showToast('Oturum kapatıldı. Verileriniz Firebase bulut hesabınızda güvende.', 'info');
     } catch (error) {
       console.error('Logout error:', error);
     }
+  };
+
+  // RBAC Role Management Operations
+  const updateUserRole = async (targetUserId: string, newRole: UserRole) => {
+    if (!isAdmin) {
+      showToast('Kullanıcı rolünü yalnızca Yöneticiler değiştirebilir.', 'error');
+      return;
+    }
+    const adminEmail = user?.email || 'admin@arslan.com';
+    try {
+      await updateUserRoleInFirestore(targetUserId, newRole, adminEmail);
+      setAllUsers(prev =>
+        prev.map(u => (u.uid === targetUserId ? { ...u, role: newRole, assignedBy: adminEmail } : u))
+      );
+      if (user && user.uid === targetUserId) {
+        setUserProfile(prev => (prev ? { ...prev, role: newRole, assignedBy: adminEmail } : null));
+      }
+      showToast(`Kullanıcı rolü '${newRole}' olarak başarıyla güncellendi`, 'success');
+    } catch (e: any) {
+      showToast(`Rol güncellenemedi: ${e?.message || 'Hata'}`, 'error');
+    }
+  };
+
+  const preAssignUserRole = async (email: string, role: UserRole, displayName?: string) => {
+    if (!isAdmin) {
+      showToast('Yeni kullanıcı yetkilendirme yetkisi yalnızca Yöneticilere aittir.', 'error');
+      return;
+    }
+    const adminEmail = user?.email || 'admin@arslan.com';
+    try {
+      const created = await preAssignUserByEmail(email, role, adminEmail, displayName);
+      setAllUsers(prev => {
+        const filtered = prev.filter(u => u.email.toLowerCase() !== email.toLowerCase());
+        return [created, ...filtered];
+      });
+      showToast(`${email} için '${role}' rolü tanımlandı`, 'success');
+    } catch (e: any) {
+      showToast(`Yetkilendirme kaydedilemedi: ${e?.message || 'Hata'}`, 'error');
+    }
+  };
+
+  const deleteUserInvitation = async (targetUserId: string) => {
+    if (!isAdmin) {
+      showToast('Yalnızca Yöneticiler kullanıcı kaydı/yetkisi silebilir.', 'error');
+      return;
+    }
+    try {
+      await deletePreAssignedUser(targetUserId);
+      setAllUsers(prev => prev.filter(u => u.uid !== targetUserId));
+      showToast('Kullanıcı kaydı/yetkisi kaldırıldı', 'info');
+    } catch (e: any) {
+      showToast(`Kayıt silinemedi: ${e?.message || 'Hata'}`, 'error');
+    }
+  };
+
+  const toggleRoleSimulation = () => {
+    if (realRole !== 'Admin') {
+      showToast('Simülasyon modu yalnızca Yöneticiler tarafından kullanılabilir.', 'error');
+      return;
+    }
+    setIsRoleSimulated(prev => {
+      const next = !prev;
+      if (next) {
+        showToast('Standart Kullanıcı (Kısıtlı Yetki) simülasyonu başlatıldı.', 'info');
+      } else {
+        showToast('Yönetici (Admin) görünümüne geri dönüldü.', 'success');
+      }
+      return next;
+    });
   };
 
   // Manual one-click sync all local data to cloud
@@ -404,7 +547,18 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     setTransactions(prev => [newTx, ...prev]);
-    if (user) syncTransactionToCloud(user.uid, newTx);
+    if (user) {
+      addTransactionToCloud(user.uid, newTx)
+        .then(savedTx => {
+          if (savedTx.id !== newTx.id) {
+            setTransactions(prev => prev.map(t => (t.id === newTx.id ? savedTx : t)));
+          }
+        })
+        .catch(err => {
+          console.error('Firestore transaction write error:', err);
+          showToast('İşlem bulut veritabanına kaydedilirken hata oluştu', 'error');
+        });
+    }
 
     showToast(
       newTx.type === 'Mal Alımı'
@@ -454,6 +608,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const deleteTransaction = (id: string) => {
+    if (!permissions.canDeleteTransactions) {
+      showToast('İşlem silme yetkisi yalnızca Yöneticilere (Admin) aittir.', 'error');
+      return;
+    }
+
     const tx = transactions.find(t => t.id === id);
     if (!tx) return;
 
@@ -518,6 +677,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const deleteAccount = (id: string) => {
+    if (!permissions.canDeleteAccounts) {
+      showToast('Hesap silme yetkisi yalnızca Yöneticilere (Admin) aittir.', 'error');
+      return;
+    }
     setAccounts(prev => prev.filter(a => a.id !== id));
     if (user) deleteAccountFromCloud(user.uid, id);
     showToast('Hesap silindi', 'info');
@@ -542,6 +705,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const deleteCari = (id: string) => {
+    if (!permissions.canDeleteCaris) {
+      showToast('Cari kart silme yetkisi yalnızca Yöneticilere (Admin) aittir.', 'error');
+      return;
+    }
     setCaris(prev => prev.filter(c => c.id !== id));
     if (user) deleteCariFromCloud(user.uid, id);
     showToast('Cari kartı silindi', 'info');
@@ -660,18 +827,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Clear all data to clean zero state (both local and cloud)
   const clearAllToZero = async () => {
+    if (!permissions.canClearDatabase) {
+      showToast('Tüm verileri sıfırlama yetkisi yalnızca Yöneticilere (Admin) aittir.', 'error');
+      return;
+    }
+
     setAccounts(INITIAL_ACCOUNTS);
     setCaris([]);
     setTransactions([]);
     setUpcomingDues([]);
     setCategories(INITIAL_CATEGORIES);
-
-    // Clear local storage
-    localStorage.removeItem(STORAGE_KEYS.TRANSACTIONS);
-    localStorage.removeItem(STORAGE_KEYS.CARIS);
-    localStorage.removeItem(STORAGE_KEYS.UPCOMING_DUES);
-    localStorage.setItem(STORAGE_KEYS.ACCOUNTS, JSON.stringify(INITIAL_ACCOUNTS));
-    localStorage.setItem(STORAGE_KEYS.CATEGORIES, JSON.stringify(INITIAL_CATEGORIES));
 
     // Clear cloud
     if (user) {
@@ -807,6 +972,20 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         caris,
         upcomingDues,
         categories,
+
+        // Role & Authorization state (RBAC)
+        userProfile,
+        userRole,
+        isAdmin,
+        allUsers,
+        updateUserRole,
+        preAssignUserRole,
+        deleteUserInvitation,
+        isRoleSimulated,
+        toggleRoleSimulation,
+        permissions,
+
+        // Operations
         addTransaction,
         updateTransaction,
         deleteTransaction,

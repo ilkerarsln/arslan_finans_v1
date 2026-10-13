@@ -18,37 +18,49 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'ilkerarslan78@gmail.com' ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin')
+      );
+    }
+
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read: if isOwner(userId) || isAdmin() || (isSignedIn() && resource.data.email == request.auth.token.email);
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) || isAdmin();
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
 
       match /accounts/{accountId} {
-        allow read: if isOwner(userId);
-        allow create, update: if isOwner(userId) && isValidId(accountId) && request.resource.data.userId == userId;
-        allow delete: if isOwner(userId);
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if (isOwner(userId) || isAdmin()) && isValidId(accountId);
+        allow delete: if isOwner(userId) || isAdmin();
       }
 
       match /transactions/{transactionId} {
-        allow read: if isOwner(userId);
-        allow create, update: if isOwner(userId) && isValidId(transactionId) && request.resource.data.userId == userId;
-        allow delete: if isOwner(userId);
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if (isOwner(userId) || isAdmin()) && isValidId(transactionId);
+        allow delete: if isOwner(userId) || isAdmin();
       }
 
       match /caris/{cariId} {
-        allow read: if isOwner(userId);
-        allow create, update: if isOwner(userId) && isValidId(cariId) && request.resource.data.userId == userId;
-        allow delete: if isOwner(userId);
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if (isOwner(userId) || isAdmin()) && isValidId(cariId);
+        allow delete: if isOwner(userId) || isAdmin();
       }
 
       match /upcomingDues/{dueId} {
-        allow read: if isOwner(userId);
-        allow create, update: if isOwner(userId) && isValidId(dueId) && request.resource.data.userId == userId;
-        allow delete: if isOwner(userId);
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if (isOwner(userId) || isAdmin()) && isValidId(dueId);
+        allow delete: if isOwner(userId) || isAdmin();
       }
 
       match /categories/{categoryId} {
-        allow read: if isOwner(userId);
-        allow create, update: if isOwner(userId) && isValidId(categoryId) && request.resource.data.userId == userId;
-        allow delete: if isOwner(userId);
+        allow read: if isOwner(userId) || isAdmin();
+        allow create, update: if (isOwner(userId) || isAdmin()) && isValidId(categoryId);
+        allow delete: if isOwner(userId) || isAdmin();
       }
     }
   }

@@ -17,6 +17,8 @@ import {
   Smartphone,
   CheckCircle2,
   RefreshCw,
+  Lock,
+  Trash2,
 } from 'lucide-react';
 
 const MONTH_NAMES_TR = [
@@ -37,6 +39,7 @@ export const ReportsTab: React.FC = () => {
     importDataFromExcel,
     showToast,
     user,
+    isAdmin,
     isCloudSyncing,
     loginWithGoogle,
     logout,
@@ -627,6 +630,34 @@ export const ReportsTab: React.FC = () => {
             <Download className="w-4 h-4" />
             Excel'e Dışa Aktar (.xlsx)
           </button>
+
+          {/* Reset All Data (Guarded by Admin role) */}
+          {isAdmin ? (
+            <button
+              onClick={() => {
+                if (
+                  window.confirm(
+                    'DİKKAT: Tüm şirket veritabanı (işlemler, cariler, vadeler) sıfırlanacaktır. Bu işlem geri alınamaz! Devam etmek istiyor musunuz?'
+                  )
+                ) {
+                  clearAllToZero();
+                }
+              }}
+              className="px-4 py-2 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-xl text-xs font-semibold flex items-center gap-2 transition"
+              title="Tüm veritabanını temiz başlangıç durumuna sıfırlar (Yalnızca Admin)"
+            >
+              <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+              Tüm Verileri Sıfırla (Admin)
+            </button>
+          ) : (
+            <div
+              className="px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] text-slate-400 flex items-center gap-1.5"
+              title="Veri sıfırlama işlemi için Yönetici (Admin) yetkisi gerekmektedir"
+            >
+              <Lock className="w-3.5 h-3.5 text-slate-400" />
+              <span>Veri Sıfırlama: Yalnızca Admin</span>
+            </div>
+          )}
         </div>
 
         {/* Excel Sütun Eşleme Bilgilendirme Kutusu */}

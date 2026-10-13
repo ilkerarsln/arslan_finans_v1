@@ -11,6 +11,9 @@ import {
   Wallet,
   X,
   CreditCard,
+  ShieldCheck,
+  Shield,
+  UserCheck,
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -26,6 +29,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     transactions,
     upcomingDues,
     accounts,
+    isAdmin,
+    userRole,
+    allUsers,
+    user,
   } = useFinance();
 
   const navItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: number | string }[] = [
@@ -62,6 +69,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       label: 'Raporlar & Yedek',
       icon: <FileBarChart2 className="w-4 h-4" />,
     },
+    ...(isAdmin
+      ? [
+          {
+            id: 'users' as ActiveTab,
+            label: 'Kullanıcılar & Roller',
+            icon: <ShieldCheck className="w-4 h-4 text-amber-400" />,
+            badge: allUsers.length > 0 ? allUsers.length : undefined,
+          },
+        ]
+      : []),
   ];
 
   // Quick total balance & current month net calculation for sidebar
@@ -184,14 +201,35 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-slate-800/80 text-xs text-slate-500 flex flex-col gap-1">
-          <div className="flex items-center justify-between">
+        <div className="p-3.5 border-t border-slate-800/80 text-xs text-slate-500 flex flex-col gap-2">
+          {user && (
+            <div className="bg-slate-900/90 rounded-xl p-2.5 border border-slate-800 flex items-center justify-between">
+              <div className="min-w-0 pr-2">
+                <span className="font-semibold text-slate-200 block text-[11px] truncate">
+                  {user.displayName || user.email?.split('@')[0]}
+                </span>
+                <span className="text-[10px] text-slate-400 block truncate">
+                  {user.email}
+                </span>
+              </div>
+              {isAdmin ? (
+                <span className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-amber-300 bg-amber-950/80 border border-amber-800/80 px-2 py-0.5 rounded-full">
+                  <Shield className="w-3 h-3 text-amber-400" /> Admin
+                </span>
+              ) : (
+                <span className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-blue-300 bg-blue-950/80 border border-blue-800/80 px-2 py-0.5 rounded-full">
+                  <UserCheck className="w-3 h-3 text-blue-400" /> Normal
+                </span>
+              )}
+            </div>
+          )}
+
+          <div className="flex items-center justify-between text-[11px]">
             <span className="font-semibold text-slate-400">Arslan Finans</span>
-            <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-1.5 py-0.5 rounded">V1 Pro</span>
+            <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-1.5 py-0.5 rounded">
+              Bulut Aktif
+            </span>
           </div>
-          <span className="text-[10px] text-slate-500">
-            Nakit Akışı ve Mali Yönetim Paneli
-          </span>
         </div>
       </aside>
     </>

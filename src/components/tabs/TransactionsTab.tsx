@@ -28,6 +28,7 @@ export const TransactionsTab: React.FC = () => {
     openInstallmentModal,
     exportDataToExcel,
     showToast,
+    isAdmin,
   } = useFinance();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -165,6 +166,10 @@ export const TransactionsTab: React.FC = () => {
   };
 
   const handleDelete = (id: string) => {
+    if (!isAdmin) {
+      showToast('İşlem silme yetkisi yalnızca Yöneticilere (Admin) aittir.', 'error');
+      return;
+    }
     if (window.confirm('Bu finansal işlemi silmek istediğinize emin misiniz? Bakiye otomatik güncellenecektir.')) {
       deleteTransaction(id);
     }
@@ -463,13 +468,23 @@ export const TransactionsTab: React.FC = () => {
                           >
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            onClick={() => handleDelete(tx.id)}
-                            title="Sil"
-                            className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {isAdmin ? (
+                            <button
+                              onClick={() => handleDelete(tx.id)}
+                              title="Sil (Yönetici)"
+                              className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => handleDelete(tx.id)}
+                              title="Silme yetkisi yalnızca Yöneticilere (Admin) aittir"
+                              className="p-1 text-slate-300 dark:text-slate-700 cursor-not-allowed rounded"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 opacity-40" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

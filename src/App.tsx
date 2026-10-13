@@ -8,6 +8,7 @@ import { AccountsTab } from './components/tabs/AccountsTab';
 import { CurrentsTab } from './components/tabs/CurrentsTab';
 import { UpcomingDuesTab } from './components/tabs/UpcomingDuesTab';
 import { ReportsTab } from './components/tabs/ReportsTab';
+import { UsersTab } from './components/tabs/UsersTab';
 import { TransactionModal } from './components/modals/TransactionModal';
 import { InstallmentModal } from './components/modals/InstallmentModal';
 import { AccountModal } from './components/modals/AccountModal';
@@ -116,6 +117,7 @@ const MainAppContent: React.FC = () => {
             )}
             {activeTab === 'upcoming' && <UpcomingDuesTab />}
             {activeTab === 'reports' && <ReportsTab />}
+            {activeTab === 'users' && <UsersTab />}
           </div>
         </main>
       </div>

@@ -1,12 +1,14 @@
 import {
   collection,
   doc,
+  addDoc,
   setDoc,
   deleteDoc,
   onSnapshot,
   writeBatch,
   Unsubscribe,
   getDocs,
+  getDoc,
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import {
@@ -15,8 +17,27 @@ import {
   CategoryItem,
   Transaction,
   UpcomingDue,
+  UserProfile,
+  UserRole,
 } from '../types/finance';
 
+/**
+ * Purges `undefined` properties so Firestore never throws
+ * "Unsupported field value: undefined"
+ */
+export function sanitizeData<T extends Record<string, any>>(obj: T): Record<string, any> {
+  const clean: Record<string, any> = {};
+  for (const [key, val] of Object.entries(obj)) {
+    if (val !== undefined) {
+      clean[key] = val;
+    }
+  }
+  return clean;
+}
+
+/**
+ * Real-time listener for all user subcollections
+ */
 export function subscribeToUserData(
   userId: string,
   callbacks: {
@@ -29,13 +50,13 @@ export function subscribeToUserData(
 ): () => void {
   const unsubs: Unsubscribe[] = [];
 
-  // Accounts
+  // 1. Accounts
   const accsPath = `users/${userId}/accounts`;
   try {
     const unsubAcc = onSnapshot(
       collection(db, 'users', userId, 'accounts'),
       snapshot => {
-        const items = snapshot.docs.map(d => d.data() as Account);
+        const items = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as Account);
         callbacks.onAccounts(items);
       },
       error => {
@@ -47,15 +68,20 @@ export function subscribeToUserData(
     handleFirestoreError(error, OperationType.GET, accsPath);
   }
 
-  // Transactions
+  // 2. Transactions
   const txPath = `users/${userId}/transactions`;
   try {
     const unsubTx = onSnapshot(
       collection(db, 'users', userId, 'transactions'),
       snapshot => {
-        const items = snapshot.docs.map(d => d.data() as Transaction);
-        // Sort newest first
-        items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        const items = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as Transaction);
+        // Sort newest date first, then createdAt
+        items.sort((a, b) => {
+          const timeA = new Date(a.date).getTime();
+          const timeB = new Date(b.date).getTime();
+          if (timeA !== timeB) return timeB - timeA;
+          return (b.createdAt || '').localeCompare(a.createdAt || '');
+        });
         callbacks.onTransactions(items);
       },
       error => {
@@ -67,13 +93,13 @@ export function subscribeToUserData(
     handleFirestoreError(error, OperationType.GET, txPath);
   }
 
-  // Caris
+  // 3. Caris
   const carisPath = `users/${userId}/caris`;
   try {
     const unsubCari = onSnapshot(
       collection(db, 'users', userId, 'caris'),
       snapshot => {
-        const items = snapshot.docs.map(d => d.data() as Cari);
+        const items = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as Cari);
         callbacks.onCaris(items);
       },
       error => {
@@ -85,13 +111,13 @@ export function subscribeToUserData(
     handleFirestoreError(error, OperationType.GET, carisPath);
   }
 
-  // Upcoming Dues
+  // 4. Upcoming Dues
   const duesPath = `users/${userId}/upcomingDues`;
   try {
     const unsubDue = onSnapshot(
       collection(db, 'users', userId, 'upcomingDues'),
       snapshot => {
-        const items = snapshot.docs.map(d => d.data() as UpcomingDue);
+        const items = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as UpcomingDue);
         callbacks.onUpcomingDues(items);
       },
       error => {
@@ -103,13 +129,13 @@ export function subscribeToUserData(
     handleFirestoreError(error, OperationType.GET, duesPath);
   }
 
-  // Categories
+  // 5. Categories
   const catPath = `users/${userId}/categories`;
   try {
     const unsubCat = onSnapshot(
       collection(db, 'users', userId, 'categories'),
       snapshot => {
-        const items = snapshot.docs.map(d => d.data() as CategoryItem);
+        const items = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as CategoryItem);
         callbacks.onCategories(items);
       },
       error => {
@@ -126,34 +152,94 @@ export function subscribeToUserData(
   };
 }
 
-export async function syncAccountToCloud(userId: string, account: Account) {
-  const path = `users/${userId}/accounts/${account.id}`;
+/**
+ * Immediate one-shot fetch for page boot / refresh using getDocs
+ */
+export async function fetchUserDataFromFirestore(userId: string): Promise<{
+  accounts: Account[];
+  transactions: Transaction[];
+  caris: Cari[];
+  upcomingDues: UpcomingDue[];
+  categories: CategoryItem[];
+}> {
   try {
-    await setDoc(doc(db, 'users', userId, 'accounts', account.id), {
-      ...account,
-      userId,
+    const [accSnap, txSnap, cariSnap, duesSnap, catSnap] = await Promise.all([
+      getDocs(collection(db, 'users', userId, 'accounts')),
+      getDocs(collection(db, 'users', userId, 'transactions')),
+      getDocs(collection(db, 'users', userId, 'caris')),
+      getDocs(collection(db, 'users', userId, 'upcomingDues')),
+      getDocs(collection(db, 'users', userId, 'categories')),
+    ]);
+
+    const accounts = accSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as Account);
+    const transactions = txSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as Transaction);
+    transactions.sort((a, b) => {
+      const timeA = new Date(a.date).getTime();
+      const timeB = new Date(b.date).getTime();
+      if (timeA !== timeB) return timeB - timeA;
+      return (b.createdAt || '').localeCompare(a.createdAt || '');
     });
+    const caris = cariSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as Cari);
+    const upcomingDues = duesSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as UpcomingDue);
+    const categories = catSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as CategoryItem);
+
+    return { accounts, transactions, caris, upcomingDues, categories };
   } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, path);
+    handleFirestoreError(error, OperationType.GET, `users/${userId}`);
+    return { accounts: [], transactions: [], caris: [], upcomingDues: [], categories: [] };
   }
 }
 
-export async function deleteAccountFromCloud(userId: string, accountId: string) {
-  const path = `users/${userId}/accounts/${accountId}`;
+/**
+ * Add a transaction using addDoc directly to Firestore
+ */
+export async function addTransactionToCloud(
+  userId: string,
+  tx: Omit<Transaction, 'id' | 'createdAt'> & { id?: string; createdAt?: string }
+): Promise<Transaction> {
+  const path = `users/${userId}/transactions`;
   try {
-    await deleteDoc(doc(db, 'users', userId, 'accounts', accountId));
+    const payload = sanitizeData({
+      ...tx,
+      userId,
+      createdAt: tx.createdAt || new Date().toISOString(),
+    });
+
+    if (tx.id) {
+      // If a specific ID is provided, use setDoc
+      await setDoc(doc(db, 'users', userId, 'transactions', tx.id), payload);
+      return {
+        ...tx,
+        id: tx.id,
+        createdAt: payload.createdAt,
+      } as Transaction;
+    } else {
+      // Use addDoc for auto-generated ID as explicitly requested
+      const colRef = collection(db, 'users', userId, 'transactions');
+      const docRef = await addDoc(colRef, payload);
+      return {
+        ...tx,
+        id: docRef.id,
+        createdAt: payload.createdAt,
+      } as Transaction;
+    }
   } catch (error) {
-    handleFirestoreError(error, OperationType.DELETE, path);
+    handleFirestoreError(error, OperationType.CREATE, path);
+    throw error;
   }
 }
 
 export async function syncTransactionToCloud(userId: string, tx: Transaction) {
   const path = `users/${userId}/transactions/${tx.id}`;
   try {
-    await setDoc(doc(db, 'users', userId, 'transactions', tx.id), {
-      ...tx,
-      userId,
-    });
+    await setDoc(
+      doc(db, 'users', userId, 'transactions', tx.id),
+      sanitizeData({
+        ...tx,
+        userId,
+      }),
+      { merge: true }
+    );
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -168,13 +254,42 @@ export async function deleteTransactionFromCloud(userId: string, txId: string) {
   }
 }
 
+export async function syncAccountToCloud(userId: string, account: Account) {
+  const path = `users/${userId}/accounts/${account.id}`;
+  try {
+    await setDoc(
+      doc(db, 'users', userId, 'accounts', account.id),
+      sanitizeData({
+        ...account,
+        userId,
+      }),
+      { merge: true }
+    );
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function deleteAccountFromCloud(userId: string, accountId: string) {
+  const path = `users/${userId}/accounts/${accountId}`;
+  try {
+    await deleteDoc(doc(db, 'users', userId, 'accounts', accountId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
 export async function syncCariToCloud(userId: string, cari: Cari) {
   const path = `users/${userId}/caris/${cari.id}`;
   try {
-    await setDoc(doc(db, 'users', userId, 'caris', cari.id), {
-      ...cari,
-      userId,
-    });
+    await setDoc(
+      doc(db, 'users', userId, 'caris', cari.id),
+      sanitizeData({
+        ...cari,
+        userId,
+      }),
+      { merge: true }
+    );
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -192,10 +307,14 @@ export async function deleteCariFromCloud(userId: string, cariId: string) {
 export async function syncUpcomingDueToCloud(userId: string, due: UpcomingDue) {
   const path = `users/${userId}/upcomingDues/${due.id}`;
   try {
-    await setDoc(doc(db, 'users', userId, 'upcomingDues', due.id), {
-      ...due,
-      userId,
-    });
+    await setDoc(
+      doc(db, 'users', userId, 'upcomingDues', due.id),
+      sanitizeData({
+        ...due,
+        userId,
+      }),
+      { merge: true }
+    );
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -213,10 +332,14 @@ export async function deleteUpcomingDueFromCloud(userId: string, dueId: string) 
 export async function syncCategoryToCloud(userId: string, category: CategoryItem) {
   const path = `users/${userId}/categories/${category.id}`;
   try {
-    await setDoc(doc(db, 'users', userId, 'categories', category.id), {
-      ...category,
-      userId,
-    });
+    await setDoc(
+      doc(db, 'users', userId, 'categories', category.id),
+      sanitizeData({
+        ...category,
+        userId,
+      }),
+      { merge: true }
+    );
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
   }
@@ -237,38 +360,53 @@ export async function uploadAllInitialDataToCloud(
 
   try {
     data.accounts.forEach(acc => {
-      batch.set(doc(db, 'users', userId, 'accounts', acc.id), {
-        ...acc,
-        userId,
-      });
+      batch.set(
+        doc(db, 'users', userId, 'accounts', acc.id),
+        sanitizeData({
+          ...acc,
+          userId,
+        })
+      );
     });
 
     data.transactions.forEach(tx => {
-      batch.set(doc(db, 'users', userId, 'transactions', tx.id), {
-        ...tx,
-        userId,
-      });
+      batch.set(
+        doc(db, 'users', userId, 'transactions', tx.id),
+        sanitizeData({
+          ...tx,
+          userId,
+        })
+      );
     });
 
     data.caris.forEach(c => {
-      batch.set(doc(db, 'users', userId, 'caris', c.id), {
-        ...c,
-        userId,
-      });
+      batch.set(
+        doc(db, 'users', userId, 'caris', c.id),
+        sanitizeData({
+          ...c,
+          userId,
+        })
+      );
     });
 
     data.upcomingDues.forEach(d => {
-      batch.set(doc(db, 'users', userId, 'upcomingDues', d.id), {
-        ...d,
-        userId,
-      });
+      batch.set(
+        doc(db, 'users', userId, 'upcomingDues', d.id),
+        sanitizeData({
+          ...d,
+          userId,
+        })
+      );
     });
 
     data.categories.forEach(cat => {
-      batch.set(doc(db, 'users', userId, 'categories', cat.id), {
-        ...cat,
-        userId,
-      });
+      batch.set(
+        doc(db, 'users', userId, 'categories', cat.id),
+        sanitizeData({
+          ...cat,
+          userId,
+        })
+      );
     });
 
     await batch.commit();
@@ -290,5 +428,164 @@ export async function clearAllCloudData(userId: string) {
     } catch (e) {
       console.error(`Error clearing ${sub} in cloud:`, e);
     }
+  }
+}
+
+/**
+ * User Profile & Role Management (RBAC)
+ */
+export async function fetchUserProfile(userId: string): Promise<UserProfile | null> {
+  const path = `users/${userId}`;
+  try {
+    const snap = await getDoc(doc(db, 'users', userId));
+    if (snap.exists()) {
+      return snap.data() as UserProfile;
+    }
+    return null;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+    return null;
+  }
+}
+
+export async function saveUserProfile(profile: UserProfile): Promise<void> {
+  const path = `users/${profile.uid}`;
+  try {
+    await setDoc(doc(db, 'users', profile.uid), sanitizeData(profile), { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export function subscribeToUserProfile(
+  userId: string,
+  callback: (profile: UserProfile | null) => void
+): Unsubscribe {
+  const path = `users/${userId}`;
+  try {
+    return onSnapshot(
+      doc(db, 'users', userId),
+      snap => {
+        if (snap.exists()) {
+          callback(snap.data() as UserProfile);
+        } else {
+          callback(null);
+        }
+      },
+      error => {
+        handleFirestoreError(error, OperationType.GET, path);
+      }
+    );
+  } catch (error) {
+    handleFirestoreError(error, OperationType.GET, path);
+    return () => {};
+  }
+}
+
+export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
+  const path = 'users';
+  try {
+    const snap = await getDocs(collection(db, 'users'));
+    return snap.docs
+      .map(d => ({ uid: d.id, ...(d.data() as any) }) as UserProfile)
+      .filter(u => u && u.email);
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+    return [];
+  }
+}
+
+export function subscribeToAllUsers(callback: (users: UserProfile[]) => void): Unsubscribe {
+  const path = 'users';
+  try {
+    return onSnapshot(
+      collection(db, 'users'),
+      snap => {
+        const users = snap.docs
+          .map(d => ({ uid: d.id, ...(d.data() as any) }) as UserProfile)
+          .filter(u => u && u.email);
+        callback(users);
+      },
+      error => {
+        handleFirestoreError(error, OperationType.LIST, path);
+      }
+    );
+  } catch (error) {
+    handleFirestoreError(error, OperationType.LIST, path);
+    return () => {};
+  }
+}
+
+export async function updateUserRoleInFirestore(
+  targetUserId: string,
+  newRole: UserRole,
+  assignedByEmail: string
+): Promise<void> {
+  const path = `users/${targetUserId}`;
+  try {
+    await setDoc(
+      doc(db, 'users', targetUserId),
+      sanitizeData({
+        role: newRole,
+        assignedBy: assignedByEmail,
+        updatedAt: new Date().toISOString(),
+      }),
+      { merge: true }
+    );
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function preAssignUserByEmail(
+  email: string,
+  role: UserRole,
+  assignedByEmail: string,
+  displayName?: string
+): Promise<UserProfile> {
+  // Normalize ID from email or unique key
+  const safeId = email.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+  const path = `users/${safeId}`;
+  const now = new Date().toISOString();
+  const profile: UserProfile = {
+    uid: safeId,
+    email: email.trim().toLowerCase(),
+    displayName: displayName?.trim() || email.split('@')[0],
+    role,
+    createdAt: now,
+    lastLoginAt: 'Henüz giriş yapmadı (Beklemede)',
+    assignedBy: assignedByEmail,
+    isPreAssigned: true,
+  };
+  try {
+    await setDoc(doc(db, 'users', safeId), sanitizeData(profile), { merge: true });
+    return profile;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    return profile;
+  }
+}
+
+export async function checkPreAssignedUser(email: string): Promise<UserProfile | null> {
+  const safeId = email.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+  const path = `users/${safeId}`;
+  try {
+    const snap = await getDoc(doc(db, 'users', safeId));
+    if (snap.exists()) {
+      return snap.data() as UserProfile;
+    }
+    return null;
+  } catch (error) {
+    console.warn('Pre-assigned check warning:', error);
+    return null;
+  }
+}
+
+export async function deletePreAssignedUser(targetUserId: string): Promise<void> {
+  const path = `users/${targetUserId}`;
+  try {
+    await deleteDoc(doc(db, 'users', targetUserId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
   }
 }

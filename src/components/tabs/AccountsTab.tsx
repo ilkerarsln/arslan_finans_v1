@@ -28,7 +28,7 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
   onEditAccount,
   onOpenTransfer,
 }) => {
-  const { accounts, transactions, deleteAccount, showToast } = useFinance();
+  const { accounts, transactions, deleteAccount, showToast, isAdmin } = useFinance();
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null);
   const [copiedIban, setCopiedIban] = useState<string | null>(null);
   const [viewFilter, setViewFilter] = useState<'all' | 'bank' | 'credit'>('all');
@@ -41,6 +41,10 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
   };
 
   const handleDelete = (id: string, name: string) => {
+    if (!isAdmin) {
+      showToast('Hesap silme yetkisi yalnızca Yöneticilere (Admin) aittir.', 'error');
+      return;
+    }
     if (window.confirm(`'${name}' hesabını silmek istediğinize emin misiniz?`)) {
       deleteAccount(id);
       if (selectedAccountId === id) setSelectedAccountId(null);

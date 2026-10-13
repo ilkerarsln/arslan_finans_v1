@@ -93,4 +93,27 @@ export interface CategoryItem {
   color: string;
 }
 
-export type ActiveTab = 'dashboard' | 'transactions' | 'accounts' | 'currents' | 'upcoming' | 'reports';
+export type UserRole = 'Admin' | 'Standart';
+
+export interface UserPermissions {
+  canManageUsers: boolean;
+  canDeleteAccounts: boolean;
+  canClearDatabase: boolean;
+  canExportImport: boolean;
+  canDeleteTransactions: boolean;
+  canDeleteCaris: boolean;
+}
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  displayName: string;
+  photoURL?: string;
+  role: UserRole;
+  createdAt: string;
+  lastLoginAt: string;
+  assignedBy?: string;
+  isPreAssigned?: boolean;
+}
+
+export type ActiveTab = 'dashboard' | 'transactions' | 'accounts' | 'currents' | 'upcoming' | 'reports' | 'users';

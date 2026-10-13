@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useFinance } from '../../context/FinanceContext';
-import { Menu, Plus, Bell, Cloud, RefreshCw, LogOut, Smartphone, TrendingUp } from 'lucide-react';
+import { Menu, Plus, Bell, Cloud, RefreshCw, LogOut, Smartphone, TrendingUp, Shield, UserCheck, Eye } from 'lucide-react';
 import { ActiveTab } from '../../types/finance';
 import { useLiveCurrency } from '../../services/currencyService';
 
@@ -33,6 +33,10 @@ const TAB_TITLES: Record<ActiveTab, { title: string; subtitle: string }> = {
     title: 'Mali Raporlar & Yedek',
     subtitle: 'Gelir tablosu, kar-zarar ve veri yedekleme',
   },
+  users: {
+    title: 'Kullanıcı ve Rol Yönetimi',
+    subtitle: 'Admin ve Normal Kullanıcı yetkilendirme, erişim izinleri',
+  },
 };
 
 export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
@@ -42,6 +46,10 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
     upcomingDues,
     setActiveTab,
     user,
+    userRole,
+    isAdmin,
+    isRoleSimulated,
+    toggleRoleSimulation,
     isCloudSyncing,
     loginWithGoogle,
     logout,
@@ -112,6 +120,34 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             </div>
 
             <div className="h-3 w-px bg-emerald-200 dark:bg-emerald-800 hidden sm:block" />
+
+            {/* Role Badge in Header */}
+            {isRoleSimulated ? (
+              <button
+                onClick={toggleRoleSimulation}
+                className="flex items-center gap-1 text-[11px] font-bold bg-purple-600 hover:bg-purple-500 text-white px-2 py-0.5 rounded-full transition shadow-xs animate-pulse"
+                title="Standart kullanıcı simülasyonunu sonlandır ve Yöneticiye dön"
+              >
+                <Eye className="w-3 h-3" /> Test Modu (Geri Al)
+              </button>
+            ) : isAdmin ? (
+              <button
+                onClick={() => setActiveTab('users')}
+                className="flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-700 px-2 py-0.5 rounded-full hover:bg-amber-200 transition"
+                title="Yetki: Sistem Yöneticisi (Admin). Kullanıcı yönetimini açmak için tıklayın"
+              >
+                <Shield className="w-3 h-3 text-amber-500" /> Admin
+              </button>
+            ) : (
+              <span
+                className="flex items-center gap-1 text-[11px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 border border-blue-300 dark:border-blue-700 px-2 py-0.5 rounded-full"
+                title="Yetki: Standart Kullanıcı (Kısıtlı Yetkili)"
+              >
+                <UserCheck className="w-3 h-3 text-blue-500" /> Normal Kullanıcı
+              </span>
+            )}
+
+            <div className="h-3 w-px bg-emerald-200 dark:bg-emerald-800 hidden md:block" />
 
             <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300 max-w-[120px] truncate hidden md:inline">
               {user.displayName || user.email}

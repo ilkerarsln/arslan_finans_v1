@@ -8,7 +8,8 @@
         "id": { "type": "string" },
         "userId": { "type": "string" },
         "date": { "type": "string" },
-        "type": { "type": "string", "enum": ["Gelir", "Gider", "Transfer"] },
+        "dueDate": { "type": "string" },
+        "type": { "type": "string", "enum": ["Gelir", "Gider", "Transfer", "Mal Alımı"] },
         "category": { "type": "string" },
         "cariId": { "type": "string" },
         "cariName": { "type": "string" },
@@ -40,6 +41,7 @@
         "balance": { "type": "number" },
         "currency": { "type": "string", "enum": ["TRY", "USD", "EUR"] },
         "creditLimit": { "type": "number" },
+        "cutOffDate": { "type": "string" },
         "cutOffDay": { "type": "number" },
         "color": { "type": "string" },
         "icon": { "type": "string" }
@@ -100,9 +102,29 @@
         "color": { "type": "string" }
       },
       "required": ["id", "userId", "name", "type"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User account profile and authorization role",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["Admin", "Standart"] },
+        "createdAt": { "type": "string" },
+        "lastLoginAt": { "type": "string" },
+        "assignedBy": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
     }
   },
   "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles and role access information"
+    },
     "/users/{userId}/accounts/{accountId}": {
       "schema": "Account",
       "description": "User bank and cash accounts"
