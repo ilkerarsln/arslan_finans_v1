@@ -1,181 +1,85 @@
-import React, { useState } from 'react';
-import { FinanceProvider, useFinance } from './context/FinanceContext';
-import { KarTakipProvider } from './context/KarTakipContext';
-import { Header } from './components/layout/Header';
-import { Sidebar } from './components/layout/Sidebar';
-import { Toast } from './components/ui/Toast';
+import React from 'react';
+import { AppProvider, useApp } from './context/AppContext';
 import { LoginScreen } from './components/auth/LoginScreen';
+import { Sidebar } from './components/layout/Sidebar';
+import { Header } from './components/layout/Header';
+import { ToastContainer } from './components/ui/Toast';
+import { DashboardView } from './components/dashboard/DashboardView';
+import { MalAlimStokView } from './components/malAlim/MalAlimStokView';
+import { DetayliStokView } from './components/stok/DetayliStokView';
+import { KarTakipView } from './components/karTakip/KarTakipView';
+import { CariHesaplarView } from './components/cari/CariHesaplarView';
+import { KasaBankaView } from './components/kasa/KasaBankaView';
+import { MasrafTakipView } from './components/masraf/MasrafTakipView';
+import { AylikTakipView } from './components/aylik/AylikTakipView';
+import { UrunEslestirmeView } from './components/eslestirme/UrunEslestirmeView';
+import { TanimlamalarView } from './components/tanimlamalar/TanimlamalarView';
+import { RaporlarView } from './components/rapor/RaporlarView';
+import { KullanicilarView } from './components/kullanicilar/KullanicilarView';
 
-// Tab Views
-import { DashboardTab } from './components/tabs/DashboardTab';
-import { TransactionsTab } from './components/tabs/TransactionsTab';
-import { KarTakipTab } from './components/tabs/KarTakipTab';
-import { AccountsTab } from './components/tabs/AccountsTab';
-import { CurrentsTab } from './components/tabs/CurrentsTab';
-import { UpcomingTab } from './components/tabs/UpcomingTab';
-import { ReportsTab } from './components/tabs/ReportsTab';
-import { UsersTab } from './components/tabs/UsersTab';
-import { AuditTab } from './components/tabs/AuditTab';
+const MainLayout: React.FC = () => {
+  const { currentUser, activeTab } = useApp();
 
-// Modals
-import { TransactionModal } from './components/modals/TransactionModal';
-import { InstallmentModal } from './components/modals/InstallmentModal';
-import { TransferModal } from './components/modals/TransferModal';
-import { AccountModal } from './components/modals/AccountModal';
-import { CariModal } from './components/modals/CariModal';
-import { CariDetailModal } from './components/modals/CariDetailModal';
-import { Account, Cari } from './types/finance';
-import { TrendingUp } from 'lucide-react';
-
-const MainApp: React.FC = () => {
-  const { user, isAuthLoading, activeTab } = useFinance();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  // App-level Modal states
-  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
-  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
-  const [editingAccount, setEditingAccount] = useState<Account | null>(null);
-
-  const [isCariModalOpen, setIsCariModalOpen] = useState(false);
-  const [editingCari, setEditingCari] = useState<Cari | null>(null);
-  const [selectedCariForDetail, setSelectedCariForDetail] = useState<Cari | null>(null);
-
-  if (isAuthLoading) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
-        <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white flex items-center justify-center shadow-xl shadow-emerald-500/20 mb-4 animate-pulse">
-          <TrendingUp className="w-7 h-7" />
-        </div>
-        <div className="text-white font-bold text-lg mb-1">Arslan Finans & KarTakip</div>
-        <p className="text-slate-400 text-xs">Finansal veriler yükleniyor...</p>
-      </div>
-    );
+  if (!currentUser) {
+    return <LoginScreen />;
   }
 
-  if (!user) {
-    return (
-      <>
-        <LoginScreen />
-        <Toast />
-      </>
-    );
-  }
+  const renderActiveView = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return <DashboardView />;
+      case 'mal_alim_stok':
+        return <MalAlimStokView />;
+      case 'detayli_stok':
+        return <DetayliStokView />;
+      case 'kar_takip':
+        return <KarTakipView />;
+      case 'cari_hesaplar':
+        return <CariHesaplarView />;
+      case 'kasa_banka':
+        return <KasaBankaView />;
+      case 'masraflar':
+        return <MasrafTakipView />;
+      case 'aylik_takip':
+        return <AylikTakipView />;
+      case 'urun_eslestirme':
+        return <UrunEslestirmeView />;
+      case 'tanimlamalar':
+        return <TanimlamalarView />;
+      case 'raporlar':
+        return <RaporlarView />;
+      case 'kullanicilar':
+        return <KullanicilarView />;
+      default:
+        return <DashboardView />;
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex">
-      {/* Sidebar */}
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+    <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans antialiased selection:bg-amber-500 selection:text-slate-950">
+      {/* Vertical Sidebar */}
+      <Sidebar />
 
-      {/* Main Container */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <Header onToggleSidebar={() => setIsSidebarOpen(prev => !prev)} />
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <Header />
 
-        <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl w-full mx-auto">
-          {activeTab === 'dashboard' && (
-            <DashboardTab
-              onOpenTransfer={() => setIsTransferModalOpen(true)}
-              onOpenAddAccount={() => {
-                setEditingAccount(null);
-                setIsAccountModalOpen(true);
-              }}
-              onOpenAddCari={() => {
-                setEditingCari(null);
-                setIsCariModalOpen(true);
-              }}
-            />
-          )}
-
-          {activeTab === 'transactions' && <TransactionsTab />}
-
-          {activeTab === 'kartakip' && <KarTakipTab />}
-
-          {activeTab === 'accounts' && (
-            <AccountsTab
-              onOpenAddAccount={() => {
-                setEditingAccount(null);
-                setIsAccountModalOpen(true);
-              }}
-              onOpenTransfer={() => setIsTransferModalOpen(true)}
-              onEditAccount={acc => {
-                setEditingAccount(acc);
-                setIsAccountModalOpen(true);
-              }}
-            />
-          )}
-
-          {activeTab === 'currents' && (
-            <CurrentsTab
-              onOpenAddCari={() => {
-                setEditingCari(null);
-                setIsCariModalOpen(true);
-              }}
-              onSelectCari={c => setSelectedCariForDetail(c)}
-              onEditCari={c => {
-                setEditingCari(c);
-                setIsCariModalOpen(true);
-              }}
-            />
-          )}
-
-          {activeTab === 'upcoming' && <UpcomingTab />}
-
-          {activeTab === 'reports' && <ReportsTab />}
-
-          {activeTab === 'users' && <UsersTab />}
-
-          {activeTab === 'audit' && <AuditTab />}
+        <main className="flex-1 overflow-y-auto p-6 bg-slate-950">
+          <div className="max-w-7xl mx-auto pb-12">
+            {renderActiveView()}
+          </div>
         </main>
       </div>
 
-      {/* Global Modals */}
-      <TransactionModal />
-      <InstallmentModal />
-
-      <TransferModal
-        isOpen={isTransferModalOpen}
-        onClose={() => setIsTransferModalOpen(false)}
-      />
-
-      <AccountModal
-        isOpen={isAccountModalOpen}
-        onClose={() => {
-          setIsAccountModalOpen(false);
-          setEditingAccount(null);
-        }}
-        editingAccount={editingAccount}
-      />
-
-      <CariModal
-        isOpen={isCariModalOpen}
-        onClose={() => {
-          setIsCariModalOpen(false);
-          setEditingCari(null);
-        }}
-        editingCari={editingCari}
-      />
-
-      <CariDetailModal
-        cari={selectedCariForDetail}
-        onClose={() => setSelectedCariForDetail(null)}
-        onEdit={c => {
-          setSelectedCariForDetail(null);
-          setEditingCari(c);
-          setIsCariModalOpen(true);
-        }}
-      />
-
-      {/* Global Toast */}
-      <Toast />
+      <ToastContainer />
     </div>
   );
 };
 
 export default function App() {
   return (
-    <FinanceProvider>
-      <KarTakipProvider>
-        <MainApp />
-      </KarTakipProvider>
-    </FinanceProvider>
+    <AppProvider>
+      <MainLayout />
+    </AppProvider>
   );
 }

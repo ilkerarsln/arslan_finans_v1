@@ -1,247 +1,147 @@
 import React from 'react';
-import { useFinance } from '../../context/FinanceContext';
-import { useKarTakip } from '../../context/KarTakipContext';
-import { ActiveTab } from '../../types/finance';
+import { useApp, TabType } from '../../context/AppContext';
 import {
   LayoutDashboard,
-  ArrowLeftRight,
-  Building2,
-  Users,
-  CalendarDays,
-  FileBarChart2,
-  Wallet,
-  X,
-  ShieldCheck,
-  Shield,
-  UserCheck,
+  PackagePlus,
   TrendingUp,
+  Users2,
+  Wallet,
+  Receipt,
+  CalendarDays,
+  GitCompare,
+  BarChart3,
+  UserCog,
+  LogOut,
+  Armchair,
+  ShoppingBag,
+  SlidersHorizontal,
+  Boxes,
 } from 'lucide-react';
-import { formatCurrency } from '../../utils/formatters';
 
-interface SidebarProps {
-  isOpen: boolean;
-  onClose: () => void;
+interface NavItem {
+  id: TabType;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  badge?: string;
+  badgeColor?: string;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
-  const {
-    activeTab,
-    setActiveTab,
-    transactions,
-    upcomingDues,
-    accounts,
-    isAdmin,
-    allUsers,
-    user,
-    userProfile,
-  } = useFinance();
+export const Sidebar: React.FC = () => {
+  const { activeTab, setActiveTab, navigateToPurchase, currentUser, logout, suppliers, products } = useApp();
 
-  const { alerts, sales } = useKarTakip();
+  const criticalStockCount = products.filter((p) => p.stockQty <= p.minStockAlert).length;
+  const suppliersWithDebt = suppliers.filter((s) => s.currentBalance > 0).length;
 
-  const navItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: number | string; highlight?: boolean }[] = [
+  const navItems: NavItem[] = [
+    { id: 'dashboard', label: 'Finansal Genel Bakış', icon: LayoutDashboard },
     {
-      id: 'dashboard',
-      label: 'Özet Panel',
-      icon: <LayoutDashboard className="w-4 h-4" />,
+      id: 'mal_alim_stok',
+      label: 'Mal Alım & Stok',
+      icon: PackagePlus,
+      badge: criticalStockCount > 0 ? `${criticalStockCount} Kritik` : 'Entegre',
+      badgeColor: criticalStockCount > 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400',
     },
     {
-      id: 'transactions',
-      label: 'Gelir / Gider',
-      icon: <ArrowLeftRight className="w-4 h-4" />,
-      badge: transactions.length,
+      id: 'detayli_stok',
+      label: 'Detaylı Stok Yönetimi',
+      icon: Boxes,
+      badge: `${products.length} Ürün`,
+      badgeColor: 'bg-blue-500/20 text-blue-300',
     },
+    { id: 'kar_takip', label: 'Kâr Takip & Satışlar', icon: TrendingUp },
     {
-      id: 'kartakip',
-      label: 'Kâr & Satış Portalı',
-      icon: <TrendingUp className="w-4 h-4 text-emerald-400" />,
-      badge: alerts.length > 0 ? `${alerts.length} uyarı` : sales.length,
-      highlight: true,
+      id: 'cari_hesaplar',
+      label: 'Cari Hesaplar (Ortak)',
+      icon: Users2,
+      badge: suppliersWithDebt > 0 ? `${suppliersWithDebt} Borçlu` : undefined,
+      badgeColor: 'bg-rose-500/20 text-rose-400',
     },
-    {
-      id: 'accounts',
-      label: 'Bankalar & Kartlar',
-      icon: <Building2 className="w-4 h-4" />,
-      badge: accounts.length,
-    },
-    {
-      id: 'currents',
-      label: 'Cari Hesaplar',
-      icon: <Users className="w-4 h-4" />,
-    },
-    {
-      id: 'upcoming',
-      label: 'Vade Takvimi',
-      icon: <CalendarDays className="w-4 h-4" />,
-      badge: upcomingDues.filter(d => !d.isCompleted).length || undefined,
-    },
-    {
-      id: 'reports',
-      label: 'Raporlar & Yedek',
-      icon: <FileBarChart2 className="w-4 h-4" />,
-    },
-    ...(isAdmin
-      ? [
-          {
-            id: 'users' as ActiveTab,
-            label: 'Kullanıcılar & Roller',
-            icon: <ShieldCheck className="w-4 h-4 text-amber-400" />,
-            badge: allUsers.length > 0 ? allUsers.length : undefined,
-          },
-        ]
-      : []),
+    { id: 'kasa_banka', label: 'Kasa & Banka', icon: Wallet },
+    { id: 'masraflar', label: 'Gider & Masraf Takibi', icon: Receipt },
+    { id: 'aylik_takip', label: 'Aylık Takip & Kârlılık', icon: CalendarDays },
+    { id: 'urun_eslestirme', label: 'Ürün Eşleştirme', icon: GitCompare },
+    { id: 'tanimlamalar', label: 'Tanımlamalar', icon: SlidersHorizontal },
+    { id: 'raporlar', label: 'Raporlar & Analizler', icon: BarChart3 },
+    { id: 'kullanicilar', label: 'Kullanıcılar & Yetki', icon: UserCog },
   ];
 
-  const totalBalance = accounts.reduce((acc, curr) => acc + curr.balance, 0);
-  const now = new Date();
-  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const currentMonthNet = transactions
-    .filter(t => t.date.startsWith(currentMonthKey) && t.status !== 'İptal')
-    .reduce((sum, t) => {
-      if (t.type === 'Gelir') return sum + t.amount;
-      if (t.type === 'Gider') return sum - t.amount;
-      return sum;
-    }, 0);
-
-  const handleSelectTab = (tab: ActiveTab) => {
-    setActiveTab(tab);
-    onClose();
-  };
-
   return (
-    <>
-      {isOpen && (
-        <div
-          onClick={onClose}
-          className="fixed inset-0 z-40 bg-slate-950/70 backdrop-blur-xs md:hidden"
-        />
-      )}
+    <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 min-h-screen">
+      {/* Brand Header */}
+      <div className="p-5 border-b border-slate-800">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600 to-amber-400 flex items-center justify-center text-slate-950 shadow-md shadow-amber-500/20">
+            <Armchair className="w-6 h-6 stroke-[2.2]" />
+          </div>
+          <div>
+            <h2 className="font-bold text-white tracking-tight leading-tight">ARSLAN MOBİLYA</h2>
+            <p className="text-[11px] text-amber-400/90 font-medium">ERP & Finans Yönetimi</p>
+          </div>
+        </div>
+      </div>
 
-      <aside
-        className={`fixed md:static inset-y-0 left-0 z-40 w-64 bg-slate-950 text-slate-300 flex flex-col border-r border-slate-800 transition-transform duration-300 ease-in-out ${
-          isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
-        }`}
-      >
-        <div className="p-5 flex items-center justify-between border-b border-slate-800/80">
-          <div
-            onClick={() => handleSelectTab('dashboard')}
-            className="flex items-center gap-3 cursor-pointer group"
-            title="Ana Özet Panele Dön"
-          >
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
-              <Wallet className="w-5 h-5 text-emerald-400" />
+      {/* Primary Action Button: Direct Mal Alımı Yap */}
+      <div className="p-3.5">
+        <button
+          onClick={() => navigateToPurchase('manuel')}
+          className="w-full flex items-center justify-center gap-2 py-2.5 px-3 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-semibold rounded-xl text-xs shadow-md shadow-amber-500/15 transition active:scale-[0.98] cursor-pointer"
+        >
+          <ShoppingBag className="w-4 h-4 stroke-[2.3]" />
+          <span>+ Hızlı Mal Alımı Yap</span>
+        </button>
+      </div>
+
+      {/* Navigation List */}
+      <nav className="flex-1 px-3 py-1 space-y-1 overflow-y-auto">
+        {navItems.map((item) => {
+          const isActive = activeTab === item.id;
+          const Icon = item.icon;
+
+          return (
+            <button
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer ${
+                isActive
+                  ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30'
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Icon className={`w-4 h-4 ${isActive ? 'text-amber-400' : 'text-slate-400'}`} />
+                <span>{item.label}</span>
+              </div>
+              {item.badge && (
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${item.badgeColor || 'bg-slate-800 text-slate-300'}`}>
+                  {item.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* User Footer & Logout */}
+      <div className="p-3 border-t border-slate-800 bg-slate-950/40">
+        <div className="flex items-center justify-between p-2 rounded-xl bg-slate-800/40 border border-slate-800">
+          <div className="flex items-center gap-2.5 overflow-hidden">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-300 flex items-center justify-center font-bold text-xs shrink-0">
+              {currentUser?.name?.charAt(0) || 'A'}
             </div>
-            <div>
-              <span className="text-base font-bold text-white tracking-tight block group-hover:text-emerald-400 transition-colors">
-                Arslan Finans
-              </span>
-              <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider block">
-                Nakit & Kâr Sistemi
-              </span>
+            <div className="overflow-hidden">
+              <p className="text-xs font-medium text-white truncate">{currentUser?.name}</p>
+              <p className="text-[10px] text-slate-400 truncate">{currentUser?.email}</p>
             </div>
           </div>
           <button
-            onClick={onClose}
-            className="md:hidden text-slate-400 hover:text-white p-1"
+            onClick={logout}
+            title="Güvenli Çıkış"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition cursor-pointer shrink-0"
           >
-            <X className="w-5 h-5" />
+            <LogOut className="w-4 h-4" />
           </button>
         </div>
-
-        <div className="mx-4 my-3 p-3 bg-slate-900/80 rounded-xl border border-slate-800/80">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
-              Net Likit Varlık
-            </span>
-            <span className="text-[9px] text-slate-500 font-medium">Bu Ay</span>
-          </div>
-          <div
-            className={`text-base font-bold font-mono-num mt-0.5 ${
-              currentMonthNet >= 0 ? 'text-emerald-400' : 'text-rose-400'
-            }`}
-          >
-            {currentMonthNet > 0 ? '+' : ''}{formatCurrency(currentMonthNet)}
-          </div>
-          <div className="text-[10px] text-slate-400 mt-1.5 flex justify-between pt-1.5 border-t border-slate-800/60">
-            <span>Toplam Kasa/Banka:</span>
-            <span className="font-mono-num text-slate-300">{formatCurrency(totalBalance)}</span>
-          </div>
-        </div>
-
-        <nav className="flex-1 px-3 space-y-1 overflow-y-auto py-2">
-          {navItems.map(item => {
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleSelectTab(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition group ${
-                  isActive
-                    ? 'bg-emerald-600 text-white shadow-sm'
-                    : item.highlight
-                    ? 'text-emerald-300 hover:text-white hover:bg-slate-900 border border-emerald-500/20 bg-emerald-950/20'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-900'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <span
-                    className={
-                      isActive
-                        ? 'text-white'
-                        : 'text-slate-400 group-hover:text-emerald-400 transition-colors'
-                    }
-                  >
-                    {item.icon}
-                  </span>
-                  <span>{item.label}</span>
-                </div>
-                {item.badge !== undefined && (
-                  <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-medium ${
-                      isActive
-                        ? 'bg-emerald-700/80 text-white'
-                        : String(item.badge).includes('uyarı')
-                        ? 'bg-rose-950/80 text-rose-300 border border-rose-800/60'
-                        : 'bg-slate-800 text-slate-400'
-                    }`}
-                  >
-                    {item.badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="p-3.5 border-t border-slate-800/80 text-xs text-slate-500 flex flex-col gap-2">
-          {user && (
-            <div className="bg-slate-900/90 rounded-xl p-2.5 border border-slate-800 flex items-center justify-between">
-              <div className="min-w-0 pr-2">
-                <span className="font-semibold text-slate-200 block text-[11px] truncate">
-                  {userProfile?.displayName || user.displayName || userProfile?.username || user.email?.split('@')[0]}
-                </span>
-                <span className="text-[10px] text-slate-400 block truncate">
-                  {userProfile?.username ? `Personel: @${userProfile.username}` : user.email}
-                </span>
-              </div>
-              {isAdmin ? (
-                <span className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-amber-300 bg-amber-950/80 border border-amber-800/80 px-2 py-0.5 rounded-full">
-                  <Shield className="w-3 h-3 text-amber-400" /> Admin
-                </span>
-              ) : (
-                <span className="shrink-0 flex items-center gap-1 text-[10px] font-bold text-blue-300 bg-blue-950/80 border border-blue-800/80 px-2 py-0.5 rounded-full">
-                  <UserCheck className="w-3 h-3 text-blue-400" /> Normal
-                </span>
-              )}
-            </div>
-          )}
-          <div className="flex items-center justify-between text-[11px]">
-            <span className="font-semibold text-slate-400">Arslan Finans</span>
-            <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-1.5 py-0.5 rounded">
-              Bulut Aktif
-            </span>
-          </div>
-        </div>
-      </aside>
-    </>
+      </div>
+    </aside>
   );
 };
