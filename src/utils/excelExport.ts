@@ -8,10 +8,6 @@ interface ExportFinanceDataOptions {
   upcomingDues: UpcomingDue[];
 }
 
-/**
- * Exports financial records (Transactions, Accounts, Caris, Upcoming Dues)
- * into a structured multi-sheet Excel file (.xlsx) and triggers immediate download.
- */
 export function exportToExcel({
   transactions,
   accounts,
@@ -20,7 +16,7 @@ export function exportToExcel({
 }: ExportFinanceDataOptions): void {
   const workbook = XLSX.utils.book_new();
 
-  // 1. Transactions Sheet (İşlemler)
+  // 1. Transactions Sheet
   const txRows = transactions.map(tx => {
     const account = accounts.find(a => a.id === tx.accountId);
     const targetAccount = tx.targetAccountId ? accounts.find(a => a.id === tx.targetAccountId) : null;
@@ -42,7 +38,7 @@ export function exportToExcel({
   const txSheet = XLSX.utils.json_to_sheet(txRows);
   XLSX.utils.book_append_sheet(workbook, txSheet, 'İşlemler');
 
-  // 2. Accounts Sheet (Hesaplar & Kasalar)
+  // 2. Accounts Sheet
   const accRows = accounts.map(acc => ({
     'Hesap Adı': acc.name,
     'Tür': acc.type,
@@ -57,7 +53,7 @@ export function exportToExcel({
   const accSheet = XLSX.utils.json_to_sheet(accRows);
   XLSX.utils.book_append_sheet(workbook, accSheet, 'Hesaplar');
 
-  // 3. Caris Sheet (Cari Hesaplar - Müşteri & Tedarikçiler)
+  // 3. Caris Sheet
   const cariRows = caris.map(c => ({
     'Cari Adı': c.name,
     'Tür': c.type,
@@ -72,7 +68,7 @@ export function exportToExcel({
   const cariSheet = XLSX.utils.json_to_sheet(cariRows);
   XLSX.utils.book_append_sheet(workbook, cariSheet, 'Cari Hesaplar');
 
-  // 4. Upcoming Dues Sheet (Vade & Bekleyen Ödemeler)
+  // 4. Upcoming Dues Sheet
   const dueRows = upcomingDues.map(d => {
     const acc = accounts.find(a => a.id === d.accountId);
     return {
@@ -90,7 +86,6 @@ export function exportToExcel({
   const dueSheet = XLSX.utils.json_to_sheet(dueRows);
   XLSX.utils.book_append_sheet(workbook, dueSheet, 'Vade Takvimi');
 
-  // Trigger file download
   const dateStr = new Date().toISOString().split('T')[0];
   const fileName = `Arslan_Finans_Raporu_${dateStr}.xlsx`;
   XLSX.writeFile(workbook, fileName);

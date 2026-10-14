@@ -1,6 +1,5 @@
 import { Account, Cari, CategoryItem, Transaction, UpcomingDue } from '../types/finance';
 
-// Varsayılan hesaplar sıfır bakiye ile başlatılır (İstenildiği gibi demo verisi yok, temiz başlangıç)
 export const INITIAL_ACCOUNTS: Account[] = [
   {
     id: 'acc-kasa',
@@ -43,10 +42,9 @@ export const INITIAL_CATEGORIES: CategoryItem[] = [
   { id: 'cat-inc-2', name: 'Hizmet / Danışmanlık', type: 'Gelir', color: '#06b6d4' },
   { id: 'cat-inc-3', name: 'Cari Hesap Tahsilatı', type: 'Gelir', color: '#8b5cf6' },
   { id: 'cat-inc-4', name: 'Diğer Gelirler', type: 'Gelir', color: '#64748b' },
-
   // Gider Kategorileri
   { id: 'cat-exp-1', name: 'Kira', type: 'Gider', color: '#f59e0b' },
-  { id: 'cat-exp-2', name: 'Mal / Stok Alımı', type: 'Gider', color: '#3b82f6' },
+  { id: 'cat-exp-2', name: 'Mal / Stok Alışı', type: 'Gider', color: '#3b82f6' },
   { id: 'cat-exp-3', name: 'Personel & Maaş', type: 'Gider', color: '#8b5cf6' },
   { id: 'cat-exp-4', name: 'Fatura & Hizmetler', type: 'Gider', color: '#06b6d4' },
   { id: 'cat-exp-5', name: 'Vergi & SGK', type: 'Gider', color: '#ef4444' },
@@ -54,7 +52,6 @@ export const INITIAL_CATEGORIES: CategoryItem[] = [
   { id: 'cat-exp-7', name: 'Genel Giderler', type: 'Gider', color: '#64748b' },
 ];
 
-// Temiz başlangıç: Demo cari hesap, işlem ve vade kaydı yok (0 adet)
 export const INITIAL_CARIS: Cari[] = [];
 export const INITIAL_TRANSACTIONS: Transaction[] = [];
 export const INITIAL_UPCOMING_DUES: UpcomingDue[] = [];

@@ -7,13 +7,10 @@ import {
 } from '../../utils/formatters';
 import {
   X,
-  Calendar,
   Layers,
   ArrowDownRight,
   ArrowUpRight,
   Check,
-  Building2,
-  Clock,
   Sparkles,
   Info,
 } from 'lucide-react';
@@ -26,7 +23,6 @@ export const InstallmentModal: React.FC = () => {
     createInstallmentPlan,
     caris,
     accounts,
-    categories,
   } = useFinance();
 
   const [type, setType] = useState<'Gelir' | 'Gider'>('Gider');
@@ -41,10 +37,8 @@ export const InstallmentModal: React.FC = () => {
   const [documentNo, setDocumentNo] = useState<string>('');
   const [notes, setNotes] = useState<string>('');
 
-  // Preset installments
   const PRESET_INSTALLMENTS = [2, 3, 4, 6, 9, 12, 18, 24];
 
-  // Initialize form when opened
   useEffect(() => {
     if (isInstallmentModalOpen) {
       const today = new Date().toISOString().split('T')[0];
@@ -62,7 +56,7 @@ export const InstallmentModal: React.FC = () => {
       setCariId(installmentModalPrefill?.cariId || '');
       setCategory(
         installmentModalPrefill?.category ||
-          (installmentModalPrefill?.type === 'Gelir' ? 'Taksitli Satış' : 'Taksitli Mal Alımı')
+          (installmentModalPrefill?.type === 'Gelir' ? 'Taksitli Satış' : 'Taksitli Mal Alışı')
       );
       setAccountId(installmentModalPrefill?.accountId || accounts[0]?.id || '');
       setDocumentNo(installmentModalPrefill?.documentNo || '');
@@ -70,7 +64,6 @@ export const InstallmentModal: React.FC = () => {
     }
   }, [isInstallmentModalOpen, installmentModalPrefill, accounts]);
 
-  // Handle Cari selection from list or typed input
   const handleCariSelect = (name: string) => {
     setCariName(name);
     const matched = caris.find(c => c.name.toLowerCase() === name.toLowerCase());
@@ -81,7 +74,6 @@ export const InstallmentModal: React.FC = () => {
     }
   };
 
-  // Quick date shortcuts
   const setQuickDate = (daysFromToday: number) => {
     const d = new Date();
     d.setDate(d.getDate() + daysFromToday);
@@ -91,23 +83,19 @@ export const InstallmentModal: React.FC = () => {
     setFirstDueDate(`${y}-${m}-${day}`);
   };
 
-  // Quick amount preset
   const setQuickAmount = (val: number) => {
     setTotalAmount(val.toString());
   };
 
-  // Parse numerical amount
   const parsedTotal = parseFloat(totalAmount) || 0;
   const activeCount = customInstallments ? parseInt(customInstallments) || 1 : installmentsCount;
 
-  // Selected Cari object for info display
   const selectedCari = useMemo(() => {
     if (cariId) return caris.find(c => c.id === cariId);
     if (cariName) return caris.find(c => c.name.toLowerCase() === cariName.toLowerCase());
     return null;
   }, [cariId, cariName, caris]);
 
-  // Calculate live installment schedule (strictly +30 days per step)
   const previewSchedule = useMemo(() => {
     if (parsedTotal <= 0 || !firstDueDate || activeCount <= 0) return [];
     return calculateInstallmentSchedule(parsedTotal, activeCount, firstDueDate, cariName);
@@ -128,19 +116,17 @@ export const InstallmentModal: React.FC = () => {
       firstDueDate,
       cariId: cariId || undefined,
       cariName: cariName.trim() || undefined,
-      category: category || (type === 'Gelir' ? 'Taksitli Satış' : 'Taksitli Mal Alımı'),
+      category: category || (type === 'Gelir' ? 'Taksitli Satış' : 'Taksitli Mal Alışı'),
       accountId: accountId || accounts[0]?.id,
       documentNo: documentNo.trim() || undefined,
       notes: notes.trim() || undefined,
     });
-
     closeInstallmentModal();
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-3xl w-full p-5 sm:p-7 shadow-2xl space-y-5 text-slate-800 dark:text-slate-100 max-h-[94vh] overflow-y-auto">
-        {/* Header */}
         <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
@@ -167,10 +153,9 @@ export const InstallmentModal: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* 1. Transaction Type (Gelir / Gider) */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-              İşlem Türü *
+              İşlem Türü
             </label>
             <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
               <button
@@ -200,11 +185,10 @@ export const InstallmentModal: React.FC = () => {
             </div>
           </div>
 
-          {/* 2. Cari / Firma Adı */}
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                İlgili Cari / Firma Adı *
+                İlgili Cari / Firma Adı
               </label>
               {selectedCari && (
                 <span
@@ -216,7 +200,7 @@ export const InstallmentModal: React.FC = () => {
                       : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                   }`}
                 >
-                  {selectedCari.type} · Bakiye: {formatCurrency(selectedCari.balance)}
+                  {selectedCari.type} • Bakiye: {formatCurrency(selectedCari.balance)}
                 </span>
               )}
             </div>
@@ -228,7 +212,7 @@ export const InstallmentModal: React.FC = () => {
                 value={cariName}
                 onChange={e => handleCariSelect(e.target.value)}
                 placeholder="Örn: Atlas Lojistik A.Ş., Demir Çelik Sanayi..."
-                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 text-slate-900 dark:text-white"
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-white"
               />
               <datalist id="installment-cari-list">
                 {caris.map(c => (
@@ -238,16 +222,12 @@ export const InstallmentModal: React.FC = () => {
                 ))}
               </datalist>
             </div>
-            <p className="text-[11px] text-slate-400 mt-1">
-              Taksit başlıkları otomatik olarak: <span className="font-semibold text-slate-600 dark:text-slate-300">"{cariName.trim() || 'Firma Adı'} - 1/{activeCount} Taksit"</span> şeklinde adlandırılacaktır.
-            </p>
           </div>
 
-          {/* 3. Toplam Tutar & Hızlı Seçim */}
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Toplam Tutar (₺) *
+                Toplam Tutar (₺)
               </label>
               {parsedTotal > 0 && activeCount > 0 && (
                 <span className="text-xs font-mono-num font-bold text-emerald-600 dark:text-emerald-400">
@@ -270,7 +250,6 @@ export const InstallmentModal: React.FC = () => {
                 className="w-full pl-9 pr-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-lg font-bold font-mono-num outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-white"
               />
             </div>
-            {/* Quick amount chips */}
             <div className="flex flex-wrap items-center gap-1.5 mt-2">
               <span className="text-[11px] text-slate-400 mr-1">Hızlı Tutar:</span>
               {[15000, 30000, 60000, 90000, 120000, 240000].map(val => (
@@ -286,10 +265,9 @@ export const InstallmentModal: React.FC = () => {
             </div>
           </div>
 
-          {/* 4. Taksit Sayısı Seçimi */}
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-              Taksit Sayısı *
+              Taksit Sayısı
             </label>
             <div className="flex flex-wrap items-center gap-1.5 mb-2">
               {PRESET_INSTALLMENTS.map(cnt => (
@@ -324,11 +302,10 @@ export const InstallmentModal: React.FC = () => {
             </div>
           </div>
 
-          {/* 5. Esnek İlk Vade Tarihi */}
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                İlk Taksit Vade Tarihi (dueDate) *
+                İlk Taksit Vade Tarihi *
               </label>
               <div className="flex items-center gap-1">
                 <button
@@ -338,7 +315,7 @@ export const InstallmentModal: React.FC = () => {
                 >
                   Bugün
                 </button>
-                <span className="text-slate-300">·</span>
+                <span className="text-slate-300">•</span>
                 <button
                   type="button"
                   onClick={() => setQuickDate(15)}
@@ -346,7 +323,7 @@ export const InstallmentModal: React.FC = () => {
                 >
                   15 Gün Sonra
                 </button>
-                <span className="text-slate-300">·</span>
+                <span className="text-slate-300">•</span>
                 <button
                   type="button"
                   onClick={() => setQuickDate(30)}
@@ -356,18 +333,15 @@ export const InstallmentModal: React.FC = () => {
                 </button>
               </div>
             </div>
-            <div className="relative">
-              <input
-                type="date"
-                required
-                value={firstDueDate}
-                onChange={e => setFirstDueDate(e.target.value)}
-                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-white"
-              />
-            </div>
+            <input
+              type="date"
+              required
+              value={firstDueDate}
+              onChange={e => setFirstDueDate(e.target.value)}
+              className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-white"
+            />
           </div>
 
-          {/* 30 Günlük Periyot Bilgi Kartı */}
           <div className="flex items-start gap-2.5 p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-900/50 text-xs text-blue-900 dark:text-blue-200">
             <Info className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
             <div>
@@ -380,7 +354,6 @@ export const InstallmentModal: React.FC = () => {
             </div>
           </div>
 
-          {/* 6. Canlı Taksit Planı Önizleme Tablosu */}
           {previewSchedule.length > 0 && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
@@ -392,7 +365,6 @@ export const InstallmentModal: React.FC = () => {
                   Son Vade: {formatDate(previewSchedule[previewSchedule.length - 1].dueDate)}
                 </span>
               </div>
-
               <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 sticky top-0">
@@ -433,7 +405,6 @@ export const InstallmentModal: React.FC = () => {
             </div>
           )}
 
-          {/* 7. Kategori, Hesap & Belge No */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -443,7 +414,7 @@ export const InstallmentModal: React.FC = () => {
                 type="text"
                 value={category}
                 onChange={e => setCategory(e.target.value)}
-                placeholder="Örn: Mal Alımı, Satış..."
+                placeholder="Örn: Mal Alışı, Satış..."
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
@@ -477,16 +448,14 @@ export const InstallmentModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Footer Actions */}
           <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800">
             <div className="text-xs text-slate-500 font-medium hidden sm:block">
               {parsedTotal > 0 && activeCount > 0 ? (
                 <span>
-                  Toplam: <strong className="text-slate-800 dark:text-slate-200">{formatCurrency(parsedTotal)}</strong> · {activeCount} Taksit x {formatCurrency(parsedTotal / activeCount)}
+                  Toplam: <strong className="text-slate-800 dark:text-slate-200">{formatCurrency(parsedTotal)}</strong> • {activeCount} Taksit x {formatCurrency(parsedTotal / activeCount)}
                 </span>
               ) : null}
             </div>
-
             <div className="flex items-center gap-2.5 ml-auto">
               <button
                 type="button"

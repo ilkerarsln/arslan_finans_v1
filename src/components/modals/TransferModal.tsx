@@ -15,7 +15,6 @@ export const TransferModal: React.FC<TransferModalProps> = ({
   defaultSourceAccountId,
 }) => {
   const { accounts, executeTransfer } = useFinance();
-
   const [fromAccountId, setFromAccountId] = useState(
     defaultSourceAccountId || accounts[0]?.id || ''
   );
@@ -30,9 +29,6 @@ export const TransferModal: React.FC<TransferModalProps> = ({
 
   if (!isOpen) return null;
 
-  const fromAcc = accounts.find(a => a.id === fromAccountId);
-  const toAcc = accounts.find(a => a.id === toAccountId);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const num = parseFloat(amount);
@@ -41,7 +37,6 @@ export const TransferModal: React.FC<TransferModalProps> = ({
       alert('Lütfen farklı kaynak ve hedef hesap seçiniz.');
       return;
     }
-
     executeTransfer(fromAccountId, toAccountId, num, desc.trim(), date);
     onClose();
   };
@@ -86,12 +81,6 @@ export const TransferModal: React.FC<TransferModalProps> = ({
               </select>
             </div>
 
-            <div className="flex justify-center -my-1">
-              <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center border border-slate-200 dark:border-slate-700">
-                ↓
-              </div>
-            </div>
-
             <div>
               <label className="block text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-1">
                 Hedef Hesap (Para Aktarılacak)
@@ -114,7 +103,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Transfer Tutarı (₺) *
+                Transfer Tutarı
               </label>
               <input
                 type="number"
@@ -127,6 +116,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold font-mono-num outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Tarih

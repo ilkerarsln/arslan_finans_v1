@@ -1,29 +1,38 @@
 import React, { useState } from 'react';
 import { FinanceProvider, useFinance } from './context/FinanceContext';
-import { Sidebar } from './components/layout/Sidebar';
+import { KarTakipProvider } from './context/KarTakipContext';
 import { Header } from './components/layout/Header';
+import { Sidebar } from './components/layout/Sidebar';
+import { Toast } from './components/ui/Toast';
+import { LoginScreen } from './components/auth/LoginScreen';
+
+// Tab Views
 import { DashboardTab } from './components/tabs/DashboardTab';
 import { TransactionsTab } from './components/tabs/TransactionsTab';
+import { KarTakipTab } from './components/tabs/KarTakipTab';
 import { AccountsTab } from './components/tabs/AccountsTab';
 import { CurrentsTab } from './components/tabs/CurrentsTab';
-import { UpcomingDuesTab } from './components/tabs/UpcomingDuesTab';
+import { UpcomingTab } from './components/tabs/UpcomingTab';
 import { ReportsTab } from './components/tabs/ReportsTab';
 import { UsersTab } from './components/tabs/UsersTab';
+import { AuditTab } from './components/tabs/AuditTab';
+
+// Modals
 import { TransactionModal } from './components/modals/TransactionModal';
 import { InstallmentModal } from './components/modals/InstallmentModal';
+import { TransferModal } from './components/modals/TransferModal';
 import { AccountModal } from './components/modals/AccountModal';
 import { CariModal } from './components/modals/CariModal';
 import { CariDetailModal } from './components/modals/CariDetailModal';
-import { TransferModal } from './components/modals/TransferModal';
-import { Toast } from './components/ui/Toast';
 import { Account, Cari } from './types/finance';
-import { LoginScreen } from './components/auth/LoginScreen';
+import { TrendingUp } from 'lucide-react';
 
-const MainAppContent: React.FC = () => {
-  const { activeTab, user, isAuthLoading } = useFinance();
+const MainApp: React.FC = () => {
+  const { user, isAuthLoading, activeTab } = useFinance();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Modal states
+  // App-level Modal states
+  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<Account | null>(null);
 
@@ -31,45 +40,18 @@ const MainAppContent: React.FC = () => {
   const [editingCari, setEditingCari] = useState<Cari | null>(null);
   const [selectedCariForDetail, setSelectedCariForDetail] = useState<Cari | null>(null);
 
-  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
-  const [transferSourceAccountId, setTransferSourceAccountId] = useState<string | undefined>(undefined);
-
-  const handleOpenAddAccount = () => {
-    setEditingAccount(null);
-    setIsAccountModalOpen(true);
-  };
-
-  const handleEditAccount = (acc: Account) => {
-    setEditingAccount(acc);
-    setIsAccountModalOpen(true);
-  };
-
-  const handleOpenAddCari = () => {
-    setEditingCari(null);
-    setIsCariModalOpen(true);
-  };
-
-  const handleEditCari = (c: Cari) => {
-    setEditingCari(c);
-    setIsCariModalOpen(true);
-  };
-
-  const handleOpenTransfer = (sourceAccountId?: string) => {
-    setTransferSourceAccountId(sourceAccountId);
-    setIsTransferModalOpen(true);
-  };
-
-  // If Firebase Auth is still determining current session (1-2 seconds on load)
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center text-slate-200">
-        <div className="w-12 h-12 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin mb-4" />
-        <p className="text-sm font-medium tracking-wide text-slate-400">Güvenlik kontrolü yapılıyor...</p>
+      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-4">
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white flex items-center justify-center shadow-xl shadow-emerald-500/20 mb-4 animate-pulse">
+          <TrendingUp className="w-7 h-7" />
+        </div>
+        <div className="text-white font-bold text-lg mb-1">Arslan Finans & KarTakip</div>
+        <p className="text-slate-400 text-xs">Finansal veriler yükleniyor...</p>
       </div>
     );
   }
 
-  // If user is not logged in, strictly show the Login Screen (No finance data leaked)
   if (!user) {
     return (
       <>
@@ -80,45 +62,68 @@ const MainAppContent: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-100/60 dark:bg-slate-950 text-slate-800 dark:text-slate-100">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex">
       {/* Sidebar */}
-      <Sidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-      />
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        <Header onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)} />
+      {/* Main Container */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <Header onToggleSidebar={() => setIsSidebarOpen(prev => !prev)} />
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-8">
-          <div className="max-w-7xl mx-auto pb-12">
-            {activeTab === 'dashboard' && (
-              <DashboardTab
-                onOpenTransfer={() => handleOpenTransfer()}
-                onOpenAddAccount={handleOpenAddAccount}
-                onOpenAddCari={handleOpenAddCari}
-              />
-            )}
-            {activeTab === 'transactions' && <TransactionsTab />}
-            {activeTab === 'accounts' && (
-              <AccountsTab
-                onOpenAddAccount={handleOpenAddAccount}
-                onEditAccount={handleEditAccount}
-                onOpenTransfer={handleOpenTransfer}
-              />
-            )}
-            {activeTab === 'currents' && (
-              <CurrentsTab
-                onOpenAddCari={handleOpenAddCari}
-                onEditCari={handleEditCari}
-                onSelectCariDetail={cari => setSelectedCariForDetail(cari)}
-              />
-            )}
-            {activeTab === 'upcoming' && <UpcomingDuesTab />}
-            {activeTab === 'reports' && <ReportsTab />}
-            {activeTab === 'users' && <UsersTab />}
-          </div>
+        <main className="flex-1 p-4 md:p-6 lg:p-8 max-w-7xl w-full mx-auto">
+          {activeTab === 'dashboard' && (
+            <DashboardTab
+              onOpenTransfer={() => setIsTransferModalOpen(true)}
+              onOpenAddAccount={() => {
+                setEditingAccount(null);
+                setIsAccountModalOpen(true);
+              }}
+              onOpenAddCari={() => {
+                setEditingCari(null);
+                setIsCariModalOpen(true);
+              }}
+            />
+          )}
+
+          {activeTab === 'transactions' && <TransactionsTab />}
+
+          {activeTab === 'kartakip' && <KarTakipTab />}
+
+          {activeTab === 'accounts' && (
+            <AccountsTab
+              onOpenAddAccount={() => {
+                setEditingAccount(null);
+                setIsAccountModalOpen(true);
+              }}
+              onOpenTransfer={() => setIsTransferModalOpen(true)}
+              onEditAccount={acc => {
+                setEditingAccount(acc);
+                setIsAccountModalOpen(true);
+              }}
+            />
+          )}
+
+          {activeTab === 'currents' && (
+            <CurrentsTab
+              onOpenAddCari={() => {
+                setEditingCari(null);
+                setIsCariModalOpen(true);
+              }}
+              onSelectCari={c => setSelectedCariForDetail(c)}
+              onEditCari={c => {
+                setEditingCari(c);
+                setIsCariModalOpen(true);
+              }}
+            />
+          )}
+
+          {activeTab === 'upcoming' && <UpcomingTab />}
+
+          {activeTab === 'reports' && <ReportsTab />}
+
+          {activeTab === 'users' && <UsersTab />}
+
+          {activeTab === 'audit' && <AuditTab />}
         </main>
       </div>
 
@@ -126,34 +131,40 @@ const MainAppContent: React.FC = () => {
       <TransactionModal />
       <InstallmentModal />
 
+      <TransferModal
+        isOpen={isTransferModalOpen}
+        onClose={() => setIsTransferModalOpen(false)}
+      />
+
       <AccountModal
         isOpen={isAccountModalOpen}
-        onClose={() => setIsAccountModalOpen(false)}
+        onClose={() => {
+          setIsAccountModalOpen(false);
+          setEditingAccount(null);
+        }}
         editingAccount={editingAccount}
       />
 
       <CariModal
         isOpen={isCariModalOpen}
-        onClose={() => setIsCariModalOpen(false)}
+        onClose={() => {
+          setIsCariModalOpen(false);
+          setEditingCari(null);
+        }}
         editingCari={editingCari}
       />
 
       <CariDetailModal
         cari={selectedCariForDetail}
         onClose={() => setSelectedCariForDetail(null)}
-        onEdit={cari => {
+        onEdit={c => {
           setSelectedCariForDetail(null);
-          handleEditCari(cari);
+          setEditingCari(c);
+          setIsCariModalOpen(true);
         }}
       />
 
-      <TransferModal
-        isOpen={isTransferModalOpen}
-        onClose={() => setIsTransferModalOpen(false)}
-        defaultSourceAccountId={transferSourceAccountId}
-      />
-
-      {/* Toast Notification Container */}
+      {/* Global Toast */}
       <Toast />
     </div>
   );
@@ -162,7 +173,9 @@ const MainAppContent: React.FC = () => {
 export default function App() {
   return (
     <FinanceProvider>
-      <MainAppContent />
+      <KarTakipProvider>
+        <MainApp />
+      </KarTakipProvider>
     </FinanceProvider>
   );
 }

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useFinance } from '../../context/FinanceContext';
 import { Account, AccountType } from '../../types/finance';
-import { X, Building2, Vault, CreditCard, Landmark, Check } from 'lucide-react';
+import { X, Building2, Check } from 'lucide-react';
 
 interface AccountModalProps {
   isOpen: boolean;
@@ -15,7 +15,6 @@ export const AccountModal: React.FC<AccountModalProps> = ({
   editingAccount,
 }) => {
   const { addAccount, updateAccount } = useFinance();
-
   const [name, setName] = useState('');
   const [type, setType] = useState<AccountType>('Ticari Hesap');
   const [bankName, setBankName] = useState('');
@@ -61,7 +60,6 @@ export const AccountModal: React.FC<AccountModalProps> = ({
     e.preventDefault();
     const numBalance = parseFloat(balance) || 0;
     const numLimit = creditLimit ? parseFloat(creditLimit) : undefined;
-
     const icon =
       type === 'Kasa (Nakit)'
         ? 'Vault'
@@ -105,7 +103,6 @@ export const AccountModal: React.FC<AccountModalProps> = ({
         icon,
       });
     }
-
     onClose();
   };
 
@@ -132,7 +129,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Hesap Türü *
+              Hesap Türü
             </label>
             <select
               value={type}
@@ -148,7 +145,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Hesap Adı *
+              Hesap Adı
             </label>
             <input
               type="text"
@@ -237,56 +234,6 @@ export const AccountModal: React.FC<AccountModalProps> = ({
               </div>
             )}
           </div>
-
-          {/* Kredi Kartı Hesap Kesim Tarihi */}
-          {type === 'Şirket Kredi Kartı' && (
-            <div className="p-3 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/80 rounded-xl space-y-2">
-              <label className="block text-xs font-semibold text-slate-800 dark:text-slate-200">
-                Hesap Kesim Tarihi
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[11px] text-slate-500 dark:text-slate-400 mb-0.5">
-                    Tarih Seçimi
-                  </label>
-                  <input
-                    type="date"
-                    value={cutOffDate}
-                    onChange={e => {
-                      setCutOffDate(e.target.value);
-                      if (e.target.value) {
-                        const day = parseInt(e.target.value.split('-')[2], 10);
-                        if (!isNaN(day)) setCutOffDay(day.toString());
-                      }
-                    }}
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500 text-slate-800 dark:text-slate-200"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-500 dark:text-slate-400 mb-0.5">
-                    Ayın Kesim Günü
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min="1"
-                      max="31"
-                      placeholder="15"
-                      value={cutOffDay}
-                      onChange={e => setCutOffDay(e.target.value)}
-                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono-num focus:ring-2 focus:ring-amber-500 text-slate-800 dark:text-slate-200"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">
-                      . Günü
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <p className="text-[10px] text-amber-700 dark:text-amber-400">
-                Ekstre kesim gününde kart harcamalarınızın hesap özeti çıkar ve ödeme takviminde takip edilir.
-              </p>
-            </div>
-          )}
 
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button

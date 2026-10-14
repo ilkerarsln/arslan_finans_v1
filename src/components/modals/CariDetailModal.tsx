@@ -7,7 +7,6 @@ import {
   Phone,
   Mail,
   Building,
-  MapPin,
   ArrowDownRight,
   ArrowUpRight,
   Receipt,
@@ -31,14 +30,12 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
 
   if (!cari) return null;
 
-  // Filter transactions for this Cari
   const cariTransactions = transactions.filter(
     tx =>
       tx.cariId === cari.id ||
       (tx.cariName && tx.cariName.toLowerCase().includes(cari.name.toLowerCase()))
   );
 
-  // Filter upcoming dues for this Cari
   const cariUpcomingDues = upcomingDues.filter(
     d =>
       d.cariId === cari.id ||
@@ -71,7 +68,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
       type: 'Gider',
       cariId: cari.id,
       cariName: cari.name,
-      category: 'Stok & Mal Alımı',
+      category: 'Stok & Mal Alışı',
       desc: `${cari.name} ödemesi`,
       amount: cari.balance < 0 ? Math.abs(cari.balance) : undefined,
     });
@@ -80,14 +77,13 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 text-slate-800 dark:text-slate-100 max-h-[92vh] overflow-y-auto">
-        {/* Header */}
         <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs uppercase font-bold text-slate-400 tracking-wider">
                 {cari.type}
               </span>
-              <span className="text-slate-300 dark:text-slate-700">·</span>
+              <span className="text-slate-300 dark:text-slate-700">•</span>
               <span className="text-xs text-slate-500">{cari.city || 'Belirtilmedi'}</span>
             </div>
             <h3 className="text-xl font-bold text-slate-900 dark:text-white mt-1">
@@ -110,7 +106,6 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
           </div>
         </div>
 
-        {/* Balance & Quick Actions Bar */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
           <div>
             <span className="text-[11px] font-semibold text-slate-400 uppercase">
@@ -175,12 +170,11 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
               }}
               className="w-full py-1.5 px-3 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center justify-center gap-1.5 transition shadow-xs"
             >
-              <Layers className="w-3.5 h-3.5" /> Taksit Planı Başlat
+              <Layers className="w-3.5 h-3.5" /> Taksit Planı
             </button>
           </div>
         </div>
 
-        {/* Contact info grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
           <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800">
             <span className="text-slate-400 flex items-center gap-1 mb-1">
@@ -223,7 +217,6 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
           </div>
         )}
 
-        {/* Active Upcoming Dues / Installments preview for this Cari */}
         {cariUpcomingDues.length > 0 && (
           <div className="space-y-2 p-3 bg-indigo-50/60 dark:bg-indigo-950/40 rounded-xl border border-indigo-200/60 dark:border-indigo-900/50">
             <div className="flex items-center justify-between">
@@ -235,7 +228,6 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
                 Toplam: ₺{cariUpcomingDues.reduce((s, d) => s + d.amount, 0).toLocaleString('tr-TR')}
               </span>
             </div>
-
             <div className="flex gap-2 overflow-x-auto pb-1 text-xs">
               {cariUpcomingDues.map(due => (
                 <div
@@ -272,7 +264,6 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
           </div>
         )}
 
-        {/* Cari Ekstre (Transactions Statement Table) */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -280,7 +271,6 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
               Cari Hareket Ekstresi ({cariTransactions.length})
             </h4>
           </div>
-
           <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
             {cariTransactions.length === 0 ? (
               <div className="p-6 text-center text-xs text-slate-400">

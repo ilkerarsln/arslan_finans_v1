@@ -1,5 +1,6 @@
 import React from 'react';
 import { useFinance } from '../../context/FinanceContext';
+import { useKarTakip } from '../../context/KarTakipContext';
 import { ActiveTab } from '../../types/finance';
 import {
   LayoutDashboard,
@@ -10,10 +11,10 @@ import {
   FileBarChart2,
   Wallet,
   X,
-  CreditCard,
   ShieldCheck,
   Shield,
   UserCheck,
+  TrendingUp,
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -30,13 +31,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     upcomingDues,
     accounts,
     isAdmin,
-    userRole,
     allUsers,
     user,
     userProfile,
   } = useFinance();
 
-  const navItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: number | string }[] = [
+  const { alerts, sales } = useKarTakip();
+
+  const navItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: number | string; highlight?: boolean }[] = [
     {
       id: 'dashboard',
       label: 'Özet Panel',
@@ -47,6 +49,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       label: 'Gelir / Gider',
       icon: <ArrowLeftRight className="w-4 h-4" />,
       badge: transactions.length,
+    },
+    {
+      id: 'kartakip',
+      label: 'Kâr & Satış Portalı',
+      icon: <TrendingUp className="w-4 h-4 text-emerald-400" />,
+      badge: alerts.length > 0 ? `${alerts.length} uyarı` : sales.length,
+      highlight: true,
     },
     {
       id: 'accounts',
@@ -82,9 +91,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       : []),
   ];
 
-  // Quick total balance & current month net calculation for sidebar
   const totalBalance = accounts.reduce((acc, curr) => acc + curr.balance, 0);
-
   const now = new Date();
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const currentMonthNet = transactions
@@ -102,7 +109,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
   return (
     <>
-      {/* Mobile Backdrop */}
       {isOpen && (
         <div
           onClick={onClose}
@@ -115,7 +121,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'
         }`}
       >
-        {/* Brand Header */}
         <div className="p-5 flex items-center justify-between border-b border-slate-800/80">
           <div
             onClick={() => handleSelectTab('dashboard')}
@@ -130,7 +135,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 Arslan Finans
               </span>
               <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider block">
-                Nakit Akış Sistemi
+                Nakit & Kâr Sistemi
               </span>
             </div>
           </div>
@@ -142,7 +147,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* Quick Balance Mini-Card: Net Likit Varlık */}
         <div className="mx-4 my-3 p-3 bg-slate-900/80 rounded-xl border border-slate-800/80">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
@@ -163,7 +167,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 px-3 space-y-1 overflow-y-auto py-2">
           {navItems.map(item => {
             const isActive = activeTab === item.id;
@@ -174,6 +177,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition group ${
                   isActive
                     ? 'bg-emerald-600 text-white shadow-sm'
+                    : item.highlight
+                    ? 'text-emerald-300 hover:text-white hover:bg-slate-900 border border-emerald-500/20 bg-emerald-950/20'
                     : 'text-slate-400 hover:text-slate-100 hover:bg-slate-900'
                 }`}
               >
@@ -194,6 +199,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                     className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-medium ${
                       isActive
                         ? 'bg-emerald-700/80 text-white'
+                        : String(item.badge).includes('uyarı')
+                        ? 'bg-rose-950/80 text-rose-300 border border-rose-800/60'
                         : 'bg-slate-800 text-slate-400'
                     }`}
                   >
@@ -205,7 +212,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           })}
         </nav>
 
-        {/* Sidebar Footer */}
         <div className="p-3.5 border-t border-slate-800/80 text-xs text-slate-500 flex flex-col gap-2">
           {user && (
             <div className="bg-slate-900/90 rounded-xl p-2.5 border border-slate-800 flex items-center justify-between">
@@ -228,7 +234,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               )}
             </div>
           )}
-
           <div className="flex items-center justify-between text-[11px]">
             <span className="font-semibold text-slate-400">Arslan Finans</span>
             <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-1.5 py-0.5 rounded">

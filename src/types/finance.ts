@@ -1,11 +1,10 @@
-export type TransactionType = 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alımı';
-
+export type TransactionType = 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alışı';
 export type TransactionStatus = 'Tamamlandı' | 'Beklemede' | 'İptal';
 
 export interface Transaction {
   id: string;
   date: string;
-  dueDate?: string; // Mal alımı için ödeme / vade tarihi
+  dueDate?: string; // Mal alışı ödeme / vade tarihi
   type: TransactionType;
   category: string;
   cariId?: string;
@@ -20,7 +19,7 @@ export interface Transaction {
   status: TransactionStatus;
   documentNo?: string;
   createdAt: string;
-  createdBy?: string; // İşlemi ekleyen kullanıcı (Kullanıcı Adı veya E-posta)
+  createdBy?: string; // İşlemi ekleyen kullanıcı (Kullanıcı adı veya E-posta)
   createdByName?: string; // Ekleyen personelin adı
   installmentIndex?: number;
   totalInstallments?: number;
@@ -159,7 +158,7 @@ export interface DeletionRequest {
 export interface AuditLogEntry {
   id: string;
   action: 'Ekleme' | 'Güncelleme' | 'Silme Talebi' | 'Silme Onayı' | 'Silme Reddi' | 'Kalıcı Silme';
-  entityType: 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alımı' | 'Cari' | 'Hesap' | 'Personel' | 'Sistem';
+  entityType: 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alışı' | 'Cari' | 'Hesap' | 'Personel' | 'Sistem';
   entityId: string;
   description: string;
   performedBy: string;
@@ -170,4 +169,4 @@ export interface AuditLogEntry {
   details?: Record<string, any>;
 }
 
-export type ActiveTab = 'dashboard' | 'transactions' | 'accounts' | 'currents' | 'upcoming' | 'reports' | 'users' | 'audit';
+export type ActiveTab = 'dashboard' | 'transactions' | 'accounts' | 'currents' | 'upcoming' | 'reports' | 'users' | 'audit' | 'kartakip';

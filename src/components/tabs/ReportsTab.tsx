@@ -1,30 +1,22 @@
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useFinance } from '../../context/FinanceContext';
 import { formatCurrency } from '../../utils/formatters';
 import {
-  FileText,
+  FileBarChart2,
   Download,
   Upload,
-  RotateCcw,
+  RefreshCw,
+  FileSpreadsheet,
+  FileJson,
+  AlertTriangle,
+  CheckCircle2,
   TrendingUp,
   TrendingDown,
-  ShieldCheck,
-  Printer,
   Calendar,
-  AlertCircle,
-  FileSpreadsheet,
-  Cloud,
-  Smartphone,
-  CheckCircle2,
-  RefreshCw,
-  Lock,
-  Trash2,
+  Layers,
+  ShieldAlert,
+  ArrowRight
 } from 'lucide-react';
-
-const MONTH_NAMES_TR = [
-  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
-];
 
 export const ReportsTab: React.FC = () => {
   const {
@@ -33,656 +25,439 @@ export const ReportsTab: React.FC = () => {
     caris,
     upcomingDues,
     exportDataToExcel,
-    clearAllToZero,
     exportDataAsJson,
     importDataFromJson,
     importDataFromExcel,
-    showToast,
-    user,
+    clearAllToZero,
     isAdmin,
-    isCloudSyncing,
-    loginWithGoogle,
-    logout,
-    syncLocalToCloud,
+    permissions,
+    showToast,
   } = useFinance();
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const excelInputRef = useRef<HTMLInputElement>(null);
-  const [isUploadingExcel, setIsUploadingExcel] = useState(false);
+  const fileInputExcelRef = useRef<HTMLInputElement>(null);
+  const fileInputJsonRef = useRef<HTMLInputElement>(null);
 
-  // 1. Dinamik olarak sistemdeki işlem ve vade tarihlerinden ayları topla (YYYY-MM formatında)
-  const availableMonths = useMemo(() => {
-    const monthSet = new Set<string>();
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearInputConfirm, setClearInputConfirm] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  // Available years from transactions
+  const availableYears = useMemo(() => {
+    const years = new Set<number>();
+    years.add(new Date().getFullYear());
     transactions.forEach(t => {
-      if (t.date && t.date.length >= 7) {
-        monthSet.add(t.date.slice(0, 7));
+      if (t.date && t.date.length >= 4) {
+        const y = parseInt(t.date.slice(0, 4));
+        if (!isNaN(y)) years.add(y);
       }
     });
-    upcomingDues.forEach(d => {
-      if (d.dueDate && d.dueDate.length >= 7) {
-        monthSet.add(d.dueDate.slice(0, 7));
-      }
+    return Array.from(years).sort((a, b) => b - a);
+  }, [transactions]);
+
+  // Year Monthly Summary
+  const monthlySummary = useMemo(() => {
+    const months = Array.from({ length: 12 }, (_, i) => {
+      const monthStr = String(i + 1).padStart(2, '0');
+      const prefix = `${selectedYear}-${monthStr}`;
+
+      const monthTxs = transactions.filter(t => t.date.startsWith(prefix) && t.status !== 'İptal');
+      const income = monthTxs.filter(t => t.type === 'Gelir').reduce((sum, t) => sum + t.amount, 0);
+      const expense = monthTxs.filter(t => t.type === 'Gider' || t.type === 'Mal Alışı').reduce((sum, t) => sum + t.amount, 0);
+      const net = income - expense;
+
+      return {
+        monthIndex: i,
+        monthName: [
+          'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+          'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
+        ][i],
+        income,
+        expense,
+        net,
+        txCount: monthTxs.length,
+      };
     });
-    
-    const now = new Date();
-    const currentYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    monthSet.add(currentYm);
 
-    return Array.from(monthSet).sort().reverse();
-  }, [transactions, upcomingDues]);
+    return months;
+  }, [transactions, selectedYear]);
 
-  // Varsayılan olarak güncel ay
-  const now = new Date();
-  const defaultYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const [selectedYearMonth, setSelectedYearMonth] = useState<string>(
-    availableMonths.includes(defaultYm) ? defaultYm : (availableMonths[0] || defaultYm)
-  );
+  const yearTotalIncome = monthlySummary.reduce((sum, m) => sum + m.income, 0);
+  const yearTotalExpense = monthlySummary.reduce((sum, m) => sum + m.expense, 0);
+  const yearNetProfit = yearTotalIncome - yearTotalExpense;
 
-  // Seçilen ayın etiketi (Örn: "Ekim 2026")
-  const selectedMonthLabel = useMemo(() => {
-    const [y, m] = selectedYearMonth.split('-');
-    const mIndex = parseInt(m, 10) - 1;
-    return `${MONTH_NAMES_TR[mIndex] || m} ${y}`;
-  }, [selectedYearMonth]);
-
-  // 2. Seçilen aya ait işlemlerin filtrelenmesi
-  const selectedMonthTransactions = useMemo(() => {
-    return transactions.filter(
-      t => t.date.startsWith(selectedYearMonth) && t.status !== 'İptal'
-    );
-  }, [transactions, selectedYearMonth]);
-
-  const totalIncome = selectedMonthTransactions
-    .filter(t => t.type === 'Gelir')
-    .reduce((s, t) => s + t.amount, 0);
-
-  const totalExpense = selectedMonthTransactions
-    .filter(t => t.type === 'Gider')
-    .reduce((s, t) => s + t.amount, 0);
-
-  const netProfit = totalIncome - totalExpense;
-  const profitMargin = totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0;
-
-  // Likit Varlıklar ve Runway hesaplamaları
-  const liquidCash = accounts
-    .filter(a => a.type !== 'Şirket Kredi Kartı')
-    .reduce((s, a) => s + a.balance, 0);
-
-  const averageMonthlyExpense = totalExpense > 0 ? totalExpense : 30000;
-  const runwayMonths = averageMonthlyExpense > 0 ? liquidCash / averageMonthlyExpense : 0;
-
-  // Seçilen aya ait yaklaşan vade projeksiyonu
-  const upcomingThisMonthIncome = upcomingDues
-    .filter(d => !d.isCompleted && d.dueDate.startsWith(selectedYearMonth) && d.type === 'Gelir')
-    .reduce((s, d) => s + d.amount, 0);
-
-  const upcomingThisMonthExpense = upcomingDues
-    .filter(d => !d.isCompleted && d.dueDate.startsWith(selectedYearMonth) && d.type === 'Gider')
-    .reduce((s, d) => s + d.amount, 0);
-
-  const projected30DayCash = liquidCash + upcomingThisMonthIncome - upcomingThisMonthExpense;
-
-  // 3. Gelecek 3 Ayın Nakit Projeksiyonu Kutuları İçin Hesaplama
-  const upcomingFutureMonths = useMemo(() => {
-    const result: { ym: string; label: string; income: number; expense: number; net: number }[] = [];
-    const [currY, currM] = selectedYearMonth.split('-').map(Number);
-
-    for (let i = 1; i <= 3; i++) {
-      let targetM = currM + i;
-      let targetY = currY;
-      if (targetM > 12) {
-        targetM -= 12;
-        targetY += 1;
-      }
-      const ymStr = `${targetY}-${String(targetM).padStart(2, '0')}`;
-      const labelStr = `${MONTH_NAMES_TR[targetM - 1]} ${targetY}`;
-
-      const inc = upcomingDues
-        .filter(d => !d.isCompleted && d.dueDate.startsWith(ymStr) && d.type === 'Gelir')
-        .reduce((sum, d) => sum + d.amount, 0);
-
-      const exp = upcomingDues
-        .filter(d => !d.isCompleted && d.dueDate.startsWith(ymStr) && d.type === 'Gider')
-        .reduce((sum, d) => sum + d.amount, 0);
-
-      result.push({
-        ym: ymStr,
-        label: labelStr,
-        income: inc,
-        expense: exp,
-        net: inc - exp,
-      });
-    }
-    return result;
-  }, [selectedYearMonth, upcomingDues]);
-
-  // Export JSON file
-  const handleExportJson = () => {
-    const data = exportDataAsJson();
-    const blob = new Blob([data], { type: 'application/json' });
+  const handleJsonDownload = () => {
+    const jsonStr = exportDataAsJson();
+    const blob = new Blob([jsonStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = `arslan_finans_yedek_${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
     link.click();
-    showToast('Tüm finansal veriler JSON olarak yedeklendi', 'success');
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    showToast('Tüm finansal veriler JSON formatında yedeklendi.', 'success');
   };
 
-  // Import JSON file
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleJsonUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = event => {
-      const content = event.target?.result as string;
-      if (content) {
-        importDataFromJson(content);
+    reader.onload = ev => {
+      try {
+        const content = ev.target?.result as string;
+        const success = importDataFromJson(content);
+        if (success) {
+          showToast('JSON yedeği başarıyla geri yüklendi!', 'success');
+        } else {
+          showToast('JSON dosyası okunamadı veya biçimi geçersiz.', 'error');
+        }
+      } catch (err) {
+        showToast('Dosya işleme hatası oluştu.', 'error');
       }
     };
     reader.readAsText(file);
-    e.target.value = '';
+    if (fileInputJsonRef.current) fileInputJsonRef.current.value = '';
   };
 
-  // Import Excel file (.xlsx / .xls)
   const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setIsUploadingExcel(true);
     try {
-      await importDataFromExcel(file);
+      setIsProcessing(true);
+      const result = await importDataFromExcel(file);
+      showToast(
+        `Excel'den ${result.transactionsCount} hareket ve ${result.carisCount} cari aktarıldı.`,
+        'success'
+      );
+    } catch (err: any) {
+      showToast(err?.message || 'Excel içe aktarma başarısız oldu.', 'error');
     } finally {
-      setIsUploadingExcel(false);
-      e.target.value = '';
+      setIsProcessing(false);
+      if (fileInputExcelRef.current) fileInputExcelRef.current.value = '';
     }
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handleClearAll = async () => {
+    if (clearInputConfirm !== 'SIFIRLA') {
+      showToast('Lütfen onay kutusuna SIFIRLA yazın.', 'error');
+      return;
+    }
+    try {
+      setIsProcessing(true);
+      await clearAllToZero();
+      showToast('Tüm veritabanı başarıyla sıfırlandı.', 'info');
+      setShowClearConfirm(false);
+      setClearInputConfirm('');
+    } catch (err) {
+      showToast('Sıfırlama işlemi sırasında hata oluştu.', 'error');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (
     <div className="space-y-6">
-      {/* Header & Ay Seçici */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-            Mali Raporlar & Nakit Akış Analizi
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Kar-Zarar (P&L), Likidite Dayanımı (Runway) ve Dönemsel Raporlama
-          </p>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Ay ve Yıl Seçici Dropdown */}
-          <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl">
-            <Calendar className="w-4 h-4 text-emerald-500" />
-            <select
-              value={selectedYearMonth}
-              onChange={e => setSelectedYearMonth(e.target.value)}
-              className="bg-transparent text-xs font-semibold text-slate-800 dark:text-white outline-none cursor-pointer"
-            >
-              {availableMonths.map(ym => {
-                const [y, m] = ym.split('-');
-                const mIdx = parseInt(m, 10) - 1;
-                return (
-                  <option key={ym} value={ym} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">
-                    {MONTH_NAMES_TR[mIdx] || m} {y}
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-
-          <button
-            onClick={exportDataToExcel}
-            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
-          >
-            <FileSpreadsheet className="w-3.5 h-3.5" /> Excel Dışa Aktar (.xlsx)
-          </button>
-          <button
-            onClick={handlePrint}
-            className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
-          >
-            <Printer className="w-3.5 h-3.5" /> Raporu Yazdır
-          </button>
-          <button
-            onClick={handleExportJson}
-            className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
-          >
-            <Download className="w-3.5 h-3.5" /> JSON Yedek
-          </button>
-        </div>
-      </div>
-
-      {/* Financial Health & Runway Analysis Cards */}
+      {/* Top Banner & KPI Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Card 1: Kar / Zarar */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              {selectedMonthLabel} Net Kar
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              {selectedYear} Yıllık Toplam Gelir
             </span>
-            <div
-              className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                netProfit >= 0
-                  ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400'
-                  : 'bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400'
-              }`}
-            >
-              {netProfit >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5" />
             </div>
           </div>
-          <h3
-            className={`text-2xl font-bold font-mono-num mt-2 ${
-              netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+            {formatCurrency(yearTotalIncome)}
+          </div>
+          <p className="text-xs text-slate-500 mt-1">12 aylık tamamlanan gelir hareketleri</p>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              {selectedYear} Yıllık Toplam Gider
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+              <TrendingDown className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="text-2xl font-bold text-rose-600 dark:text-rose-400 tabular-nums">
+            {formatCurrency(yearTotalExpense)}
+          </div>
+          <p className="text-xs text-slate-500 mt-1">İşletme giderleri ve mal alışları toplamı</p>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              {selectedYear} Yıllık Net Faaliyet Kârı
+            </span>
+            <div
+              className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+                yearNetProfit >= 0
+                  ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400'
+              }`}
+            >
+              <FileBarChart2 className="w-5 h-5" />
+            </div>
+          </div>
+          <div
+            className={`text-2xl font-extrabold tabular-nums ${
+              yearNetProfit >= 0
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-rose-600 dark:text-rose-400'
             }`}
           >
-            {formatCurrency(netProfit)}
-          </h3>
-          <div className="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between">
-            <span>Kar Marjı:</span>
-            <span className="font-semibold text-slate-700 dark:text-slate-300">
-              %{profitMargin.toFixed(1)}
-            </span>
+            {formatCurrency(yearNetProfit)}
           </div>
-        </div>
-
-        {/* Card 2: Nakit Dayanımı (Runway) */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-blue-600 uppercase tracking-wider">
-              Nakit Dayanımı (Runway)
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-          </div>
-          <h3 className="text-2xl font-bold font-mono-num text-slate-900 dark:text-white mt-2">
-            {runwayMonths.toFixed(1)} Ay
-          </h3>
-          <div className="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between">
-            <span>Seçilen Ayın Gideri:</span>
-            <span className="font-semibold text-slate-700 dark:text-slate-300">
-              {formatCurrency(totalExpense)}
-            </span>
-          </div>
-        </div>
-
-        {/* Card 3: Projeksiyon */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-amber-600 uppercase tracking-wider">
-              {selectedMonthLabel} Tahmini Nakit
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400 flex items-center justify-center">
-              <Calendar className="w-4 h-4" />
-            </div>
-          </div>
-          <h3 className="text-2xl font-bold font-mono-num text-slate-900 dark:text-white mt-2">
-            {formatCurrency(projected30DayCash)}
-          </h3>
-          <div className="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between">
-            <span>Net Vade Etkisi:</span>
-            <span
-              className={`font-semibold ${
-                upcomingThisMonthIncome - upcomingThisMonthExpense >= 0
-                  ? 'text-emerald-600'
-                  : 'text-rose-600'
-              }`}
-            >
-              {formatCurrency(upcomingThisMonthIncome - upcomingThisMonthExpense)}
-            </span>
-          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            {yearNetProfit >= 0 ? 'Net dönem kârı elde edildi' : 'Net dönem zararı oluştu'}
+          </p>
         </div>
       </div>
 
-      {/* P&L Statement Table (Gelir Tablosu Özeti) */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-emerald-600" />
-            <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-              Gelir - Gider Tablosu Özeti (P&L)
+      {/* Year Selector & Month Breakdown */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-base font-bold text-slate-900 dark:text-white">
+              Aylık Gelir - Gider & Kâr/Zarar Tablosu
             </h3>
+            <p className="text-xs text-slate-500">
+              Seçilen yıla ait 12 aylık finansal performans dağılımı
+            </p>
           </div>
-          <span className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">
-            {selectedMonthLabel} Dönemi
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium text-slate-500">Yıl:</span>
+            <select
+              value={selectedYear}
+              onChange={e => setSelectedYear(parseInt(e.target.value))}
+              className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-900 dark:text-white"
+            >
+              {availableYears.map(y => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        <div className="p-5 space-y-4 text-xs">
-          {/* Income block */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between font-bold text-slate-900 dark:text-white text-sm border-b border-slate-200 dark:border-slate-800 pb-1">
-              <span>A. TOPLAM GELİRLER & TAHSİLATLAR</span>
-              <span className="font-mono-num text-emerald-600 dark:text-emerald-400">
-                +{formatCurrency(totalIncome)}
-              </span>
-            </div>
-            <div className="pl-4 space-y-1.5 text-slate-600 dark:text-slate-400">
-              {Object.entries(
-                selectedMonthTransactions
-                  .filter(t => t.type === 'Gelir')
-                  .reduce((acc: { [cat: string]: number }, curr) => {
-                    acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
-                    return acc;
-                  }, {})
-              ).length === 0 ? (
-                <div className="text-slate-400 py-1">Bu ay için gelir kaydı bulunmuyor.</div>
-              ) : (
-                Object.entries(
-                  selectedMonthTransactions
-                    .filter(t => t.type === 'Gelir')
-                    .reduce((acc: { [cat: string]: number }, curr) => {
-                      acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
-                      return acc;
-                    }, {})
-                ).map(([cat, amt]) => (
-                  <div key={cat} className="flex justify-between">
-                    <span>{cat}</span>
-                    <span className="font-mono-num font-medium text-slate-800 dark:text-slate-200">
-                      {formatCurrency(amt as number)}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">
+                <th className="py-3 px-4">Ay</th>
+                <th className="py-3 px-4 text-center">İşlem Adedi</th>
+                <th className="py-3 px-4 text-right">Gelir</th>
+                <th className="py-3 px-4 text-right">Gider & Mal Alışı</th>
+                <th className="py-3 px-4 text-right">Aylık Net Kâr</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+              {monthlySummary.map(m => {
+                const isNetPositive = m.net > 0;
+                const isNetNegative = m.net < 0;
 
-          {/* Expense block */}
-          <div className="space-y-2 pt-2">
-            <div className="flex items-center justify-between font-bold text-slate-900 dark:text-white text-sm border-b border-slate-200 dark:border-slate-800 pb-1">
-              <span>B. TOPLAM GİDERLER & FAALİYET HARCAMALARI</span>
-              <span className="font-mono-num text-rose-600 dark:text-rose-400">
-                -{formatCurrency(totalExpense)}
-              </span>
-            </div>
-            <div className="pl-4 space-y-1.5 text-slate-600 dark:text-slate-400">
-              {Object.entries(
-                selectedMonthTransactions
-                  .filter(t => t.type === 'Gider')
-                  .reduce((acc: { [cat: string]: number }, curr) => {
-                    acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
-                    return acc;
-                  }, {})
-              ).length === 0 ? (
-                <div className="text-slate-400 py-1">Bu ay için gider kaydı bulunmuyor.</div>
-              ) : (
-                Object.entries(
-                  selectedMonthTransactions
-                    .filter(t => t.type === 'Gider')
-                    .reduce((acc: { [cat: string]: number }, curr) => {
-                      acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
-                      return acc;
-                    }, {})
-                ).map(([cat, amt]) => (
-                  <div key={cat} className="flex justify-between">
-                    <span>{cat}</span>
-                    <span className="font-mono-num font-medium text-slate-800 dark:text-slate-200">
-                      {formatCurrency(amt as number)}
-                    </span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Bottom Net block */}
-          <div className="pt-3 border-t-2 border-slate-300 dark:border-slate-700 flex justify-between font-bold text-sm">
-            <span className="text-slate-900 dark:text-white">NET FAALİYET SONUCU (A - B)</span>
-            <span
-              className={`font-mono-num text-base ${
-                netProfit >= 0
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-rose-600 dark:text-rose-400'
-              }`}
-            >
-              {formatCurrency(netProfit)}
-            </span>
-          </div>
+                return (
+                  <tr key={m.monthIndex} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                    <td className="py-3 px-4 font-bold text-slate-900 dark:text-white">
+                      {m.monthName}
+                    </td>
+                    <td className="py-3 px-4 text-center text-slate-500">
+                      {m.txCount}
+                    </td>
+                    <td className="py-3 px-4 text-right font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                      {formatCurrency(m.income)}
+                    </td>
+                    <td className="py-3 px-4 text-right font-semibold text-rose-600 dark:text-rose-400 tabular-nums">
+                      {formatCurrency(m.expense)}
+                    </td>
+                    <td className="py-3 px-4 text-right font-bold tabular-nums">
+                      <span
+                        className={
+                          isNetPositive
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : isNetNegative
+                            ? 'text-rose-600 dark:text-rose-400'
+                            : 'text-slate-400'
+                        }
+                      >
+                        {formatCurrency(m.net)}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      {/* Gelecek Dönem Nakit Projeksiyon Kutuları (Önümüzdeki 3 Ay) */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-5 space-y-4">
-        <div>
-          <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-emerald-500" />
-            Gelecek Dönem Nakit Projeksiyonları (Önümüzdeki 3 Ay)
-          </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Vade takvimindeki kayıtlı çek, senet ve planlı ödemelere göre gelecek aylar
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {upcomingFutureMonths.map(fm => (
-            <div
-              key={fm.ym}
-              className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 space-y-3"
-            >
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/60 pb-2">
-                <span className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-wider">
-                  {fm.label}
-                </span>
-                <span
-                  className={`text-xs font-mono-num font-bold ${
-                    fm.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
-                  }`}
-                >
-                  Net: {formatCurrency(fm.net)}
-                </span>
-              </div>
-              <div className="space-y-1.5 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">Gelir:</span>
-                  <span className="font-mono-num font-semibold text-emerald-600 dark:text-emerald-400">
-                    +{formatCurrency(fm.income)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-rose-600 dark:text-rose-400 font-medium">Gider:</span>
-                  <span className="font-mono-num font-semibold text-rose-600 dark:text-rose-400">
-                    -{formatCurrency(fm.expense)}
-                  </span>
-                </div>
-              </div>
+      {/* Data Backup & Restore & Admin Tools */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Export / Backup */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Download className="w-5 h-5 text-emerald-500" />
+              <h3 className="font-bold text-slate-900 dark:text-white text-base">
+                Veri Yedekleme & Dışa Aktar
+              </h3>
             </div>
-          ))}
-        </div>
-      </div>
+            <p className="text-xs text-slate-500 leading-relaxed mb-4">
+              Tüm gelir-gider hareketlerini, cari hesapları, banka bakiyelerini ve vade kayıtlarını Excel veya JSON formatında bilgisayarınıza indirin.
+            </p>
+          </div>
 
-      {/* Cloud Synchronization & Multi-Device Sync Card */}
-      <div className="bg-gradient-to-r from-emerald-900/10 via-slate-900/5 to-blue-900/10 dark:from-emerald-950/40 dark:via-slate-900 dark:to-blue-950/40 rounded-2xl border border-emerald-500/20 dark:border-emerald-500/30 p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-600 dark:text-emerald-400">
-              <Smartphone className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-                  Çoklu Cihaz Bulut Eşitleme (Firebase Firestore)
-                </h3>
-                {user ? (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    Bağlı & Canlı Eşitleniyor
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
-                    Cihaz İçi Yerel Mod
-                  </span>
-                )}
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Ofis bilgisayarınız, telefonunuz ve tabletiniz aynı veritabanını kullanır. Yapılan her işlem tüm cihazlarınızda eşzamanlı görünür.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            {user ? (
-              <>
-                <button
-                  onClick={syncLocalToCloud}
-                  disabled={isCloudSyncing}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-xs disabled:opacity-50"
-                  title="Mevcut tüm yerel verileri bulut veritabanına aktarır"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${isCloudSyncing ? 'animate-spin' : ''}`} />
-                  Tüm Verileri Buluta Eşitle
-                </button>
-                <button
-                  onClick={logout}
-                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold transition"
-                >
-                  Çıkış Yap
-                </button>
-              </>
-            ) : (
-              <button
-                onClick={loginWithGoogle}
-                disabled={isCloudSyncing}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition shadow-xs"
-              >
-                <Cloud className="w-4 h-4" />
-                Google ile Giriş Yap & Senkronize Et
-              </button>
-            )}
-          </div>
-        </div>
-
-        {user && (
-          <div className="text-xs text-emerald-800 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/50 p-2.5 rounded-xl border border-emerald-200 dark:border-emerald-800 flex items-center justify-between">
-            <span>
-              Aktif Hesap: <strong>{user.displayName || user.email}</strong> ({user.email})
-            </span>
-            <span className="text-[11px] text-emerald-600 dark:text-emerald-400">
-              Gerçek zamanlı Firestore aktif
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* Backup and Data Maintenance */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-5 space-y-4">
-        <div>
-          <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-            Veri Güvenliği, Yedekleme & İçe/Dışa Aktarma
-          </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Tüm işlem ve cari kayıtlarınızı JSON veya Excel (.xlsx / .xls) ile cihazınıza aktarabilir, yedek yükleyebilir veya sıfırlayabilirsiniz.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-3 pt-2">
-          {/* JSON Export */}
-          <button
-            onClick={handleExportJson}
-            className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 transition"
-          >
-            <Download className="w-4 h-4 text-emerald-600" />
-            Yedek Dosyası Al (JSON)
-          </button>
-
-          {/* JSON Import */}
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileUpload}
-            accept=".json"
-            className="hidden"
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 transition"
-          >
-            <Upload className="w-4 h-4 text-blue-600" />
-            Yedekten Geri Yükle (JSON)
-          </button>
-
-          {/* Excel Import (.xlsx / .xls) */}
-          <input
-            type="file"
-            ref={excelInputRef}
-            onChange={handleExcelUpload}
-            accept=".xlsx, .xls"
-            className="hidden"
-          />
-          <button
-            onClick={() => excelInputRef.current?.click()}
-            disabled={isUploadingExcel}
-            className="px-4 py-2 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-semibold flex items-center gap-2 transition disabled:opacity-50"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-            {isUploadingExcel ? 'Excel Yükleniyor...' : "Excel'den Veri İçe Aktar (.xlsx / .xls)"}
-          </button>
-
-          {/* Excel Export (.xlsx) */}
-          <button
-            onClick={exportDataToExcel}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition shadow-xs"
-          >
-            <Download className="w-4 h-4" />
-            Excel'e Dışa Aktar (.xlsx)
-          </button>
-
-          {/* Reset All Data (Guarded by Admin role) */}
-          {isAdmin ? (
             <button
-              onClick={() => {
-                if (
-                  window.confirm(
-                    'DİKKAT: Tüm şirket veritabanı (işlemler, cariler, vadeler) sıfırlanacaktır. Bu işlem geri alınamaz! Devam etmek istiyor musunuz?'
-                  )
-                ) {
-                  clearAllToZero();
-                }
-              }}
-              className="px-4 py-2 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-xl text-xs font-semibold flex items-center gap-2 transition"
-              title="Tüm veritabanını temiz başlangıç durumuna sıfırlar (Yalnızca Admin)"
+              onClick={exportDataToExcel}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl shadow-xs transition-all"
             >
-              <Trash2 className="w-4 h-4 text-rose-600 dark:text-rose-400" />
-              Tüm Verileri Sıfırla (Admin)
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Excel Olarak İndir (.xlsx)</span>
             </button>
-          ) : (
-            <div
-              className="px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] text-slate-400 flex items-center gap-1.5"
-              title="Veri sıfırlama işlemi için Yönetici (Admin) yetkisi gerekmektedir"
+            <button
+              onClick={handleJsonDownload}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs rounded-xl transition-all"
             >
-              <Lock className="w-3.5 h-3.5 text-slate-400" />
-              <span>Veri Sıfırlama: Yalnızca Admin</span>
-            </div>
-          )}
+              <FileJson className="w-4 h-4 text-blue-500" />
+              <span>JSON Yedek Al</span>
+            </button>
+          </div>
         </div>
 
-        {/* Excel Sütun Eşleme Bilgilendirme Kutusu */}
-        <div className="bg-slate-50 dark:bg-slate-800/60 rounded-xl p-3.5 border border-slate-200 dark:border-slate-800 flex items-start gap-3 mt-3">
-          <div className="p-1.5 bg-emerald-100 dark:bg-emerald-950/80 rounded-lg text-emerald-600 dark:text-emerald-400 shrink-0">
-            <FileSpreadsheet className="w-4 h-4" />
+        {/* Import / Restore */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <Upload className="w-5 h-5 text-blue-500" />
+              <h3 className="font-bold text-slate-900 dark:text-white text-base">
+                Veri Geri Yükleme & İçe Aktar
+              </h3>
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed mb-4">
+              Önceden aldığınız JSON yedeğini veya Arslan Finans uyumlu Excel dosyasını seçerek kayıtları sisteme geri aktarın.
+            </p>
           </div>
-          <div className="text-xs space-y-1">
-            <p className="font-semibold text-slate-800 dark:text-slate-200">
-              Otomatik Excel Sütun Eşleme (.xlsx / .xls):
-            </p>
-            <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
-              Yüklediğiniz Excel tablosundaki sütun başlıkları otomatik algılanır:{' '}
-              <span className="inline-block bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded text-[11px] font-mono text-slate-700 dark:text-slate-300">Tarih</span>,{' '}
-              <span className="inline-block bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded text-[11px] font-mono text-slate-700 dark:text-slate-300">Tür</span>,{' '}
-              <span className="inline-block bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded text-[11px] font-mono text-slate-700 dark:text-slate-300">Kategori</span>,{' '}
-              <span className="inline-block bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded text-[11px] font-mono text-slate-700 dark:text-slate-300">Cari / Firma</span>,{' '}
-              <span className="inline-block bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded text-[11px] font-mono text-slate-700 dark:text-slate-300">Açıklama</span>,{' '}
-              <span className="inline-block bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded text-[11px] font-mono text-slate-700 dark:text-slate-300">Hesap</span>,{' '}
-              <span className="inline-block bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded text-[11px] font-mono text-slate-700 dark:text-slate-300">Tutar</span>.{' '}
-              Tablodaki veriler hem <strong className="text-slate-700 dark:text-slate-300">İşlemler (Transactions)</strong> hem de <strong className="text-slate-700 dark:text-slate-300">Cari Hesaplar (Caris)</strong> yapısına dönüştürülüp hesap bakiyeleri güncellenir.
-            </p>
+
+          <div className="flex items-center gap-3">
+            <input
+              type="file"
+              ref={fileInputExcelRef}
+              onChange={handleExcelUpload}
+              accept=".xlsx,.xls"
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputExcelRef.current?.click()}
+              disabled={isProcessing}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs rounded-xl transition-all"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-emerald-500" />
+              <span>Excel İçe Aktar</span>
+            </button>
+
+            <input
+              type="file"
+              ref={fileInputJsonRef}
+              onChange={handleJsonUpload}
+              accept=".json"
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputJsonRef.current?.click()}
+              disabled={isProcessing}
+              className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 font-semibold text-xs rounded-xl transition-all"
+            >
+              <FileJson className="w-4 h-4 text-blue-500" />
+              <span>JSON Geri Yükle</span>
+            </button>
           </div>
         </div>
       </div>
+
+      {/* Admin Danger Zone */}
+      {isAdmin && (
+        <div className="bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/60 rounded-2xl p-5 shadow-xs">
+          <div className="flex items-start justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                <ShieldAlert className="w-5 h-5" />
+              </div>
+              <div>
+                <h4 className="font-bold text-slate-900 dark:text-white text-sm">
+                  Yönetici Sıfırlama Bölgesi (Kritik İşlem)
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Tüm finans hareketlerini, cari bakiyelerini ve vade takvimini sıfırlayarak temiz bir başlangıç yapabilirsiniz.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowClearConfirm(true)}
+              className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-colors shrink-0"
+            >
+              Tüm Veritabanını Sıfırla
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Clear Database Modal */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl">
+            <div className="w-12 h-12 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-4">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+              Veritabanını Sıfırlamak Üzeresiniz!
+            </h3>
+            <p className="text-xs text-slate-500 mt-2 leading-relaxed">
+              Bu işlem tüm gelir/gider hareketlerini, carileri ve vade kayıtlarını kalıcı olarak silecektir. Devam etmek için aşağıdaki kutuya <strong className="text-rose-600 dark:text-rose-400 font-mono">SIFIRLA</strong> yazın:
+            </p>
+
+            <div className="mt-4">
+              <input
+                type="text"
+                placeholder="SIFIRLA"
+                value={clearInputConfirm}
+                onChange={e => setClearInputConfirm(e.target.value)}
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-mono text-center font-bold text-rose-600 dark:text-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setShowClearConfirm(false);
+                  setClearInputConfirm('');
+                }}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+              >
+                Vazgeç
+              </button>
+              <button
+                onClick={handleClearAll}
+                disabled={clearInputConfirm !== 'SIFIRLA' || isProcessing}
+                className="px-5 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white rounded-xl shadow-xs"
+              >
+                {isProcessing ? 'Sıfırlanıyor...' : 'Kalıcı Olarak Sıfırla'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useFinance } from '../../context/FinanceContext';
+import { useKarTakip } from '../../context/KarTakipContext';
 import {
   formatCurrency,
   formatDate,
@@ -15,26 +16,24 @@ import {
   Calendar,
   Wallet,
   CheckCircle2,
-  AlertCircle,
-  Plus,
   TrendingUp,
   TrendingDown,
-  CreditCard,
   Users,
   Layers,
   ShoppingBag,
+  Sparkles,
 } from 'lucide-react';
 
 const MONTH_NAMES_TR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
 ];
 
 export const DashboardTab: React.FC<{
   onOpenTransfer: () => void;
   onOpenAddAccount: () => void;
   onOpenAddCari: () => void;
-}> = ({ onOpenTransfer, onOpenAddAccount, onOpenAddCari }) => {
+}> = ({ onOpenTransfer }) => {
   const {
     transactions,
     accounts,
@@ -46,10 +45,10 @@ export const DashboardTab: React.FC<{
     toggleUpcomingDue,
   } = useFinance();
 
-  // Dynamic available months from transactions
+  const { kpis: karKpis, alerts: karAlerts } = useKarTakip();
+
   const now = new Date();
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-
   const availableMonths = useMemo(() => {
     const set = new Set<string>();
     set.add(currentMonthKey);
@@ -60,16 +59,12 @@ export const DashboardTab: React.FC<{
   }, [transactions, currentMonthKey]);
 
   const [selectedMonthKey, setSelectedMonthKey] = useState<string>(currentMonthKey);
-
   const selectedMonthLabel = useMemo(() => {
     const [y, m] = selectedMonthKey.split('-');
     const mIdx = parseInt(m, 10) - 1;
     return `${MONTH_NAMES_TR[mIdx] || m} ${y}`;
   }, [selectedMonthKey]);
 
-  const isCurrentMonth = selectedMonthKey === currentMonthKey;
-
-  // Selected month calculations
   const currentMonthTxs = useMemo(() => {
     return transactions.filter(
       tx => tx.date.startsWith(selectedMonthKey) && tx.status !== 'İptal'
@@ -88,30 +83,21 @@ export const DashboardTab: React.FC<{
       .reduce((sum, tx) => sum + tx.amount, 0);
   }, [currentMonthTxs]);
 
-  // Net Liquid Status / Net Cash Flow for the selected month (Gelirler - Giderler)
   const netCashFlowThisMonth = totalIncomeThisMonth - totalExpenseThisMonth;
 
-  // Liquid cash (bank + cash boxes, ignoring credit card debt)
   const totalLiquidAssets = accounts
     .filter(a => a.type !== 'Şirket Kredi Kartı')
     .reduce((sum, a) => sum + a.balance, 0);
 
-  // Total net worth (including credit card debts)
-  const totalNetBalance = accounts.reduce((sum, a) => sum + a.balance, 0);
-
-  // Caris total receivables (Alacaklar) & payables (Borçlar)
   const totalReceivables = caris
     .filter(c => c.balance > 0)
     .reduce((sum, c) => sum + c.balance, 0);
-
   const totalPayables = caris
     .filter(c => c.balance < 0)
     .reduce((sum, c) => sum + Math.abs(c.balance), 0);
 
-  // Recent 6 transactions
   const recentTransactions = transactions.slice(0, 6);
 
-  // Pending dues (sorted by due date)
   const activeDues = upcomingDues
     .filter(d => !d.isCompleted)
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
@@ -124,7 +110,7 @@ export const DashboardTab: React.FC<{
         <div className="relative z-10">
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-emerald-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Finansal Durum Raporu · {selectedMonthLabel}</span>
+            <span>Finansal Durum Raporu • {selectedMonthLabel}</span>
             {availableMonths.length > 1 && (
               <div className="flex items-center gap-1.5 ml-1 bg-slate-800/90 border border-slate-700/80 rounded-lg px-2 py-0.5">
                 <Calendar className="w-3 h-3 text-emerald-400" />
@@ -132,7 +118,7 @@ export const DashboardTab: React.FC<{
                   value={selectedMonthKey}
                   onChange={e => setSelectedMonthKey(e.target.value)}
                   className="bg-transparent text-emerald-300 text-[11px] font-semibold outline-none cursor-pointer"
-                  title="Görüntülenecek ayı seçin"
+                  title="Görüntülenecek ay"
                 >
                   {availableMonths.map(ym => {
                     const [y, m] = ym.split('-');
@@ -155,28 +141,24 @@ export const DashboardTab: React.FC<{
           </p>
         </div>
 
-        {/* Quick Action Buttons */}
         <div className="flex flex-wrap items-center gap-2 relative z-10">
           <button
             onClick={() => openTransactionModal({ type: 'Gelir' })}
             className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
-            title="Yeni Gelir / Tahsilat Kaydı"
           >
             <ArrowDownRight className="w-3.5 h-3.5" /> Gelir Ekle
           </button>
           <button
             onClick={() => openTransactionModal({ type: 'Gider' })}
             className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
-            title="Yeni Gider / Ödeme Kaydı"
           >
             <ArrowUpRight className="w-3.5 h-3.5" /> Gider Ekle
           </button>
           <button
-            onClick={() => openTransactionModal({ type: 'Mal Alımı' })}
+            onClick={() => openTransactionModal({ type: 'Mal Alışı' })}
             className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
-            title="Tedarikçiden Vadeli Mal Alımı (Kasadan düşmeden borçlandırır)"
           >
-            <ShoppingBag className="w-3.5 h-3.5" /> Mal Alımı Ekle
+            <ShoppingBag className="w-3.5 h-3.5" /> Mal Alışı Ekle
           </button>
           <button
             onClick={() => openInstallmentModal()}
@@ -188,14 +170,49 @@ export const DashboardTab: React.FC<{
             onClick={onOpenTransfer}
             className="px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition border border-slate-600 shadow-sm active:scale-95"
           >
-            <ArrowRightLeft className="w-3.5 h-3.5 text-blue-400" /> Virman Yap
+            <ArrowRightLeft className="w-3.5 h-3.5 text-blue-400" /> Virman
+          </button>
+          <button
+            onClick={() => setActiveTab('kartakip')}
+            className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+          >
+            <TrendingUp className="w-3.5 h-3.5" /> Kâr Takip Portalı
           </button>
         </div>
       </div>
 
+      {/* KarTakip Integration Showcase Banner */}
+      <div className="bg-gradient-to-r from-emerald-950/40 via-teal-950/30 to-indigo-950/40 border border-emerald-500/30 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+            <Sparkles className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-sm text-slate-900 dark:text-white">
+                Kâr & Satış Analiz Modülü Entegre Edildi
+              </span>
+              {karAlerts.length > 0 && (
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-600 text-white">
+                  {karAlerts.length} Fiyat Uyarısı
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Toplam Satış Cirosu: <strong className="text-slate-800 dark:text-slate-200 font-mono-num">{formatCurrency(karKpis.totalRevenue)}</strong> • Net Brüt Kâr: <strong className="text-emerald-600 dark:text-emerald-400 font-mono-num">{formatCurrency(karKpis.totalProfit)}</strong> • Marj: <strong>%{karKpis.averageMargin.toFixed(1)}</strong>
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={() => setActiveTab('kartakip')}
+          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-xs shrink-0"
+        >
+          Kâr Takip Portalını Aç →
+        </button>
+      </div>
+
       {/* KPI Stat Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Toplam Likit Varlık / Nakit & Banka */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
@@ -222,7 +239,6 @@ export const DashboardTab: React.FC<{
           </div>
         </div>
 
-        {/* Card 2: Seçilen Ayın Toplam Geliri */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
@@ -243,7 +259,6 @@ export const DashboardTab: React.FC<{
           </div>
         </div>
 
-        {/* Card 3: Seçilen Ayın Toplam Gideri */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
@@ -264,7 +279,6 @@ export const DashboardTab: React.FC<{
           </div>
         </div>
 
-        {/* Card 4: Net Likit Varlık (Dinamik Kırmızı/Yeşil Renklendirme) */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition">
           <div className="flex items-center justify-between">
             <span
@@ -314,9 +328,8 @@ export const DashboardTab: React.FC<{
         </div>
       </div>
 
-      {/* Secondary Quick Overview: Receivables vs Payables */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
               <Users className="w-5 h-5" />
@@ -332,13 +345,13 @@ export const DashboardTab: React.FC<{
           </div>
           <button
             onClick={() => setActiveTab('currents')}
-            className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline"
+            className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-emerald-600 underline"
           >
             Carileri İncele
           </button>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 flex items-center justify-center">
               <Building2 className="w-5 h-5" />
@@ -354,14 +367,13 @@ export const DashboardTab: React.FC<{
           </div>
           <button
             onClick={() => setActiveTab('currents')}
-            className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 underline"
+            className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-rose-600 underline"
           >
             Borçları İncele
           </button>
         </div>
       </div>
 
-      {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         <div className="lg:col-span-7 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <MonthlyFlowChart transactions={transactions} upcomingDues={upcomingDues} />
@@ -371,9 +383,7 @@ export const DashboardTab: React.FC<{
         </div>
       </div>
 
-      {/* Bottom 2-Column: Recent Transactions & Upcoming Dues */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Recent Transactions List */}
         <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
           <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <div>
@@ -388,10 +398,9 @@ export const DashboardTab: React.FC<{
               onClick={() => setActiveTab('transactions')}
               className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
             >
-              Tümünü Gör ({transactions.length})
+              Tümü ({transactions.length})
             </button>
           </div>
-
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
@@ -419,15 +428,11 @@ export const DashboardTab: React.FC<{
                             ? 'text-emerald-600 dark:text-emerald-400'
                             : tx.type === 'Gider'
                             ? 'text-rose-600 dark:text-rose-400'
-                            : tx.type === 'Mal Alımı'
+                            : tx.type === 'Mal Alışı'
                             ? 'text-amber-600 dark:text-amber-400'
                             : 'text-blue-600 dark:text-blue-400'
                         }`}
                       >
-                        {tx.type === 'Gelir' && <ArrowDownRight className="w-3 h-3" />}
-                        {tx.type === 'Gider' && <ArrowUpRight className="w-3 h-3" />}
-                        {tx.type === 'Mal Alımı' && <ShoppingBag className="w-3 h-3" />}
-                        {tx.type === 'Transfer' && <ArrowRightLeft className="w-3 h-3" />}
                         {tx.type}
                       </span>
                     </td>
@@ -441,14 +446,14 @@ export const DashboardTab: React.FC<{
                       className={`py-3 px-4 text-right font-mono-num font-bold ${
                         tx.type === 'Gelir'
                           ? 'text-emerald-600 dark:text-emerald-400'
-                          : tx.type === 'Mal Alımı'
+                          : tx.type === 'Mal Alışı'
                           ? 'text-amber-600 dark:text-amber-400'
                           : tx.type === 'Gider'
                           ? 'text-rose-600 dark:text-rose-400'
                           : 'text-blue-600 dark:text-blue-400'
                       }`}
                     >
-                      {tx.type === 'Gelir' ? '+' : tx.type === 'Gider' ? '-' : tx.type === 'Mal Alımı' ? '-' : ''}
+                      {tx.type === 'Gelir' ? '+' : tx.type === 'Gider' ? '-' : tx.type === 'Mal Alışı' ? '-' : ''}
                       {formatCurrency(tx.amount)}
                     </td>
                   </tr>
@@ -458,7 +463,6 @@ export const DashboardTab: React.FC<{
           </div>
         </div>
 
-        {/* Upcoming Dues Widget */}
         <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-4 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -475,7 +479,6 @@ export const DashboardTab: React.FC<{
                 Takvim ({upcomingDues.length})
               </button>
             </div>
-
             <div className="divide-y divide-slate-100 dark:divide-slate-800 mt-2">
               {activeDues.length === 0 ? (
                 <div className="py-8 text-center text-xs text-slate-400">
@@ -499,15 +502,10 @@ export const DashboardTab: React.FC<{
                           <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
                             {due.title}
                           </p>
-                          {due.installmentIndex && due.totalInstallments && (
-                            <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800 px-1.5 py-0.2 rounded shrink-0">
-                              {due.installmentIndex}/{due.totalInstallments}
-                            </span>
-                          )}
                         </div>
                         <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5 ml-4">
                           <span>{formatDate(due.dueDate)}</span>
-                          <span>·</span>
+                          <span>•</span>
                           <span
                             className={`font-medium ${
                               remaining.status === 'overdue'
@@ -521,7 +519,6 @@ export const DashboardTab: React.FC<{
                           </span>
                         </div>
                       </div>
-
                       <div className="flex items-center gap-2 shrink-0">
                         <span
                           className={`text-xs font-mono-num font-bold ${
@@ -547,7 +544,6 @@ export const DashboardTab: React.FC<{
               )}
             </div>
           </div>
-
           <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs">
             <span className="text-slate-400">Vadesi gelen çek ve taksitler</span>
             <button

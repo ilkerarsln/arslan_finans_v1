@@ -15,7 +15,6 @@ export const CariModal: React.FC<CariModalProps> = ({
   editingCari,
 }) => {
   const { addCari, updateCari } = useFinance();
-
   const [name, setName] = useState('');
   const [type, setType] = useState<CariType>('Müşteri');
   const [phone, setPhone] = useState('');
@@ -55,7 +54,6 @@ export const CariModal: React.FC<CariModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const numBalance = parseFloat(balance) || 0;
-
     if (editingCari) {
       updateCari({
         ...editingCari,
@@ -82,7 +80,6 @@ export const CariModal: React.FC<CariModalProps> = ({
         notes: notes.trim() || undefined,
       });
     }
-
     onClose();
   };
 
@@ -110,7 +107,7 @@ export const CariModal: React.FC<CariModalProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Cari Türü *
+                Cari Türü
               </label>
               <select
                 value={type}
@@ -139,7 +136,7 @@ export const CariModal: React.FC<CariModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Firma / Şahıs Ünvanı *
+              Firma / Unvan *
             </label>
             <input
               type="text"
@@ -218,7 +215,7 @@ export const CariModal: React.FC<CariModalProps> = ({
               className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono-num focus:ring-2 focus:ring-emerald-500"
             />
             <p className="text-[11px] text-slate-400 mt-1">
-              * Pozitif değer alacağımızı (+), negatif değer firmaya borcumuzu (-) ifade eder.
+              * Pozitif değer alacağı (+), negatif değer firmaya borcumuzu (-) ifade eder.
             </p>
           </div>
 

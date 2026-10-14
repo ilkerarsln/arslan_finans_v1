@@ -12,16 +12,11 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
-  Users,
 } from 'lucide-react';
 
 export const LoginScreen: React.FC = () => {
   const { loginWithGoogle, loginWithUsername, isCloudSyncing } = useFinance();
-
-  // Tab state: 'staff' (Kullanıcı Adı & Şifre) or 'google' (Google OAuth)
   const [authMode, setAuthMode] = useState<'staff' | 'google'>('staff');
-
-  // Staff login state
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -31,17 +26,15 @@ export const LoginScreen: React.FC = () => {
   const handleStaffLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
-
     const cleanUsername = username.trim();
     if (!cleanUsername) {
-      setErrorMessage('Lütfen kullanıcı adınızı girin.');
+      setErrorMessage('Lütfen kullanıcı adı girin.');
       return;
     }
     if (!password) {
       setErrorMessage('Lütfen şifrenizi girin.');
       return;
     }
-
     try {
       setIsSubmitting(true);
       await loginWithUsername(cleanUsername, password);
@@ -54,12 +47,10 @@ export const LoginScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-center items-center px-4 relative overflow-hidden selection:bg-emerald-500/30 selection:text-emerald-200">
-      {/* Background glowing effects */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-md relative z-10">
-        {/* Logo and Brand */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white shadow-xl shadow-emerald-500/20 mb-3">
             <TrendingUp className="w-9 h-9" />
@@ -68,13 +59,11 @@ export const LoginScreen: React.FC = () => {
             Arslan Finans
           </h1>
           <p className="text-slate-400 text-sm">
-            Kurumsal Finans, Nakit Akış ve Yetkilendirme Platformu
+            Kurumsal Finans, Nakit Akışı, Kâr ve Satış Yönetim Platformu
           </p>
         </div>
 
-        {/* Card */}
         <div className="bg-slate-800/85 backdrop-blur-xl border border-slate-700/70 rounded-2xl p-6 md:p-7 shadow-2xl">
-          {/* Card Header & Badge */}
           <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-700/60">
             <div className="flex items-center gap-2 text-emerald-400 text-sm font-semibold">
               <Lock className="w-4 h-4" />
@@ -85,12 +74,11 @@ export const LoginScreen: React.FC = () => {
                 Hibrit Giriş
               </span>
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-700/60 text-slate-300 font-mono font-bold">
-                V2.1
+                V3.0
               </span>
             </div>
           </div>
 
-          {/* Dual-Mode Tab Selector */}
           <div className="grid grid-cols-2 p-1 bg-slate-900/70 rounded-xl border border-slate-700/60 mb-5">
             <button
               type="button"
@@ -141,21 +129,19 @@ export const LoginScreen: React.FC = () => {
             </button>
           </div>
 
-          {/* Mode 1: Staff Login (Username & Password) */}
           {authMode === 'staff' && (
             <form onSubmit={handleStaffLogin} className="space-y-4" autoComplete="off">
               <p className="text-slate-300 text-xs leading-relaxed">
-                E-posta adresi gerekmeden kullanıcı adı ve şifrenizle güvenle giriş yapın.
+                Kullanıcı adı ve şifrenizle sisteme giriş yapın:
               </p>
 
               {errorMessage && (
-                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs animate-shake">
+                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
                   <span>{errorMessage}</span>
                 </div>
               )}
 
-              {/* Username Input */}
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1.5">
                   Kullanıcı Adı
@@ -166,22 +152,15 @@ export const LoginScreen: React.FC = () => {
                   </div>
                   <input
                     type="text"
-                    name="arslan_auth_username_field"
-                    id="arslan_auth_username_field"
-                    autoComplete="off"
                     value={username}
                     onChange={e => setUsername(e.target.value)}
-                    placeholder="Kullanıcı adınızı girin"
-                    className="w-full pl-9 pr-3 py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                    placeholder="admin, kasa veya muhasebe"
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     disabled={isSubmitting || isCloudSyncing}
-                    autoCapitalize="none"
-                    autoCorrect="off"
-                    spellCheck="false"
                   />
                 </div>
               </div>
 
-              {/* Password Input */}
               <div>
                 <label className="block text-xs font-medium text-slate-300 mb-1.5">
                   Şifre
@@ -192,13 +171,10 @@ export const LoginScreen: React.FC = () => {
                   </div>
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    name="arslan_auth_password_field"
-                    id="arslan_auth_password_field"
-                    autoComplete="new-password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     placeholder="Şifrenizi girin"
-                    className="w-full pl-9 pr-10 py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                    className="w-full pl-9 pr-10 py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
                     disabled={isSubmitting || isCloudSyncing}
                   />
                   <button
@@ -211,17 +187,16 @@ export const LoginScreen: React.FC = () => {
                 </div>
               </div>
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 disabled={isSubmitting || isCloudSyncing}
-                className="w-full mt-2 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-emerald-500/20 transition-all duration-200 disabled:opacity-60 disabled:pointer-events-none"
+                className="w-full mt-2 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-emerald-500/20 transition-all duration-200 disabled:opacity-60"
               >
                 {isSubmitting || isCloudSyncing ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    <span>Personel Girişi Yap</span>
+                    <span>Giriş Yap</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -229,18 +204,17 @@ export const LoginScreen: React.FC = () => {
             </form>
           )}
 
-          {/* Mode 2: Google Sign In */}
           {authMode === 'google' && (
             <div className="space-y-4">
               <p className="text-slate-300 text-xs leading-relaxed">
-                Şirket yöneticisi veya yetkilendirilmiş personel Google hesabınızla şifresiz, tek tıkla güvenle oturum açın.
+                Şirket yöneticisi veya yetkilendirilmiş personel Google hesabınızla şifresiz, tek tıkla güvenle oturum açın:
               </p>
 
               <button
                 type="button"
                 onClick={loginWithGoogle}
                 disabled={isCloudSyncing}
-                className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-800 font-semibold py-3.5 px-4 rounded-xl shadow-lg transition-all duration-200 active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none group"
+                className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-800 font-semibold py-3.5 px-4 rounded-xl shadow-lg transition-all duration-200 active:scale-[0.98] disabled:opacity-70 group"
               >
                 {isCloudSyncing ? (
                   <div className="w-5 h-5 border-2 border-slate-400 border-t-slate-800 rounded-full animate-spin" />
@@ -267,20 +241,9 @@ export const LoginScreen: React.FC = () => {
                 <span className="text-sm font-medium">Google ile Giriş Yap</span>
                 <ArrowRight className="w-4 h-4 ml-auto text-slate-400 group-hover:translate-x-1 transition-transform" />
               </button>
-
-              <div className="p-3 rounded-xl bg-slate-900/60 border border-slate-700/60 text-slate-400 text-xs">
-                <div className="flex items-center gap-2 text-slate-300 font-medium mb-1">
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                  <span>Otomatik Rol Eşleştirme</span>
-                </div>
-                <span>
-                  Google ile giriş yaptığınızda Firestore&apos;daki kayıtlı rolünüz (Admin veya Standart) otomatik olarak tanımlanır.
-                </span>
-              </div>
             </div>
           )}
 
-          {/* Features highlight */}
           <div className="mt-6 pt-5 border-t border-slate-700/60 space-y-2.5">
             <div className="flex items-center gap-2.5 text-xs text-slate-400">
               <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -292,14 +255,13 @@ export const LoginScreen: React.FC = () => {
             </div>
             <div className="flex items-center gap-2.5 text-xs text-slate-400">
               <Wallet className="w-4 h-4 text-purple-400 shrink-0" />
-              <span>Kasa, Banka, Cari ve Vade hesaplarınız güvende.</span>
+              <span>Nakit Akışı, Cari, Vade ve Kar Takip Modülü Güvende.</span>
             </div>
           </div>
         </div>
 
-        {/* Footer */}
         <p className="text-center text-xs text-slate-500 mt-6">
-          © {new Date().getFullYear()} Arslan Finans • Güvenli Bulut Altyapısı
+          © {new Date().getFullYear()} Arslan Finans & KarTakip • Güvenli Bulut Altyapısı
         </p>
       </div>
     </div>

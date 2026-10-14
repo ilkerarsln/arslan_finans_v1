@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useFinance } from '../../context/FinanceContext';
 import { Cari, CariType } from '../../types/finance';
 import { formatCurrency } from '../../utils/formatters';
@@ -6,300 +6,349 @@ import {
   Users,
   Search,
   Plus,
-  ArrowDownRight,
-  ArrowUpRight,
-  Building,
   Phone,
   Mail,
+  MapPin,
+  TrendingUp,
+  TrendingDown,
+  ArrowRight,
   Edit2,
   Trash2,
-  FileSpreadsheet,
+  AlertCircle,
+  Building2,
+  FileSpreadsheet
 } from 'lucide-react';
 
 interface CurrentsTabProps {
   onOpenAddCari: () => void;
+  onSelectCari: (cari: Cari) => void;
   onEditCari: (cari: Cari) => void;
-  onSelectCariDetail: (cari: Cari) => void;
 }
 
 export const CurrentsTab: React.FC<CurrentsTabProps> = ({
   onOpenAddCari,
+  onSelectCari,
   onEditCari,
-  onSelectCariDetail,
 }) => {
-  const { caris, deleteCari, openTransactionModal } = useFinance();
-
+  const { caris, deleteCari, requestDeleteCari, isAdmin, permissions, showToast } = useFinance();
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'All' | CariType>('All');
+  const [balanceFilter, setBalanceFilter] = useState<'All' | 'Receivable' | 'Payable' | 'Zero'>('All');
+  const [cariToDelete, setCariToDelete] = useState<Cari | null>(null);
 
-  const filteredCaris = caris.filter(c => {
-    if (typeFilter !== 'All' && c.type !== typeFilter) return false;
-    if (searchTerm.trim()) {
-      const q = searchTerm.toLowerCase();
-      const matchName = c.name.toLowerCase().includes(q);
-      const matchTax = c.taxNumber?.toLowerCase().includes(q);
-      const matchCity = c.city?.toLowerCase().includes(q);
-      const matchPhone = c.phone?.toLowerCase().includes(q);
-      if (!matchName && !matchTax && !matchCity && !matchPhone) return false;
-    }
-    return true;
-  });
+  const filteredCaris = useMemo(() => {
+    return caris.filter(cari => {
+      if (typeFilter !== 'All' && cari.type !== typeFilter) {
+        return false;
+      }
+      if (balanceFilter === 'Receivable' && cari.balance <= 0) return false;
+      if (balanceFilter === 'Payable' && cari.balance >= 0) return false;
+      if (balanceFilter === 'Zero' && cari.balance !== 0) return false;
 
-  // KPI Calculations
-  const totalReceivables = caris
-    .filter(c => c.balance > 0)
-    .reduce((sum, c) => sum + c.balance, 0);
-
-  const totalPayables = caris
-    .filter(c => c.balance < 0)
-    .reduce((sum, c) => sum + Math.abs(c.balance), 0);
-
-  const netCariBalance = totalReceivables - totalPayables;
-
-  const handleDelete = (id: string, name: string) => {
-    if (window.confirm(`'${name}' cari hesabını silmek istediğinize emin misiniz?`)) {
-      deleteCari(id);
-    }
-  };
-
-  const handleQuickCollect = (cari: Cari, e: React.MouseEvent) => {
-    e.stopPropagation();
-    openTransactionModal({
-      type: 'Gelir',
-      cariId: cari.id,
-      cariName: cari.name,
-      category: 'Cari Hesap Tahsilatı',
-      desc: `${cari.name} cari tahsilatı`,
-      amount: cari.balance > 0 ? cari.balance : undefined,
+      if (searchTerm.trim()) {
+        const query = searchTerm.toLowerCase();
+        const matchesName = cari.name.toLowerCase().includes(query);
+        const matchesTax = cari.taxNumber?.toLowerCase().includes(query);
+        const matchesCity = cari.city?.toLowerCase().includes(query);
+        const matchesPhone = cari.phone?.toLowerCase().includes(query);
+        if (!matchesName && !matchesTax && !matchesCity && !matchesPhone) return false;
+      }
+      return true;
     });
-  };
+  }, [caris, typeFilter, balanceFilter, searchTerm]);
 
-  const handleQuickPay = (cari: Cari, e: React.MouseEvent) => {
-    e.stopPropagation();
-    openTransactionModal({
-      type: 'Gider',
-      cariId: cari.id,
-      cariName: cari.name,
-      category: 'Stok & Mal Alımı',
-      desc: `${cari.name} cari ödemesi`,
-      amount: cari.balance < 0 ? Math.abs(cari.balance) : undefined,
-    });
+  const totalReceivables = useMemo(() => {
+    return caris.filter(c => c.balance > 0).reduce((sum, c) => sum + c.balance, 0);
+  }, [caris]);
+
+  const totalPayables = useMemo(() => {
+    return caris.filter(c => c.balance < 0).reduce((sum, c) => sum + Math.abs(c.balance), 0);
+  }, [caris]);
+
+  const handleDelete = (cari: Cari) => {
+    if (isAdmin || permissions.canDeleteCaris) {
+      deleteCari(cari.id);
+      showToast(`${cari.name} cari kartı silindi.`, 'success');
+    } else {
+      requestDeleteCari(cari.id, 'Kullanıcı silme talebi iletti.');
+      showToast('Cari silme talebi yönetici onayına iletildi.', 'info');
+    }
+    setCariToDelete(null);
   };
 
   return (
     <div className="space-y-6">
-      {/* Header & New Cari button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-            Cari Hesaplar (Müşteri & Tedarikçi)
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Borç, alacak ve hesap mutabakatlarının takibi
-          </p>
-        </div>
-        <button
-          onClick={onOpenAddCari}
-          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
-        >
-          <Plus className="w-3.5 h-3.5" /> Yeni Cari Kart Ekle
-        </button>
-      </div>
-
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-          <span className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">
-            Toplam Müşteri Alacağı
-          </span>
-          <h3 className="text-2xl font-bold font-mono-num text-emerald-600 dark:text-emerald-400 mt-1">
+      {/* Top Banner & KPI Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Toplam Alacaklarımız (Müşteriler)
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
             {formatCurrency(totalReceivables)}
-          </h3>
-          <p className="text-[11px] text-slate-400 mt-1">
-            {caris.filter(c => c.balance > 0).length} aktif borçlu müşteri
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            Müşterilerden tahsil edilecek pozitif bakiye toplamı
           </p>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-          <span className="text-xs font-semibold text-rose-600 uppercase tracking-wider">
-            Toplam Tedarikçi Borcu
-          </span>
-          <h3 className="text-2xl font-bold font-mono-num text-rose-600 dark:text-rose-400 mt-1">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Toplam Borçlarımız (Tedarikçiler)
+            </span>
+            <div className="w-9 h-9 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+              <TrendingDown className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="text-2xl font-bold text-rose-600 dark:text-rose-400 tabular-nums">
             {formatCurrency(totalPayables)}
-          </h3>
-          <p className="text-[11px] text-slate-400 mt-1">
-            {caris.filter(c => c.balance < 0).length} aktif alacaklı tedarikçi
+          </div>
+          <p className="text-xs text-slate-500 mt-1">
+            Toptancılara ve tedarikçilere ödenecek borçlar
           </p>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            Net Cari Bakiye Pozisyonu
-          </span>
-          <h3
-            className={`text-2xl font-bold font-mono-num mt-1 ${
-              netCariBalance >= 0
-                ? 'text-emerald-600 dark:text-emerald-400'
-                : 'text-rose-600 dark:text-rose-400'
-            }`}
-          >
-            {formatCurrency(netCariBalance)}
-          </h3>
-          <p className="text-[11px] text-slate-400 mt-1">
-            {netCariBalance >= 0 ? 'Net Cari Alacaklıyız' : 'Net Cari Borçluyuz'}
-          </p>
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs flex flex-col justify-between">
+          <div>
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+              Cari Kart İşlemleri
+            </span>
+            <p className="text-xs text-slate-500 mt-1">
+              {caris.length} kayıtlı cari hesap mevcuttur
+            </p>
+          </div>
+          <div className="mt-4">
+            <button
+              onClick={onOpenAddCari}
+              className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs rounded-xl shadow-xs transition-all"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Yeni Cari Hesap Ekle</span>
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="relative flex-1 max-w-md">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 shadow-xs flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Cari firma adı, vergi no, şehir veya telefon ara..."
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
+            placeholder="Cari adı, vergi no, il veya telefon..."
+            className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
           />
         </div>
 
-        {/* Segmented controls */}
-        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs">
-          {(['All', 'Müşteri', 'Tedarikçi', 'Personel'] as const).map(tab => (
+        <div className="flex items-center gap-2 overflow-x-auto w-full md:w-auto">
+          {(['All', 'Müşteri', 'Tedarikçi', 'Personel'] as const).map(type => (
             <button
-              key={tab}
-              onClick={() => setTypeFilter(tab)}
-              className={`px-3 py-1.5 font-semibold rounded-lg transition ${
-                typeFilter === tab
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              key={type}
+              onClick={() => setTypeFilter(type)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
+                typeFilter === type
+                  ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900'
+                  : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
               }`}
             >
-              {tab === 'All' ? 'Tümü' : tab}
+              {type === 'All' ? 'Tüm Tipler' : type}
             </button>
           ))}
+
+          <div className="h-4 w-px bg-slate-200 dark:bg-slate-700 mx-1" />
+
+          <select
+            value={balanceFilter}
+            onChange={e => setBalanceFilter(e.target.value as any)}
+            className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none"
+          >
+            <option value="All">Tüm Bakiyeler</option>
+            <option value="Receivable">Sadece Alacaklı (Müşteri)</option>
+            <option value="Payable">Sadece Borçlu (Tedarikçi)</option>
+            <option value="Zero">Bakiyesi Sıfır Olanlar</option>
+          </select>
         </div>
       </div>
 
-      {/* Caris Grid List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredCaris.map(cari => {
-          const isReceivable = cari.balance > 0;
-          const isPayable = cari.balance < 0;
+      {/* Caris Table */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs overflow-hidden">
+        {filteredCaris.length === 0 ? (
+          <div className="p-12 text-center text-slate-400">
+            <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
+            <p className="text-sm font-semibold">Aradığınız kriterlere uygun cari hesap bulunamadı.</p>
+            <p className="text-xs text-slate-500 mt-1">Arama filtrenizi temizleyebilir veya yeni cari ekleyebilirsiniz.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead>
+                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">
+                  <th className="py-3.5 px-4">Cari Ünvanı / Adı</th>
+                  <th className="py-3.5 px-4">Tür</th>
+                  <th className="py-3.5 px-4">İletişim</th>
+                  <th className="py-3.5 px-4">Vergi No / Daire</th>
+                  <th className="py-3.5 px-4 text-right">Bakiye</th>
+                  <th className="py-3.5 px-4 text-center">İşlemler</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                {filteredCaris.map(cari => {
+                  const isPositive = cari.balance > 0;
+                  const isNegative = cari.balance < 0;
 
-          return (
-            <div
-              key={cari.id}
-              onClick={() => onSelectCariDetail(cari)}
-              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 p-5 shadow-xs transition cursor-pointer flex flex-col justify-between group"
-            >
-              <div>
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                  <span
-                    className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                      cari.type === 'Müşteri'
-                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
-                        : cari.type === 'Tedarikçi'
-                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300'
-                        : 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300'
-                    }`}
-                  >
-                    {cari.type}
-                  </span>
-                  <div
-                    className="flex items-center gap-1 opacity-80 group-hover:opacity-100"
-                    onClick={e => e.stopPropagation()}
-                  >
-                    <button
-                      onClick={() => onEditCari(cari)}
-                      title="Düzenle"
-                      className="p-1 text-slate-400 hover:text-emerald-600 rounded transition"
+                  return (
+                    <tr
+                      key={cari.id}
+                      className="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition-colors group cursor-pointer"
+                      onClick={() => onSelectCari(cari)}
                     >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(cari.id, cari.name)}
-                      title="Sil"
-                      className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Company Name */}
-                <h3 className="font-bold text-slate-900 dark:text-white text-base mt-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
-                  {cari.name}
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  {cari.city || 'Şehir belirtilmedi'} {cari.taxOffice ? `· ${cari.taxOffice}` : ''}
-                </p>
-
-                {/* Balance display */}
-                <div className="mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <div>
-                    <span className="text-[10px] font-semibold text-slate-400 uppercase">
-                      Bakiye
-                    </span>
-                    <div
-                      className={`text-lg font-bold font-mono-num ${
-                        isReceivable
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : isPayable
-                          ? 'text-rose-600 dark:text-rose-400'
-                          : 'text-slate-600 dark:text-slate-400'
-                      }`}
-                    >
-                      {formatCurrency(cari.balance)}
-                    </div>
-                  </div>
-                  <span
-                    className={`text-[11px] font-semibold px-2 py-0.5 rounded ${
-                      isReceivable
-                        ? 'text-emerald-700 bg-emerald-100/60 dark:bg-emerald-950/60 dark:text-emerald-300'
-                        : isPayable
-                        ? 'text-rose-700 bg-rose-100/60 dark:bg-rose-950/60 dark:text-rose-300'
-                        : 'text-slate-500 bg-slate-100 dark:bg-slate-800'
-                    }`}
-                  >
-                    {isReceivable ? 'Alacaklıyız' : isPayable ? 'Borçluyuz' : 'Kapalı'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Action buttons at bottom */}
-              <div
-                className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2"
-                onClick={e => e.stopPropagation()}
-              >
-                <button
-                  onClick={() => onSelectCariDetail(cari)}
-                  className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white flex items-center gap-1"
-                >
-                  <FileSpreadsheet className="w-3.5 h-3.5" /> Ekstre Gör
-                </button>
-
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={e => handleQuickCollect(cari, e)}
-                    className="px-2.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-semibold flex items-center gap-1 transition"
-                  >
-                    <ArrowDownRight className="w-3 h-3" /> Tahsilat
-                  </button>
-                  <button
-                    onClick={e => handleQuickPay(cari, e)}
-                    className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900/60 text-rose-700 dark:text-rose-300 rounded-lg text-xs font-semibold flex items-center gap-1 transition"
-                  >
-                    <ArrowUpRight className="w-3 h-3" /> Ödeme
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center text-xs shrink-0">
+                            {cari.name.charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="font-bold text-slate-900 dark:text-white group-hover:text-emerald-600 transition-colors">
+                              {cari.name}
+                            </div>
+                            {cari.city && (
+                              <div className="text-[11px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                <MapPin className="w-3 h-3" />
+                                <span>{cari.city}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <span
+                          className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                            cari.type === 'Müşteri'
+                              ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/50 dark:border-blue-800/50'
+                              : cari.type === 'Tedarikçi'
+                              ? 'bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 border border-amber-200/50 dark:border-amber-800/50'
+                              : 'bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200/50 dark:border-purple-800/50'
+                          }`}
+                        >
+                          {cari.type}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-4">
+                        <div className="space-y-0.5 text-slate-500">
+                          {cari.phone && (
+                            <div className="flex items-center gap-1.5 text-[11px]">
+                              <Phone className="w-3 h-3 text-slate-400" />
+                              <span>{cari.phone}</span>
+                            </div>
+                          )}
+                          {cari.email && (
+                            <div className="flex items-center gap-1.5 text-[11px]">
+                              <Mail className="w-3 h-3 text-slate-400" />
+                              <span className="truncate max-w-[150px]">{cari.email}</span>
+                            </div>
+                          )}
+                          {!cari.phone && !cari.email && <span className="text-slate-400">-</span>}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 text-slate-500">
+                        {cari.taxNumber ? (
+                          <div className="font-mono text-[11px]">
+                            <div>{cari.taxNumber}</div>
+                            {cari.taxOffice && <div className="text-[10px] text-slate-400">{cari.taxOffice} V.D.</div>}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400">-</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 px-4 text-right">
+                        <div
+                          className={`font-bold tabular-nums text-sm ${
+                            isPositive
+                              ? 'text-emerald-600 dark:text-emerald-400'
+                              : isNegative
+                              ? 'text-rose-600 dark:text-rose-400'
+                              : 'text-slate-500'
+                          }`}
+                        >
+                          {formatCurrency(cari.balance)}
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          {isPositive ? 'Alacağımız var' : isNegative ? 'Borcumuz var' : 'Bakiye kapalı'}
+                        </div>
+                      </td>
+                      <td className="py-3.5 px-4 text-center">
+                        <div className="flex items-center justify-center gap-1" onClick={e => e.stopPropagation()}>
+                          <button
+                            onClick={() => onSelectCari(cari)}
+                            className="p-1.5 text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 rounded-lg transition-colors"
+                            title="Ekstre ve Detaylar"
+                          >
+                            <ArrowRight className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => onEditCari(cari)}
+                            className="p-1.5 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                            title="Düzenle"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => setCariToDelete(cari)}
+                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 rounded-lg transition-colors"
+                            title="Sil"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {cariToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 max-w-md w-full border border-slate-200 dark:border-slate-800 shadow-2xl">
+            <div className="w-12 h-12 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-4">
+              <AlertCircle className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-white">
+              Cari Hesabı Silmek İstiyor Musunuz?
+            </h3>
+            <p className="text-sm text-slate-500 mt-2">
+              <strong className="text-slate-700 dark:text-slate-300">{cariToDelete.name}</strong> cari kartı
+              {isAdmin ? ' kalıcı olarak silinecektir.' : ' için yönetici onay talebi oluşturulacaktır.'}
+            </p>
+            <div className="flex items-center justify-end gap-3 mt-6">
+              <button
+                onClick={() => setCariToDelete(null)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+              >
+                Vazgeç
+              </button>
+              <button
+                onClick={() => handleDelete(cariToDelete)}
+                className="px-4 py-2 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-xs"
+              >
+                {isAdmin ? 'Evet, Sil' : 'Onaya Gönder'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
