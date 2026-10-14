@@ -9,11 +9,14 @@ import {
   SaleItem,
   Expense,
   Account,
+  AccountTransaction,
   CariMovement,
   ProductMatchRule,
   CategoryDefinition,
+  SubCategoryDefinition,
   BrandDefinition,
   MonthlyInterestRate,
+  PriceListItem,
   PaymentMethod,
 } from '../types';
 import {
@@ -24,11 +27,14 @@ import {
   INITIAL_SALES,
   INITIAL_EXPENSES,
   INITIAL_ACCOUNTS,
+  INITIAL_ACCOUNT_TRANSACTIONS,
   INITIAL_CARİ_MOVEMENTS,
   INITIAL_MATCH_RULES,
   INITIAL_CATEGORIES,
+  INITIAL_SUBCATEGORIES,
   INITIAL_BRANDS,
   INITIAL_INTEREST_RATES,
+  INITIAL_PRICE_LIST,
   INITIAL_USERS,
 } from '../data/initialData';
 import { ParsedPurchaseRow } from '../utils/excelHelper';
@@ -88,17 +94,27 @@ interface AppContextType {
   updateProduct: (id: string, updates: Partial<Product>) => void;
   deleteProduct: (id: string) => void;
 
-  // Definitions (Tanımlamalar: Kategoriler, Markalar, Vade Farkı Oranları)
+  // Definitions (Tanımlamalar)
   categories: CategoryDefinition[];
   addCategory: (name: string, subCategories?: string[]) => void;
   updateCategory: (id: string, name: string, subCategories: string[]) => void;
   deleteCategory: (id: string) => void;
+
+  subCategories: SubCategoryDefinition[];
+  addSubCategory: (categoryName: string, name: string, description?: string) => void;
+  deleteSubCategory: (id: string) => void;
+
   brands: BrandDefinition[];
   addBrand: (name: string, country?: string) => void;
   deleteBrand: (id: string) => void;
+
   interestRates: MonthlyInterestRate[];
   updateMonthlyRate: (monthCode: string, rate: number) => void;
   getMonthlyRateForDate: (dateStr: string) => number;
+
+  priceLists: PriceListItem[];
+  updatePriceListItem: (id: string, updates: Partial<PriceListItem>) => void;
+  addPriceListItem: (item: Omit<PriceListItem, 'id' | 'lastUpdated'>) => void;
 
   // Purchases (Mal Alımları - Finans & Stok Entegre)
   purchaseOrders: PurchaseOrder[];
@@ -134,6 +150,7 @@ interface AppContextType {
     paymentMethod: PaymentMethod;
     installmentCount?: number;
     salesperson: string;
+    accountId?: string;
     status?: 'tamamlandi' | 'beklemede' | 'iptal';
   }) => void;
 
@@ -142,10 +159,12 @@ interface AppContextType {
   addExpense: (expense: Omit<Expense, 'id'>) => void;
   deleteExpense: (id: string) => void;
 
-  // Accounts
+  // Accounts & Account Transactions
   accounts: Account[];
   addAccount: (account: Omit<Account, 'id'>) => void;
   updateAccountBalance: (id: string, delta: number) => void;
+  accountTransactions: AccountTransaction[];
+  addAccountTransaction: (tx: Omit<AccountTransaction, 'id'>) => void;
 
   // Cari Movements
   cariMovements: CariMovement[];
@@ -236,6 +255,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : INITIAL_ACCOUNTS;
   });
 
+  const [accountTransactions, setAccountTransactions] = useState<AccountTransaction[]>(() => {
+    const saved = localStorage.getItem('arslan_account_txs');
+    return saved ? JSON.parse(saved) : INITIAL_ACCOUNT_TRANSACTIONS;
+  });
+
   const [cariMovements, setCariMovements] = useState<CariMovement[]>(() => {
     const saved = localStorage.getItem('arslan_cari_movements');
     return saved ? JSON.parse(saved) : INITIAL_CARİ_MOVEMENTS;
@@ -252,6 +276,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
   });
 
+  const [subCategories, setSubCategories] = useState<SubCategoryDefinition[]>(() => {
+    const saved = localStorage.getItem('arslan_subcategories');
+    return saved ? JSON.parse(saved) : INITIAL_SUBCATEGORIES;
+  });
+
   const [brands, setBrands] = useState<BrandDefinition[]>(() => {
     const saved = localStorage.getItem('arslan_brands');
     return saved ? JSON.parse(saved) : INITIAL_BRANDS;
@@ -260,6 +289,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [interestRates, setInterestRates] = useState<MonthlyInterestRate[]>(() => {
     const saved = localStorage.getItem('arslan_interest_rates');
     return saved ? JSON.parse(saved) : INITIAL_INTEREST_RATES;
+  });
+
+  const [priceLists, setPriceLists] = useState<PriceListItem[]>(() => {
+    const saved = localStorage.getItem('arslan_price_lists');
+    return saved ? JSON.parse(saved) : INITIAL_PRICE_LIST;
   });
 
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
@@ -294,6 +328,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [accounts]);
 
   useEffect(() => {
+    localStorage.setItem('arslan_account_txs', JSON.stringify(accountTransactions));
+  }, [accountTransactions]);
+
+  useEffect(() => {
     localStorage.setItem('arslan_cari_movements', JSON.stringify(cariMovements));
   }, [cariMovements]);
 
@@ -306,12 +344,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [categories]);
 
   useEffect(() => {
+    localStorage.setItem('arslan_subcategories', JSON.stringify(subCategories));
+  }, [subCategories]);
+
+  useEffect(() => {
     localStorage.setItem('arslan_brands', JSON.stringify(brands));
   }, [brands]);
 
   useEffect(() => {
     localStorage.setItem('arslan_interest_rates', JSON.stringify(interestRates));
   }, [interestRates]);
+
+  useEffect(() => {
+    localStorage.setItem('arslan_price_lists', JSON.stringify(priceLists));
+  }, [priceLists]);
 
   // Toast Helpers
   const showToast = (message: string, type: 'success' | 'error' | 'info' | 'warning' = 'success', title?: string) => {
@@ -326,12 +372,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setToasts((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Auth: Fixed requirement for Admin
+  // Auth: Requirement 6: Fixed requirement for Admin
   const login = (emailInput: string, passwordInput: string): boolean => {
     const cleanEmail = emailInput.trim().toLowerCase();
     const cleanPass = passwordInput.trim();
 
-    // 1. Strict fixed Admin credentials check
     const isAdminEmail =
       cleanEmail === 'ilkerarslan78@gmail' ||
       cleanEmail === 'ilkerarslan78@gmail.com' ||
@@ -351,7 +396,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return true;
     }
 
-    // 2. Custom created user check from user management
     const matchedUser = users.find(
       (u) => u.email.toLowerCase() === cleanEmail && u.password === cleanPass
     );
@@ -394,29 +438,80 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Kullanıcı sistemden kaldırıldı.', 'info');
   };
 
-  // Definitions: Categories, Brands, Interest Rates
-  const addCategory = (name: string, subCategories: string[] = []) => {
+  // Category & Subcategory definitions
+  const addCategory = (name: string, subCats: string[] = []) => {
     const newCat: CategoryDefinition = {
       id: `cat-${Date.now()}`,
       name,
-      subCategories,
+      subCategories: subCats,
     };
     setCategories((prev) => [...prev, newCat]);
+
+    // Also add to subCategories list
+    if (subCats.length > 0) {
+      const newSubs: SubCategoryDefinition[] = subCats.map((s) => ({
+        id: `sub-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        categoryName: name,
+        name: s,
+      }));
+      setSubCategories((prev) => [...prev, ...newSubs]);
+    }
+
     showToast(`${name} kategorisi tanımlandı.`, 'success');
   };
 
-  const updateCategory = (id: string, name: string, subCategories: string[]) => {
+  const updateCategory = (id: string, name: string, subCats: string[]) => {
     setCategories((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, name, subCategories } : c))
+      prev.map((c) => (c.id === id ? { ...c, name, subCategories: subCats } : c))
     );
     showToast('Kategori güncellendi.', 'success');
   };
 
   const deleteCategory = (id: string) => {
+    const cat = categories.find((c) => c.id === id);
+    if (cat) {
+      setSubCategories((prev) => prev.filter((s) => s.categoryName !== cat.name));
+    }
     setCategories((prev) => prev.filter((c) => c.id !== id));
     showToast('Kategori silindi.', 'info');
   };
 
+  const addSubCategory = (categoryName: string, name: string, description?: string) => {
+    const newSub: SubCategoryDefinition = {
+      id: `sub-${Date.now()}`,
+      categoryName,
+      name,
+      description,
+    };
+    setSubCategories((prev) => [...prev, newSub]);
+
+    // Also append to main categories subCategories array
+    setCategories((prev) =>
+      prev.map((c) =>
+        c.name === categoryName && !c.subCategories.includes(name)
+          ? { ...c, subCategories: [...c.subCategories, name] }
+          : c
+      )
+    );
+    showToast(`${name} alt kategorisi eklendi.`, 'success');
+  };
+
+  const deleteSubCategory = (id: string) => {
+    const sub = subCategories.find((s) => s.id === id);
+    if (sub) {
+      setCategories((prev) =>
+        prev.map((c) =>
+          c.name === sub.categoryName
+            ? { ...c, subCategories: c.subCategories.filter((name) => name !== sub.name) }
+            : c
+        )
+      );
+    }
+    setSubCategories((prev) => prev.filter((s) => s.id !== id));
+    showToast('Alt kategori silindi.', 'info');
+  };
+
+  // Brands
   const addBrand = (name: string, country?: string) => {
     const newBrand: BrandDefinition = {
       id: `br-${Date.now()}`,
@@ -432,6 +527,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     showToast('Marka silindi.', 'info');
   };
 
+  // Monthly Interest Rates
   const updateMonthlyRate = (monthCode: string, rate: number) => {
     setInterestRates((prev) => {
       const exists = prev.some((r) => r.monthCode === monthCode);
@@ -452,11 +548,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const getMonthlyRateForDate = (dateStr: string): number => {
-    const monthCode = dateStr.slice(0, 7); // e.g. '2026-10'
+    const monthCode = dateStr.slice(0, 7);
     const match = interestRates.find((r) => r.monthCode === monthCode);
     if (match) return match.rate;
     const defaultRate = interestRates.find((r) => r.isDefault)?.rate;
     return defaultRate ?? 2.8;
+  };
+
+  // Price Lists
+  const updatePriceListItem = (id: string, updates: Partial<PriceListItem>) => {
+    setPriceLists((prev) =>
+      prev.map((p) =>
+        p.id === id
+          ? { ...p, ...updates, lastUpdated: new Date().toISOString().split('T')[0] }
+          : p
+      )
+    );
+    showToast('Fiyat listesi güncellendi.', 'success');
+  };
+
+  const addPriceListItem = (item: Omit<PriceListItem, 'id' | 'lastUpdated'>) => {
+    const newItem: PriceListItem = {
+      ...item,
+      id: `pl-${Date.now()}`,
+      lastUpdated: new Date().toISOString().split('T')[0],
+    };
+    setPriceLists((prev) => [...prev, newItem]);
+    showToast('Ürün fiyat listesine eklendi.', 'success');
   };
 
   // Direct Navigation to Mal Alımı
@@ -521,6 +639,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `prod-${Date.now()}`,
     };
     setProducts((prev) => [newProduct, ...prev]);
+
+    // Also auto-add to Price List for current month
+    const curMonth = new Date().toISOString().slice(0, 7);
+    const plItem: PriceListItem = {
+      id: `pl-${Date.now()}`,
+      productId: newProduct.id,
+      productSku: newProduct.sku,
+      productName: newProduct.name,
+      category: newProduct.category,
+      subCategory: newProduct.subCategory,
+      brand: newProduct.brand,
+      monthCode: curMonth,
+      costPrice: newProduct.costPrice,
+      cashSalePrice: newProduct.salePrice,
+      cardSalePrice: Math.round(newProduct.salePrice * 1.05),
+      installment12Price: Math.round(newProduct.salePrice * 1.336),
+      lastUpdated: new Date().toISOString().split('T')[0],
+    };
+    setPriceLists((prev) => [...prev, plItem]);
+
     showToast(`${newProduct.name} stok listesine eklendi.`, 'success');
     return newProduct;
   };
@@ -615,16 +753,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setCariMovements((prev) => [newMovement, ...prev]);
 
-    // 3. Deduct from account if paid > 0
+    // 3. Deduct from account if paid > 0 and record AccountTransaction
     if (paid > 0 && data.accountId) {
+      const acc = accounts.find((a) => a.id === data.accountId);
+      const after = (acc?.balance || 0) - paid;
       setAccounts((prev) =>
-        prev.map((acc) =>
-          acc.id === data.accountId ? { ...acc, balance: acc.balance - paid } : acc
-        )
+        prev.map((a) => (a.id === data.accountId ? { ...a, balance: after } : a))
       );
+
+      // Account movement
+      const tx: AccountTransaction = {
+        id: `tx-${Date.now()}`,
+        accountId: data.accountId,
+        accountName: acc?.name || 'Hesap',
+        date: data.date,
+        type: 'cikis',
+        amount: paid,
+        description: `Tedarikçi Mal Alımı Peşin Ödemesi - ${supplier.name}`,
+        category: 'Mal Alımı Ödemesi',
+        referenceNo: newOrder.invoiceNumber,
+        balanceAfter: after,
+      };
+      setAccountTransactions((prev) => [tx, ...prev]);
     }
 
-    // 4. UPDATE INVENTORY & PRODUCTS (Stok Adedi & Ağırlıklı Ortalama Maliyet)
+    // 4. UPDATE INVENTORY & PRODUCTS
     setProducts((prev) => {
       let updatedProducts = [...prev];
 
@@ -740,9 +893,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return { successCount, totalAmount: grandTotal };
   };
 
-  // =========================================================================
-  // REQUIREMENT 1: Satış Şekli ve Senetli Satış Vade Farkı Hesaplama
-  // =========================================================================
+  // Sales
   const addSale = (saleData: {
     saleId: string;
     date: string;
@@ -759,6 +910,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     paymentMethod: PaymentMethod;
     installmentCount?: number;
     salesperson: string;
+    accountId?: string;
     status?: 'tamamlandi' | 'beklemede' | 'iptal';
   }) => {
     const baseCost = saleData.unitCost * saleData.quantity;
@@ -768,7 +920,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (saleData.paymentMethod === 'senetli') {
       monthlyRate = getMonthlyRateForDate(saleData.date);
       const installments = saleData.installmentCount || 1;
-      // Vade farkı formülü: temelMaliyet * (aylikOran / 100) * vadeSayisi
       interestCost = Math.round(baseCost * (monthlyRate / 100) * installments);
     }
 
@@ -790,7 +941,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setSales((prev) => [newSale, ...prev]);
 
-    // Deduct sold quantity from stock
+    // Deduct stock
     setProducts((prev) =>
       prev.map((p) => {
         if (
@@ -805,6 +956,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return p;
       })
     );
+
+    // If cash or card, optionally reflect to account
+    if (saleData.paymentMethod !== 'senetli' && saleData.accountId) {
+      const acc = accounts.find((a) => a.id === saleData.accountId);
+      const after = (acc?.balance || 0) + saleData.totalSalePrice;
+      setAccounts((prev) =>
+        prev.map((a) => (a.id === saleData.accountId ? { ...a, balance: after } : a))
+      );
+
+      const tx: AccountTransaction = {
+        id: `tx-${Date.now()}`,
+        accountId: saleData.accountId,
+        accountName: acc?.name || 'Hesap',
+        date: saleData.date,
+        type: 'giris',
+        amount: saleData.totalSalePrice,
+        description: `Satış Tahsilatı - ${saleData.customerName} (${saleData.productName})`,
+        category: 'Satış Tahsilatı',
+        referenceNo: saleData.saleId,
+        balanceAfter: after,
+      };
+      setAccountTransactions((prev) => [tx, ...prev]);
+    }
 
     const vadeMsg =
       saleData.paymentMethod === 'senetli'
@@ -823,11 +997,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setExpenses((prev) => [newExpense, ...prev]);
 
     if (expenseData.accountId) {
+      const acc = accounts.find((a) => a.id === expenseData.accountId);
+      const after = (acc?.balance || 0) - expenseData.amount;
       setAccounts((prev) =>
-        prev.map((acc) =>
-          acc.id === expenseData.accountId ? { ...acc, balance: acc.balance - expenseData.amount } : acc
+        prev.map((a) =>
+          a.id === expenseData.accountId ? { ...a, balance: after } : a
         )
       );
+
+      const tx: AccountTransaction = {
+        id: `tx-${Date.now()}`,
+        accountId: expenseData.accountId,
+        accountName: acc?.name || 'Hesap',
+        date: expenseData.date,
+        type: 'cikis',
+        amount: expenseData.amount,
+        description: `${expenseData.category}: ${expenseData.description}`,
+        category: expenseData.category,
+        referenceNo: expenseData.receiptNumber,
+        balanceAfter: after,
+      };
+      setAccountTransactions((prev) => [tx, ...prev]);
     }
     showToast('Gider masrafı kaydedildi.', 'success');
   };
@@ -853,6 +1043,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
+  const addAccountTransaction = (txData: Omit<AccountTransaction, 'id'>) => {
+    const newTx: AccountTransaction = {
+      ...txData,
+      id: `tx-${Date.now()}`,
+    };
+    setAccountTransactions((prev) => [newTx, ...prev]);
+  };
+
   // Cari Payment
   const addCariPayment = (data: {
     cariId: string;
@@ -875,8 +1073,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         )
       );
 
+      const acc = accounts.find((a) => a.id === data.accountId);
+      const after = (acc?.balance || 0) - data.amount;
       setAccounts((prev) =>
-        prev.map((a) => (a.id === data.accountId ? { ...a, balance: a.balance - data.amount } : a))
+        prev.map((a) => (a.id === data.accountId ? { ...a, balance: after } : a))
       );
 
       const mov: CariMovement = {
@@ -893,6 +1093,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         balanceAfter: newBal,
       };
       setCariMovements((prev) => [mov, ...prev]);
+
+      const tx: AccountTransaction = {
+        id: `tx-${Date.now()}`,
+        accountId: data.accountId,
+        accountName: acc?.name || 'Hesap',
+        date: data.date,
+        type: 'cikis',
+        amount: data.amount,
+        description: `Tedarikçi Ödemesi - ${supplier.name}`,
+        category: 'Tedarikçi Ödemesi',
+        referenceNo: data.documentNo,
+        balanceAfter: after,
+      };
+      setAccountTransactions((prev) => [tx, ...prev]);
+
       showToast(`${supplier.name} firmasına ₺${data.amount.toLocaleString('tr-TR')} ödeme işlendi.`, 'success');
     } else if (customer) {
       const newBal = customer.currentBalance - data.amount;
@@ -904,8 +1119,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         )
       );
 
+      const acc = accounts.find((a) => a.id === data.accountId);
+      const after = (acc?.balance || 0) + data.amount;
       setAccounts((prev) =>
-        prev.map((a) => (a.id === data.accountId ? { ...a, balance: a.balance + data.amount } : a))
+        prev.map((a) => (a.id === data.accountId ? { ...a, balance: after } : a))
       );
 
       const mov: CariMovement = {
@@ -922,6 +1139,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         balanceAfter: newBal,
       };
       setCariMovements((prev) => [mov, ...prev]);
+
+      const tx: AccountTransaction = {
+        id: `tx-${Date.now()}`,
+        accountId: data.accountId,
+        accountName: acc?.name || 'Hesap',
+        date: data.date,
+        type: 'giris',
+        amount: data.amount,
+        description: `Müşteri Tahsilatı - ${customer.name}`,
+        category: 'Cari Tahsilat',
+        referenceNo: data.documentNo,
+        balanceAfter: after,
+      };
+      setAccountTransactions((prev) => [tx, ...prev]);
+
       showToast(`${customer.name} müşterisinden ₺${data.amount.toLocaleString('tr-TR')} tahsilat işlendi.`, 'success');
     }
   };
@@ -971,12 +1203,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addCategory,
         updateCategory,
         deleteCategory,
+        subCategories,
+        addSubCategory,
+        deleteSubCategory,
         brands,
         addBrand,
         deleteBrand,
         interestRates,
         updateMonthlyRate,
         getMonthlyRateForDate,
+        priceLists,
+        updatePriceListItem,
+        addPriceListItem,
         purchaseOrders,
         createPurchaseOrder,
         createBulkPurchasesFromExcel,
@@ -988,6 +1226,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         accounts,
         addAccount,
         updateAccountBalance,
+        accountTransactions,
+        addAccountTransaction,
         cariMovements,
         addCariPayment,
         matchRules,

@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { formatCurrency, formatDate } from '../../utils/formatters';
-import { Wallet, Plus, ArrowRightLeft, Building2, CreditCard, Landmark, CheckCircle } from 'lucide-react';
+import { Wallet, Plus, ArrowRightLeft, Building2, CreditCard, Landmark, CheckCircle, BarChart3, ChevronRight } from 'lucide-react';
+import { KasaDetayRaporView } from './KasaDetayRaporView';
+import { Account } from '../../types';
 
 export const KasaBankaView: React.FC = () => {
   const { accounts, addAccount, updateAccountBalance, showToast } = useApp();
 
+  const [selectedAccountForDetail, setSelectedAccountForDetail] = useState<Account | null>(null);
   const [isAddAccountOpen, setIsAddAccountOpen] = useState(false);
   const [isTransferOpen, setIsTransferOpen] = useState(false);
 
@@ -64,14 +67,27 @@ export const KasaBankaView: React.FC = () => {
     setTransferAmount(0);
   };
 
+  if (selectedAccountForDetail) {
+    return (
+      <KasaDetayRaporView
+        account={selectedAccountForDetail}
+        onBack={() => setSelectedAccountForDetail(null)}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-semibold mb-1.5">
+            <Wallet className="w-3.5 h-3.5" />
+            <span>Kasa, Banka & POS Varlık Yönetimi</span>
+          </div>
           <h2 className="text-xl font-bold text-white tracking-tight">Kasa & Banka Hesapları</h2>
           <p className="text-xs text-slate-400">
-            Nakit kasa, ticari banka hesapları ve POS cihazı tahsilat bakiyeleri.
+            Nakit kasa, ticari banka hesapları ve POS tahsilat bakiyeleri. Üzerine tıklayarak günlük, haftalık, aylık ve yıllık hareket raporlarını inceleyebilirsiniz.
           </p>
         </div>
 
@@ -97,10 +113,10 @@ export const KasaBankaView: React.FC = () => {
       <div className="p-5 rounded-2xl bg-gradient-to-r from-slate-900 to-slate-950 border border-slate-800 flex items-center justify-between">
         <div>
           <span className="text-xs text-slate-400 font-medium">Toplam Likit Varlık (Kasa + Banka + POS)</span>
-          <div className="text-2xl font-bold text-emerald-400 mt-1">{formatCurrency(totalBalance)}</div>
+          <div className="text-2xl font-bold text-emerald-400 mt-1 font-mono">{formatCurrency(totalBalance)}</div>
         </div>
         <div className="text-xs text-slate-400">
-          Toplam <strong>{accounts.length} Aktif Hesap</strong>
+          Toplam <strong>{accounts.length} Aktif Hesap</strong> &bull; Detay için kartlara tıklayınız
         </div>
       </div>
 
@@ -124,15 +140,16 @@ export const KasaBankaView: React.FC = () => {
           return (
             <div
               key={acc.id}
-              className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-4 hover:border-slate-700 transition"
+              onClick={() => setSelectedAccountForDetail(acc)}
+              className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-4 hover:border-amber-500/50 hover:bg-slate-900 transition cursor-pointer group shadow-lg"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-slate-800 text-slate-300 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-slate-800 text-slate-300 flex items-center justify-center group-hover:scale-105 transition">
                     <Icon className="w-5 h-5 text-amber-400" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-white">{acc.name}</h4>
+                    <h4 className="text-sm font-bold text-white group-hover:text-amber-400 transition">{acc.name}</h4>
                     <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${badgeColor}`}>
                       {label}
                     </span>
@@ -148,8 +165,20 @@ export const KasaBankaView: React.FC = () => {
               )}
 
               <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">
-                <span className="text-xs text-slate-400">Mevcut Bakiye</span>
-                <span className="text-lg font-bold text-emerald-400">{formatCurrency(acc.balance)}</span>
+                <div>
+                  <span className="text-[10px] text-slate-500 block">Mevcut Bakiye</span>
+                  <span className="text-lg font-bold text-emerald-400 font-mono">{formatCurrency(acc.balance)}</span>
+                </div>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedAccountForDetail(acc);
+                  }}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-amber-400 group-hover:text-amber-300 transition"
+                >
+                  <span>Detaylı Rapor</span>
+                  <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition" />
+                </button>
               </div>
             </div>
           );

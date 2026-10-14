@@ -34,22 +34,44 @@ export const MalAlimStokView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Tümü');
   const [selectedSupplierId, setSelectedSupplierId] = useState('Tümü');
+  const [selectedYear, setSelectedYear] = useState('2026');
+  const [selectedMonth, setSelectedMonth] = useState('Tümü');
 
-  // KPI Calculations
-  const totalStockValue = products.reduce((sum, p) => sum + p.stockQty * p.costPrice, 0);
-  const totalPurchasesAmount = purchaseOrders.reduce((sum, po) => sum + po.totalAmount, 0);
-  const totalSupplierDebt = suppliers.reduce((sum, s) => sum + s.currentBalance, 0);
-  const criticalStockCount = products.filter((p) => p.stockQty <= p.minStockAlert).length;
+  const monthsMap = [
+    { code: 'Tümü', name: 'Tüm Aylar' },
+    { code: '01', name: 'Ocak' },
+    { code: '02', name: 'Şubat' },
+    { code: '03', name: 'Mart' },
+    { code: '04', name: 'Nisan' },
+    { code: '05', name: 'Mayıs' },
+    { code: '06', name: 'Haziran' },
+    { code: '07', name: 'Temmuz' },
+    { code: '08', name: 'Ağustos' },
+    { code: '09', name: 'Eylül' },
+    { code: '10', name: 'Ekim' },
+    { code: '11', name: 'Kasım' },
+    { code: '12', name: 'Aralık' },
+  ];
 
-  // Filtered Lists
+  const years = ['Tümü', '2026', '2025', '2024'];
+
+  // Filtered Orders with Date Filters (Requirement 1)
   const filteredOrders = purchaseOrders.filter((po) => {
     const matchSearch =
       po.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
       po.supplierName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       po.items.some((i) => i.productName.toLowerCase().includes(searchQuery.toLowerCase()));
     const matchSupplier = selectedSupplierId === 'Tümü' || po.supplierId === selectedSupplierId;
-    return matchSearch && matchSupplier;
+    const matchYear = selectedYear === 'Tümü' || po.date.startsWith(selectedYear);
+    const matchMonth = selectedMonth === 'Tümü' || po.date.slice(5, 7) === selectedMonth;
+    return matchSearch && matchSupplier && matchYear && matchMonth;
   });
+
+  // KPI Calculations based on filtered view
+  const totalStockValue = products.reduce((sum, p) => sum + p.stockQty * p.costPrice, 0);
+  const totalPurchasesAmount = filteredOrders.reduce((sum, po) => sum + po.totalAmount, 0);
+  const totalSupplierDebt = suppliers.reduce((sum, s) => sum + s.currentBalance, 0);
+  const criticalStockCount = products.filter((p) => p.stockQty <= p.minStockAlert).length;
 
   const filteredProducts = products.filter((p) => {
     const matchSearch =
@@ -215,12 +237,41 @@ export const MalAlimStokView: React.FC = () => {
           </div>
 
           {/* Quick Filter Inputs */}
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="relative flex-1 sm:w-64">
+          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+            {/* Year & Month Filters (Requirement 1) */}
+            <div className="flex items-center gap-1.5">
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="bg-slate-950/70 border border-slate-750 rounded-xl px-2.5 py-1.5 text-xs text-white"
+                title="Yıl Filtresi"
+              >
+                {years.map((y) => (
+                  <option key={y} value={y}>
+                    {y === 'Tümü' ? 'Tüm Yıllar' : `${y} Yılı`}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="bg-slate-950/70 border border-slate-750 rounded-xl px-2.5 py-1.5 text-xs text-white"
+                title="Ay Filtresi"
+              >
+                {monthsMap.map((m) => (
+                  <option key={m.code} value={m.code}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="relative flex-1 sm:w-56">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
-                placeholder="Fatura no, tedarikçi, ürün ara..."
+                placeholder="Fatura no, tedarikçi ara..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-slate-950/70 border border-slate-750 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"

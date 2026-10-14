@@ -26,7 +26,26 @@ export const KarTakipView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPaymentMethod, setFilterPaymentMethod] = useState<string>('Tümü');
   const [filterSalesperson, setFilterSalesperson] = useState<string>('Tümü');
+  const [selectedYear, setSelectedYear] = useState<string>('2026');
+  const [selectedMonth, setSelectedMonth] = useState<string>('Tümü');
   const [isAddSaleOpen, setIsAddSaleOpen] = useState(false);
+
+  const monthsList = [
+    { code: 'Tümü', name: 'Tüm Aylar' },
+    { code: '01', name: 'Ocak' },
+    { code: '02', name: 'Şubat' },
+    { code: '03', name: 'Mart' },
+    { code: '04', name: 'Nisan' },
+    { code: '05', name: 'Mayıs' },
+    { code: '06', name: 'Haziran' },
+    { code: '07', name: 'Temmuz' },
+    { code: '08', name: 'Ağustos' },
+    { code: '09', name: 'Eylül' },
+    { code: '10', name: 'Ekim' },
+    { code: '11', name: 'Kasım' },
+    { code: '12', name: 'Aralık' },
+  ];
+  const yearsList = ['Tümü', '2026', '2025', '2024'];
 
   // New Sale Form States
   const [newCustomer, setNewCustomer] = useState('');
@@ -38,15 +57,22 @@ export const KarTakipView: React.FC = () => {
   const [newSaleDate, setNewSaleDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [newSalesperson, setNewSalesperson] = useState<string>(users[0]?.name || 'İlker Arslan');
 
-  // Profit Metrics
-  const totalRevenue = sales.reduce((sum, s) => sum + s.totalSalePrice, 0);
-  const totalCost = sales.reduce((sum, s) => sum + s.totalCost, 0);
+  // Base Sales filtered by selected Date (Year & Month)
+  const dateFilteredSales = sales.filter((s) => {
+    const matchYear = selectedYear === 'Tümü' || s.date.startsWith(selectedYear);
+    const matchMonth = selectedMonth === 'Tümü' || s.date.slice(5, 7) === selectedMonth;
+    return matchYear && matchMonth;
+  });
+
+  // Profit Metrics based on selected period
+  const totalRevenue = dateFilteredSales.reduce((sum, s) => sum + s.totalSalePrice, 0);
+  const totalCost = dateFilteredSales.reduce((sum, s) => sum + s.totalCost, 0);
   const totalGrossProfit = totalRevenue - totalCost;
   const overallMargin = totalRevenue > 0 ? (totalGrossProfit / totalRevenue) * 100 : 0;
-  const totalInterestCost = sales.reduce((sum, s) => sum + (s.interestCost || 0), 0);
+  const totalInterestCost = dateFilteredSales.reduce((sum, s) => sum + (s.interestCost || 0), 0);
 
-  // Filtered Sales
-  const filteredSales = sales.filter((s) => {
+  // Filtered Sales with search, payment method and salesperson filters
+  const filteredSales = dateFilteredSales.filter((s) => {
     const matchSearch =
       s.productName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       s.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -72,9 +98,9 @@ export const KarTakipView: React.FC = () => {
   const liveProfit = liveTotalSale - liveTotalCost;
   const liveMargin = liveTotalSale > 0 ? (liveProfit / liveTotalSale) * 100 : 0;
 
-  // Supplier Profitability
+  // Supplier Profitability linked with Date Filters (Requirement 1)
   const supplierProfitability = suppliers.map((sup) => {
-    const supplierSales = sales.filter((s) => s.matchedSupplierId === sup.id);
+    const supplierSales = dateFilteredSales.filter((s) => s.matchedSupplierId === sup.id);
     const supRevenue = supplierSales.reduce((sum, s) => sum + s.totalSalePrice, 0);
     const supCost = supplierSales.reduce((sum, s) => sum + s.totalCost, 0);
     const supProfit = supRevenue - supCost;
@@ -95,7 +121,7 @@ export const KarTakipView: React.FC = () => {
 
   const categories = Array.from(new Set(sales.map((s) => s.category)));
   const categoryProfitability = categories.map((cat) => {
-    const catSales = sales.filter((s) => s.category === cat);
+    const catSales = dateFilteredSales.filter((s) => s.category === cat);
     const catRevenue = catSales.reduce((sum, s) => sum + s.totalSalePrice, 0);
     const catCost = catSales.reduce((sum, s) => sum + s.totalCost, 0);
     const catProfit = catRevenue - catCost;
@@ -238,14 +264,46 @@ export const KarTakipView: React.FC = () => {
             </button>
           </div>
 
-          {/* Filter Inputs */}
-          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          {/* Filter Inputs (Year, Month, Payment, Person, Search) */}
+          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+            {/* Year & Month Filters (Requirement 1) */}
+            <div className="flex items-center gap-1.5 bg-slate-950/80 p-1 rounded-xl border border-slate-750">
+              <Calendar className="w-3.5 h-3.5 text-amber-400 ml-1.5" />
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="bg-transparent text-xs text-white px-1.5 py-1 focus:outline-none cursor-pointer"
+                title="Yıl Seçimi"
+              >
+                {yearsList.map((y) => (
+                  <option key={y} value={y} className="bg-slate-900 text-white">
+                    {y === 'Tümü' ? 'Tüm Yıllar' : y}
+                  </option>
+                ))}
+              </select>
+
+              <span className="text-slate-600">/</span>
+
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="bg-transparent text-xs text-white px-1.5 py-1 focus:outline-none cursor-pointer"
+                title="Ay Seçimi"
+              >
+                {monthsList.map((m) => (
+                  <option key={m.code} value={m.code} className="bg-slate-900 text-white">
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {activeTab === 'satislar' && (
               <>
                 <select
                   value={filterPaymentMethod}
                   onChange={(e) => setFilterPaymentMethod(e.target.value)}
-                  className="bg-slate-950/70 border border-slate-750 rounded-xl px-3 py-1.5 text-xs text-white"
+                  className="bg-slate-950/70 border border-slate-750 rounded-xl px-2.5 py-1.5 text-xs text-white cursor-pointer"
                 >
                   <option value="Tümü">Tüm Satış Şekilleri</option>
                   <option value="pesin">Peşin Satış</option>
@@ -256,7 +314,7 @@ export const KarTakipView: React.FC = () => {
                 <select
                   value={filterSalesperson}
                   onChange={(e) => setFilterSalesperson(e.target.value)}
-                  className="bg-slate-950/70 border border-slate-750 rounded-xl px-3 py-1.5 text-xs text-white"
+                  className="bg-slate-950/70 border border-slate-750 rounded-xl px-2.5 py-1.5 text-xs text-white cursor-pointer"
                 >
                   <option value="Tümü">Tüm Personeller</option>
                   {salespersonsList.map((p, idx) => (
@@ -268,14 +326,14 @@ export const KarTakipView: React.FC = () => {
               </>
             )}
 
-            <div className="relative flex-1 sm:w-60">
+            <div className="relative flex-1 sm:w-52">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
-                placeholder="Ürün, müşteri, personel ara..."
+                placeholder="Ürün, müşteri, personel..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-950/70 border border-slate-750 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                className="w-full bg-slate-950/70 border border-slate-750 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
               />
             </div>
           </div>
@@ -394,11 +452,29 @@ export const KarTakipView: React.FC = () => {
           </div>
         )}
 
-        {/* TAB 2 & TAB 3: Retained */}
+        {/* TAB 2: TEDARİKÇİ KÂRLILIĞI (Filtrelerle Uyumlu) */}
         {activeTab === 'tedarikci_karlilik' && (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/60 text-slate-400 border-b border-slate-800">
+          <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3 bg-slate-950/60 rounded-xl border border-slate-800 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span className="text-slate-400 font-medium">Filtrelenen Dönem:</span>
+                <span className="font-bold text-amber-400">
+                  {selectedMonth !== 'Tümü' ? monthsList.find((m) => m.code === selectedMonth)?.name : 'Tüm Aylar'} {selectedYear !== 'Tümü' ? selectedYear : 'Tüm Yıllar'}
+                </span>
+                <span className="text-slate-600">|</span>
+                <span className="text-slate-400">İşlem Gören Satış:</span>
+                <span className="font-bold text-white">{dateFilteredSales.length} Adet</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-slate-400">Dönem Net Kârı:</span>
+                <span className="font-bold text-emerald-400">{formatCurrency(totalGrossProfit)}</span>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-950/60 text-slate-400 border-b border-slate-800">
                 <tr>
                   <th className="py-3 px-4">Tedarikçi Kodu</th>
                   <th className="py-3 px-4">Firma Ünvanı (Ortak Havuz)</th>
@@ -442,7 +518,8 @@ export const KarTakipView: React.FC = () => {
               </tbody>
             </table>
           </div>
-        )}
+        </div>
+      )}
 
         {activeTab === 'kategori_karlilik' && (
           <div className="overflow-x-auto">

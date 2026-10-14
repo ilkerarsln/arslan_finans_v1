@@ -150,6 +150,19 @@ export interface Account {
   currency: 'TRY' | 'USD' | 'EUR';
 }
 
+export interface AccountTransaction {
+  id: string;
+  accountId: string;
+  accountName: string;
+  date: string;
+  type: 'giris' | 'cikis' | 'virman';
+  amount: number;
+  description: string;
+  category: string;
+  referenceNo?: string;
+  balanceAfter: number;
+}
+
 export interface CariMovement {
   id: string;
   cariId: string;
@@ -183,6 +196,13 @@ export interface CategoryDefinition {
   subCategories: string[];
 }
 
+export interface SubCategoryDefinition {
+  id: string;
+  categoryName: string;
+  name: string;
+  description?: string;
+}
+
 export interface BrandDefinition {
   id: string;
   name: string;
@@ -193,6 +213,22 @@ export interface MonthlyInterestRate {
   id: string;
   monthCode: string; // '2026-10'
   monthName: string; // 'Ekim 2026'
-  rate: number;      // % Aylık Vade Farkı Oranı (örn: 2.5)
+  rate: number;      // % Aylık Vade Farkı Oranı (örn: 2.8)
   isDefault?: boolean;
+}
+
+export interface PriceListItem {
+  id: string;
+  productId: string;
+  productSku: string;
+  productName: string;
+  category: string;
+  subCategory?: string;
+  brand?: string;
+  monthCode: string; // '2026-10'
+  costPrice: number;
+  cashSalePrice: number;
+  cardSalePrice: number;
+  installment12Price: number;
+  lastUpdated: string;
 }

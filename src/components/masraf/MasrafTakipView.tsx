@@ -10,6 +10,25 @@ export const MasrafTakipView: React.FC = () => {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Tümü');
+  const [selectedYear, setSelectedYear] = useState('2026');
+  const [selectedMonth, setSelectedMonth] = useState('Tümü');
+
+  const monthsList = [
+    { code: 'Tümü', name: 'Tüm Aylar' },
+    { code: '01', name: 'Ocak' },
+    { code: '02', name: 'Şubat' },
+    { code: '03', name: 'Mart' },
+    { code: '04', name: 'Nisan' },
+    { code: '05', name: 'Mayıs' },
+    { code: '06', name: 'Haziran' },
+    { code: '07', name: 'Temmuz' },
+    { code: '08', name: 'Ağustos' },
+    { code: '09', name: 'Eylül' },
+    { code: '10', name: 'Ekim' },
+    { code: '11', name: 'Kasım' },
+    { code: '12', name: 'Aralık' },
+  ];
+  const yearsList = ['Tümü', '2026', '2025', '2024'];
 
   // Form states
   const [category, setCategory] = useState<Expense['category']>('Kira');
@@ -31,9 +50,26 @@ export const MasrafTakipView: React.FC = () => {
     'Diğer',
   ];
 
-  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  // Date Filtered Expenses (Requirement 3)
+  const dateFilteredExpenses = expenses.filter((e) => {
+    const matchYear = selectedYear === 'Tümü' || e.date.startsWith(selectedYear);
+    const matchMonth = selectedMonth === 'Tümü' || e.date.slice(5, 7) === selectedMonth;
+    return matchYear && matchMonth;
+  });
 
-  const filteredExpenses = expenses.filter((e) => {
+  const totalExpenses = dateFilteredExpenses.reduce((sum, e) => sum + e.amount, 0);
+
+  // Top expense category in this period
+  const categoryTotals = categories.map((cat) => {
+    const sum = dateFilteredExpenses
+      .filter((e) => e.category === cat)
+      .reduce((s, e) => s + e.amount, 0);
+    return { category: cat, total: sum };
+  }).sort((a, b) => b.total - a.total);
+
+  const topExpenseCategory = categoryTotals[0]?.total > 0 ? categoryTotals[0] : null;
+
+  const filteredExpenses = dateFilteredExpenses.filter((e) => {
     const matchSearch =
       e.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (e.paidTo && e.paidTo.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -86,47 +122,87 @@ export const MasrafTakipView: React.FC = () => {
         </button>
       </div>
 
-      {/* KPI Total Expenses */}
-      <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800 flex items-center justify-between">
-        <div>
-          <span className="text-xs text-slate-400 font-medium">Toplam İşletme Gideri</span>
-          <div className="text-2xl font-bold text-rose-400 mt-1">{formatCurrency(totalExpenses)}</div>
+      {/* KPI Cards Grid with Date Period Details */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-slate-400 font-medium">Seçili Dönem Toplam Masrafı</span>
+            <div className="w-8 h-8 rounded-lg bg-rose-500/10 text-rose-400 flex items-center justify-center">
+              <Receipt className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl font-bold text-rose-400 font-mono">{formatCurrency(totalExpenses)}</div>
+          <p className="text-[11px] text-slate-500 mt-1">
+            {selectedMonth !== 'Tümü' ? monthsList.find((m) => m.code === selectedMonth)?.name : 'Tüm Aylar'} {selectedYear !== 'Tümü' ? selectedYear : 'Tüm Yıllar'}
+          </p>
         </div>
-        <div className="text-xs text-slate-400">
-          Toplam <strong>{expenses.length} adet gider kaydı</strong>
+
+        <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-slate-400 font-medium">En Yüksek Masraf Kalemi</span>
+            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center">
+              <Tag className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-xl font-bold text-amber-400 truncate">
+            {topExpenseCategory ? topExpenseCategory.category : '-'}
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1 font-mono">
+            {topExpenseCategory ? formatCurrency(topExpenseCategory.total) : '0 ₺'}
+          </p>
+        </div>
+
+        <div className="p-5 rounded-2xl bg-slate-900/90 border border-slate-800">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-slate-400 font-medium">Kayıtlı Gider Adedi</span>
+            <div className="w-8 h-8 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center">
+              <Calendar className="w-4 h-4" />
+            </div>
+          </div>
+          <div className="text-2xl font-bold text-white font-mono">{dateFilteredExpenses.length} Adet</div>
+          <p className="text-[11px] text-slate-500 mt-1">Sistem genelinde {expenses.length} adet</p>
         </div>
       </div>
 
       {/* Table & Filters */}
       <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-4">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-b border-slate-800 pb-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setSelectedCategory('Tümü')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                selectedCategory === 'Tümü'
-                  ? 'bg-amber-500 text-slate-950'
-                  : 'text-slate-400 hover:text-white bg-slate-800/60'
-              }`}
-            >
-              Tümü
-            </button>
-            {categories.map((c) => (
-              <button
-                key={c}
-                onClick={() => setSelectedCategory(c)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                  selectedCategory === c
-                    ? 'bg-amber-500 text-slate-950'
-                    : 'text-slate-400 hover:text-white bg-slate-800/60'
-                }`}
+        {/* Date Filter Bar & Search */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          {/* Year & Month Selection (Requirement 3) */}
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center gap-1.5 bg-slate-950/80 p-1 rounded-xl border border-slate-750">
+              <Calendar className="w-3.5 h-3.5 text-amber-400 ml-1.5" />
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="bg-transparent text-xs text-white px-1.5 py-1 focus:outline-none cursor-pointer"
+                title="Yıl Seçimi"
               >
-                {c}
-              </button>
-            ))}
+                {yearsList.map((y) => (
+                  <option key={y} value={y} className="bg-slate-900 text-white">
+                    {y === 'Tümü' ? 'Tüm Yıllar' : y}
+                  </option>
+                ))}
+              </select>
+
+              <span className="text-slate-600">/</span>
+
+              <select
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="bg-transparent text-xs text-white px-1.5 py-1 focus:outline-none cursor-pointer"
+                title="Ay Seçimi"
+              >
+                {monthsList.map((m) => (
+                  <option key={m.code} value={m.code} className="bg-slate-900 text-white">
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="relative w-full sm:w-64">
+          <div className="relative w-full sm:w-72">
             <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
             <input
               type="text"
@@ -136,6 +212,33 @@ export const MasrafTakipView: React.FC = () => {
               className="w-full bg-slate-950/70 border border-slate-750 rounded-xl pl-9 pr-3 py-1.5 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-amber-500"
             />
           </div>
+        </div>
+
+        {/* Category Pills Filter */}
+        <div className="flex flex-wrap items-center gap-1.5 pt-1">
+          <button
+            onClick={() => setSelectedCategory('Tümü')}
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+              selectedCategory === 'Tümü'
+                ? 'bg-amber-500 text-slate-950 shadow'
+                : 'text-slate-400 hover:text-white bg-slate-800/60'
+            }`}
+          >
+            Tüm Kategoriler
+          </button>
+          {categories.map((c) => (
+            <button
+              key={c}
+              onClick={() => setSelectedCategory(c)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                selectedCategory === c
+                  ? 'bg-amber-500 text-slate-950 shadow'
+                  : 'text-slate-400 hover:text-white bg-slate-800/60'
+              }`}
+            >
+              {c}
+            </button>
+          ))}
         </div>
 
         <div className="overflow-x-auto">
