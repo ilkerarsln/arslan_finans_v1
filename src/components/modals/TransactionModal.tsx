@@ -53,6 +53,8 @@ export const TransactionModal: React.FC = () => {
   const [isInstallment, setIsInstallment] = useState(false);
   const [installmentsCount, setInstallmentsCount] = useState<number>(6);
   const [firstDueDate, setFirstDueDate] = useState<string>('');
+  const [isPosOffset, setIsPosOffset] = useState<boolean>(false);
+  const [supplierCariId, setSupplierCariId] = useState<string>('');
 
   useEffect(() => {
     if (isTransactionModalOpen) {
@@ -77,6 +79,8 @@ export const TransactionModal: React.FC = () => {
         setDesc(prefillTransaction.desc || '');
         setDocumentNo(prefillTransaction.documentNo || '');
         setIsInstallment(false);
+        setIsPosOffset(Boolean(prefillTransaction.isPosOffset));
+        setSupplierCariId(prefillTransaction.supplierCariId || '');
       } else {
         // Adding new
         setEditingId(null);
@@ -92,12 +96,16 @@ export const TransactionModal: React.FC = () => {
         );
         setCariName(prefillTransaction?.cariName || '');
         setCariId(prefillTransaction?.cariId || '');
-        setAccountId(prefillTransaction?.accountId || accounts[0]?.id || '');
+        const defaultAcc = prefillTransaction?.accountId || accounts[0]?.id || '';
+        setAccountId(defaultAcc);
         setTargetAccountId(prefillTransaction?.targetAccountId || accounts[1]?.id || '');
         setDesc(prefillTransaction?.desc || '');
         setDocumentNo(prefillTransaction?.documentNo || '');
         setIsInstallment(false);
         setInstallmentsCount(6);
+        const isPos = Boolean(prefillTransaction?.isPosOffset || accounts.find(a => a.id === defaultAcc)?.type === 'POS Cihazı / Hesabı');
+        setIsPosOffset(isPos);
+        setSupplierCariId(prefillTransaction?.supplierCariId || '');
       }
       setIsAddingNewCategory(false);
       setNewCategoryName('');
@@ -159,6 +167,12 @@ export const TransactionModal: React.FC = () => {
       }
     }
 
+    const isEffectivePosOffset =
+      type === 'Gelir' &&
+      (isPosOffset || Boolean(accounts.find(a => a.id === accountId && (a.type === 'POS Cihazı / Hesabı' || a.name.toLowerCase().includes('pos'))))) &&
+      Boolean(supplierCariId);
+    const matchedSupplier = isEffectivePosOffset ? caris.find(c => c.id === supplierCariId) : null;
+
     const payload = {
       date: date || new Date().toISOString().split('T')[0],
       dueDate: type === 'Mal Alımı' ? (dueDate || new Date().toISOString().split('T')[0]) : undefined,
@@ -171,7 +185,16 @@ export const TransactionModal: React.FC = () => {
           : category || 'Genel',
       cariId: finalCariId || undefined,
       cariName: cariName.trim() || undefined,
-      desc: desc.trim() || (type === 'Mal Alımı' ? 'Mal Alımı / Tedarikçi Borçlandırması' : ''),
+      supplierCariId: isEffectivePosOffset ? supplierCariId : undefined,
+      supplierCariName: matchedSupplier ? matchedSupplier.name : undefined,
+      isPosOffset: isEffectivePosOffset,
+      desc:
+        desc.trim() ||
+        (type === 'Mal Alımı'
+          ? 'Mal Alımı / Tedarikçi Borçlandırması'
+          : isEffectivePosOffset && matchedSupplier
+          ? `POS Tahsilatı (Mahsup: ${matchedSupplier.name})`
+          : ''),
       amount: numAmount,
       accountId: accountId || accounts[0]?.id || 'acc-default',
       targetAccountId: type === 'Transfer' ? targetAccountId : undefined,
@@ -496,22 +519,79 @@ export const TransactionModal: React.FC = () => {
                 </div>
               ) : (
                 /* Bank Account / Payment account */
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    {type === 'Gelir' ? 'Tahsilat Hesabı / Kasa' : 'Ödeme Hesabı / Kasa / Kart'} *
-                  </label>
-                  <select
-                    value={accountId}
-                    onChange={e => setAccountId(e.target.value)}
-                    required
-                    className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 text-slate-800 dark:text-slate-200 font-medium"
-                  >
-                    {accounts.map(acc => (
-                      <option key={acc.id} value={acc.id}>
-                        {acc.name} ({acc.type}) — Mevcut: ₺{acc.balance.toLocaleString('tr-TR')}
-                      </option>
-                    ))}
-                  </select>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      {type === 'Gelir' ? 'Tahsilat Hesabı / Kasa / POS' : 'Ödeme Hesabı / Kasa / Kart'} *
+                    </label>
+                    <select
+                      value={accountId}
+                      onChange={e => {
+                        const newAccId = e.target.value;
+                        setAccountId(newAccId);
+                        const sel = accounts.find(a => a.id === newAccId);
+                        if (type === 'Gelir' && sel && (sel.type === 'POS Cihazı / Hesabı' || sel.name.toLowerCase().includes('pos'))) {
+                          setIsPosOffset(true);
+                        }
+                      }}
+                      required
+                      className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 text-slate-800 dark:text-slate-200 font-medium"
+                    >
+                      {accounts.map(acc => (
+                        <option key={acc.id} value={acc.id}>
+                          {acc.name} ({acc.type}) — Mevcut: ₺{acc.balance.toLocaleString('tr-TR')}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* POS Tahsilatı & Tedarikçi Cari Eşleştirmesi (Mahsup) */}
+                  {type === 'Gelir' && (
+                    <div className="p-3.5 bg-gradient-to-r from-emerald-50/90 to-teal-50/90 dark:from-emerald-950/40 dark:to-teal-950/30 border border-emerald-200 dark:border-emerald-800/60 rounded-xl space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-emerald-900 dark:text-emerald-200">
+                          <input
+                            type="checkbox"
+                            checked={isPosOffset}
+                            onChange={e => setIsPosOffset(e.target.checked)}
+                            className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
+                          />
+                          <span>POS Tahsilatını Tedarikçi Cari Borcundan Düş (Mahsup Et)</span>
+                        </label>
+                        {accounts.find(a => a.id === accountId)?.type === 'POS Cihazı / Hesabı' && (
+                          <span className="text-[10px] font-semibold bg-emerald-600 text-white px-2 py-0.5 rounded-full">
+                            POS Hesabı
+                          </span>
+                        )}
+                      </div>
+
+                      {isPosOffset && (
+                        <div className="space-y-2 pt-2 border-t border-emerald-200/60 dark:border-emerald-800/40">
+                          <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300">
+                            Mahsup Edilecek Tedarikçi Cari Hesabı *
+                          </label>
+                          <select
+                            value={supplierCariId}
+                            onChange={e => setSupplierCariId(e.target.value)}
+                            required={isPosOffset}
+                            className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-emerald-300 dark:border-emerald-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200 font-medium"
+                          >
+                            <option value="">Tedarikçi Firma Seçin...</option>
+                            {caris
+                              .filter(c => c.type === 'Tedarikçi')
+                              .map(c => (
+                                <option key={c.id} value={c.id}>
+                                  {c.name} {c.balance !== 0 ? `(Borcumuz: ₺${Math.abs(c.balance).toLocaleString('tr-TR')})` : '(Bakiye: ₺0)'}
+                                </option>
+                              ))}
+                          </select>
+                          <p className="text-[11px] text-emerald-700 dark:text-emerald-300 leading-relaxed">
+                            💡 Bu tahsilat tutarı ({amount ? `₺${parseFloat(amount).toLocaleString('tr-TR')}` : 'girilen tutar'}), seçilen tedarikçinin cari hesabından (borcundan) otomatik olarak düşülecek ve cari bakiye güncellenecektir.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </>

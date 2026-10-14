@@ -135,6 +135,46 @@
         "createdBy": { "type": "string" }
       },
       "required": ["id", "username", "role", "password"]
+    },
+    "DeletionRequest": {
+      "title": "DeletionRequest",
+      "description": "Approval request by standard user to delete or cancel a transaction or cari",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "targetType": { "type": "string", "enum": ["transaction", "cari"] },
+        "targetId": { "type": "string" },
+        "targetTitle": { "type": "string" },
+        "amount": { "type": "number" },
+        "requestedBy": { "type": "string" },
+        "requestedByName": { "type": "string" },
+        "requestedAt": { "type": "string" },
+        "reason": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "reviewedBy": { "type": "string" },
+        "reviewedAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "targetType", "targetId", "status", "requestedBy"]
+    },
+    "AuditLogEntry": {
+      "title": "AuditLogEntry",
+      "description": "Detailed audit trail of financial actions and user operations",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "action": { "type": "string" },
+        "entityType": { "type": "string" },
+        "entityId": { "type": "string" },
+        "description": { "type": "string" },
+        "performedBy": { "type": "string" },
+        "performedByName": { "type": "string" },
+        "userRole": { "type": "string" },
+        "timestamp": { "type": "string" },
+        "amount": { "type": "number" }
+      },
+      "required": ["id", "userId", "action", "description", "performedBy", "timestamp"]
     }
   },
   "firestore": {
@@ -165,6 +205,14 @@
     "/users/{userId}/categories/{categoryId}": {
       "schema": "Category",
       "description": "User income/expense categories"
+    },
+    "/users/{userId}/deletionRequests/{requestId}": {
+      "schema": "DeletionRequest",
+      "description": "Pending deletion requests requiring admin approval"
+    },
+    "/users/{userId}/auditLogs/{logId}": {
+      "schema": "AuditLogEntry",
+      "description": "Audit trail log records of all system actions"
     }
   }
 }

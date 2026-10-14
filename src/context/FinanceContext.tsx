@@ -34,7 +34,11 @@ import {
   loginStaffWithUsername,
   subscribeToStaffAccounts,
   saveStaffAccount,
+  updateStaffAccountInFirestore,
   deleteStaffAccount,
+  saveDeletionRequestToCloud,
+  deleteDeletionRequestFromCloud,
+  saveAuditLogToCloud,
 } from '../services/firestoreFinance';
 import { exportToExcel } from '../utils/excelExport';
 import {
@@ -56,6 +60,8 @@ import {
   UserRole,
   UserPermissions,
   StaffAccount,
+  DeletionRequest,
+  AuditLogEntry,
 } from '../types/finance';
 import { calculateInstallmentDate } from '../utils/formatters';
 import { parseExcelData } from '../utils/excelImport';
@@ -85,12 +91,22 @@ interface FinanceContextType {
   staffAccounts: StaffAccount[];
   loginWithUsername: (username: string, password: string) => Promise<boolean>;
   createStaffAccount: (staff: StaffAccount) => Promise<void>;
+  updateStaffAccount: (staff: StaffAccount) => Promise<void>;
   removeStaffAccount: (username: string) => Promise<void>;
+
+  // Silme & İptal Onay Mekanizması & Denetim (Audit)
+  deletionRequests: DeletionRequest[];
+  auditLogs: AuditLogEntry[];
+  requestDeleteTransaction: (id: string, reason?: string) => Promise<void>;
+  requestDeleteCari: (id: string, reason?: string) => Promise<void>;
+  approveDeletionRequest: (requestId: string) => Promise<void>;
+  rejectDeletionRequest: (requestId: string, reason?: string) => Promise<void>;
+  logAudit: (entry: Omit<AuditLogEntry, 'id' | 'timestamp' | 'performedBy' | 'performedByName' | 'userRole'>) => Promise<void>;
 
   // Transaction actions
   addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt'>) => Transaction;
   updateTransaction: (tx: Transaction) => void;
-  deleteTransaction: (id: string) => void;
+  deleteTransaction: (id: string, reason?: string) => void;
 
   // Account actions
   addAccount: (acc: Omit<Account, 'id'>) => Account;
@@ -101,7 +117,7 @@ interface FinanceContextType {
   // Cari actions
   addCari: (cari: Omit<Cari, 'id'>) => Cari;
   updateCari: (cari: Cari) => void;
-  deleteCari: (id: string) => void;
+  deleteCari: (id: string, reason?: string) => void;
 
   // Upcoming Dues & Installments
   addUpcomingDue: (due: Omit<UpcomingDue, 'id'>) => UpcomingDue;
@@ -197,11 +213,17 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [caris, setCaris] = useState<Cari[]>([]);
   const [upcomingDues, setUpcomingDues] = useState<UpcomingDue[]>([]);
   const [categories, setCategories] = useState<CategoryItem[]>(INITIAL_CATEGORIES);
+  const [deletionRequests, setDeletionRequests] = useState<DeletionRequest[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
 
   // Guard active tab navigation
   const setActiveTab = (tab: ActiveTab) => {
     if (tab === 'users' && !isAdmin) {
       showToast('Kullanıcı Yönetimi sayfasına yalnızca Yöneticiler (Admin) erişebilir.', 'error');
+      return;
+    }
+    if (tab === 'audit' && !isAdmin) {
+      showToast('İşlem Denetim Raporu sayfasına yalnızca Yöneticiler (Admin) erişebilir.', 'error');
       return;
     }
     setActiveTabState(tab);
@@ -322,6 +344,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setTransactions(cloudData.transactions);
       setCaris(cloudData.caris);
       setUpcomingDues(cloudData.upcomingDues);
+      setDeletionRequests(cloudData.deletionRequests || []);
+      setAuditLogs(cloudData.auditLogs || []);
       setIsCloudSyncing(false);
       isInitialCloudSyncDone.current = true;
     }).catch(err => {
@@ -350,6 +374,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (cloudCats.length > 0) {
           setCategories(cloudCats);
         }
+      },
+      onDeletionRequests: cloudReqs => {
+        setDeletionRequests(cloudReqs);
+      },
+      onAuditLogs: cloudLogs => {
+        setAuditLogs(cloudLogs);
       },
     });
 
@@ -470,9 +500,35 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
     try {
       await saveStaffAccount(account);
+      await logAudit({
+        action: 'Ekleme',
+        entityType: 'Personel',
+        entityId: account.username,
+        description: `Yeni personel hesabı eklendi: ${account.displayName} (${account.username}, Rol: ${account.role})`,
+      });
       showToast(`${account.displayName} (${account.username}) personeli başarıyla kaydedildi.`, 'success');
     } catch (e: any) {
       showToast(`Personel kaydedilemedi: ${e?.message || 'Bilinmeyen hata'}`, 'error');
+    }
+  };
+
+  const updateStaffAccount = async (account: StaffAccount) => {
+    if (!isAdmin) {
+      showToast('Personel hesabı düzenleme yetkisi yalnızca Yöneticilere (Admin) aittir.', 'error');
+      return;
+    }
+    try {
+      await updateStaffAccountInFirestore(account.username, account);
+      setStaffAccounts(prev => prev.map(s => s.username === account.username ? account : s));
+      await logAudit({
+        action: 'Güncelleme',
+        entityType: 'Personel',
+        entityId: account.username,
+        description: `${account.displayName} (${account.username}) personel bilgileri ve rolü güncellendi.`,
+      });
+      showToast(`${account.displayName} bilgileri güncellendi.`, 'success');
+    } catch (e: any) {
+      showToast(`Personel güncellenemedi: ${e?.message || 'Bilinmeyen hata'}`, 'error');
     }
   };
 
@@ -483,9 +539,32 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
     try {
       await deleteStaffAccount(username);
+      await logAudit({
+        action: 'Kalıcı Silme',
+        entityType: 'Personel',
+        entityId: username,
+        description: `'${username}' personel hesabı sistemden kaldırıldı.`,
+      });
       showToast(`${username} personel hesabı silindi.`, 'success');
     } catch (e: any) {
       showToast(`Personel silinemedi: ${e?.message || 'Bilinmeyen hata'}`, 'error');
+    }
+  };
+
+  const logAudit = async (entry: Omit<AuditLogEntry, 'id' | 'timestamp' | 'performedBy' | 'performedByName' | 'userRole'>) => {
+    const actorUser = userProfile?.username || user?.email || 'Anonim';
+    const actorName = userProfile?.displayName || user?.displayName || userProfile?.username || user?.email || 'Personel';
+    const newLog: AuditLogEntry = {
+      ...entry,
+      id: `log-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      performedBy: actorUser,
+      performedByName: actorName,
+      userRole,
+      timestamp: new Date().toISOString(),
+    };
+    setAuditLogs(prev => [newLog, ...prev]);
+    if (user && dataStoreUid) {
+      saveAuditLogToCloud(dataStoreUid, newLog);
     }
   };
 
@@ -581,16 +660,26 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Transaction operations
   const addTransaction = (data: Omit<Transaction, 'id' | 'createdAt'>): Transaction => {
+    const actorUser = userProfile?.username || user?.email || 'Anonim';
+    const actorName = userProfile?.displayName || user?.displayName || userProfile?.username || user?.email || 'Personel';
+
     const newTx: Transaction = {
       ...data,
       id: `tx-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       createdAt: new Date().toISOString(),
+      createdBy: data.createdBy || actorUser,
+      createdByName: data.createdByName || actorName,
     };
 
     if (newTx.type === 'Gelir') {
       adjustAccountBalance(newTx.accountId, newTx.amount);
       if (newTx.cariId) {
         adjustCariBalance(newTx.cariId, -newTx.amount);
+      }
+      // POS Tahsilatı & Tedarikçi Cari Eşleştirmesi (Mahsup)
+      if (newTx.isPosOffset && newTx.supplierCariId) {
+        // Tedarikçi borcundan düşülür
+        adjustCariBalance(newTx.supplierCariId, newTx.amount);
       }
     } else if (newTx.type === 'Gider') {
       adjustAccountBalance(newTx.accountId, -newTx.amount);
@@ -639,8 +728,19 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         });
     }
 
+    // Denetim Logu (Audit Trail)
+    logAudit({
+      action: 'Ekleme',
+      entityType: newTx.type as any,
+      entityId: newTx.id,
+      amount: newTx.amount,
+      description: `${newTx.type} işlemi eklendi: ₺${newTx.amount.toLocaleString('tr-TR')} (${newTx.desc || newTx.category})${newTx.isPosOffset ? ` [POS Mahsup: ${newTx.supplierCariName}]` : ''}`,
+    });
+
     showToast(
-      newTx.type === 'Mal Alımı'
+      newTx.isPosOffset
+        ? `POS tahsilatı ve tedarikçi mahsubu kaydedildi: ₺${newTx.amount.toLocaleString('tr-TR')}`
+        : newTx.type === 'Mal Alımı'
         ? `Mal alımı ve tedarikçi borcu kaydedildi: ₺${newTx.amount.toLocaleString('tr-TR')}`
         : `Yeni işlem kaydedildi: ₺${newTx.amount.toLocaleString('tr-TR')}`,
       'success'
@@ -656,6 +756,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (oldTx.type === 'Gelir') {
       adjustAccountBalance(oldTx.accountId, -oldTx.amount);
       if (oldTx.cariId) adjustCariBalance(oldTx.cariId, oldTx.amount);
+      if (oldTx.isPosOffset && oldTx.supplierCariId) {
+        adjustCariBalance(oldTx.supplierCariId, -oldTx.amount);
+      }
     } else if (oldTx.type === 'Gider') {
       adjustAccountBalance(oldTx.accountId, oldTx.amount);
       if (oldTx.cariId) adjustCariBalance(oldTx.cariId, -oldTx.amount);
@@ -670,6 +773,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (updatedTx.type === 'Gelir') {
       adjustAccountBalance(updatedTx.accountId, updatedTx.amount);
       if (updatedTx.cariId) adjustCariBalance(updatedTx.cariId, -updatedTx.amount);
+      if (updatedTx.isPosOffset && updatedTx.supplierCariId) {
+        adjustCariBalance(updatedTx.supplierCariId, updatedTx.amount);
+      }
     } else if (updatedTx.type === 'Gider') {
       adjustAccountBalance(updatedTx.accountId, -updatedTx.amount);
       if (updatedTx.cariId) adjustCariBalance(updatedTx.cariId, updatedTx.amount);
@@ -683,21 +789,34 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setTransactions(prev => prev.map(t => (t.id === updatedTx.id ? updatedTx : t)));
     if (user && dataStoreUid) syncTransactionToCloud(dataStoreUid, updatedTx);
 
+    logAudit({
+      action: 'Güncelleme',
+      entityType: updatedTx.type as any,
+      entityId: updatedTx.id,
+      amount: updatedTx.amount,
+      description: `${updatedTx.type} işlemi güncellendi: ₺${updatedTx.amount.toLocaleString('tr-TR')}`,
+    });
+
     showToast('İşlem güncellendi', 'info');
   };
 
-  const deleteTransaction = (id: string) => {
-    if (!permissions.canDeleteTransactions) {
-      showToast('İşlem silme yetkisi yalnızca Yöneticilere (Admin) aittir.', 'error');
-      return;
-    }
-
+  const deleteTransaction = (id: string, reason?: string) => {
     const tx = transactions.find(t => t.id === id);
     if (!tx) return;
 
+    if (!isAdmin) {
+      // Standart kullanıcı doğrudan silemez -> Yönetici onayına talep açar
+      requestDeleteTransaction(id, reason || 'Personel işlem iptal talebi');
+      return;
+    }
+
+    // Admin doğrudan siler ve bakiyeleri geri alır
     if (tx.type === 'Gelir') {
       adjustAccountBalance(tx.accountId, -tx.amount);
       if (tx.cariId) adjustCariBalance(tx.cariId, tx.amount);
+      if (tx.isPosOffset && tx.supplierCariId) {
+        adjustCariBalance(tx.supplierCariId, -tx.amount);
+      }
     } else if (tx.type === 'Gider') {
       adjustAccountBalance(tx.accountId, tx.amount);
       if (tx.cariId) adjustCariBalance(tx.cariId, -tx.amount);
@@ -711,7 +830,78 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setTransactions(prev => prev.filter(t => t.id !== id));
     if (user && dataStoreUid) deleteTransactionFromCloud(dataStoreUid, id);
 
-    showToast('İşlem silindi ve bakiye geri alındı', 'info');
+    // Varsa silme talebini de temizle
+    const pendingReq = deletionRequests.find(r => r.targetId === id);
+    if (pendingReq) {
+      setDeletionRequests(prev => prev.filter(r => r.id !== pendingReq.id));
+      if (user && dataStoreUid) deleteDeletionRequestFromCloud(dataStoreUid, pendingReq.id);
+    }
+
+    logAudit({
+      action: 'Kalıcı Silme',
+      entityType: tx.type as any,
+      entityId: tx.id,
+      amount: tx.amount,
+      description: `${tx.type} işlemi yönetici tarafından kalıcı olarak silindi: ₺${tx.amount.toLocaleString('tr-TR')} (${tx.desc || tx.category})`,
+    });
+
+    showToast('İşlem kalıcı olarak silindi ve bakiyeler geri alındı', 'info');
+  };
+
+  const requestDeleteTransaction = async (id: string, reason?: string) => {
+    const tx = transactions.find(t => t.id === id);
+    if (!tx) return;
+
+    if (isAdmin) {
+      deleteTransaction(id);
+      return;
+    }
+
+    const actorUser = userProfile?.username || user?.email || 'Personel';
+    const actorName = userProfile?.displayName || user?.displayName || userProfile?.username || user?.email || 'Personel';
+
+    const reqId = `del-tx-${Date.now()}`;
+    const req: DeletionRequest = {
+      id: reqId,
+      targetType: 'transaction',
+      targetId: tx.id,
+      targetTitle: `${tx.type} - ${tx.desc || tx.category} (₺${tx.amount.toLocaleString('tr-TR')})`,
+      amount: tx.amount,
+      requestedBy: actorUser,
+      requestedByName: actorName,
+      requestedAt: new Date().toISOString(),
+      reason: reason?.trim() || 'Personel tarafından silme/iptal talebi oluşturuldu.',
+      status: 'pending',
+    };
+
+    setDeletionRequests(prev => [req, ...prev]);
+    if (user && dataStoreUid) {
+      saveDeletionRequestToCloud(dataStoreUid, req);
+    }
+
+    // İşlem üzerine onay bekliyor işaretini koy
+    const flaggedTx: Transaction = {
+      ...tx,
+      pendingDeletion: true,
+      deletionRequestedBy: actorUser,
+      deletionRequestedByName: actorName,
+      deletionRequestedAt: req.requestedAt,
+      deletionReason: req.reason,
+    };
+    setTransactions(prev => prev.map(t => (t.id === tx.id ? flaggedTx : t)));
+    if (user && dataStoreUid) {
+      syncTransactionToCloud(dataStoreUid, flaggedTx);
+    }
+
+    logAudit({
+      action: 'Silme Talebi',
+      entityType: tx.type as any,
+      entityId: tx.id,
+      amount: tx.amount,
+      description: `${tx.type} işlemi için silme talebi oluşturuldu (${req.reason}). Yönetici onayı bekleniyor.`,
+    });
+
+    showToast('Silme talebiniz oluşturuldu ve Yönetici (Admin) onayına iletildi.', 'info');
   };
 
   const executeTransfer = (
@@ -783,14 +973,170 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     showToast('Cari bilgisi güncellendi', 'info');
   };
 
-  const deleteCari = (id: string) => {
-    if (!permissions.canDeleteCaris) {
-      showToast('Cari kart silme yetkisi yalnızca Yöneticilere (Admin) aittir.', 'error');
+  const deleteCari = (id: string, reason?: string) => {
+    const cari = caris.find(c => c.id === id);
+    if (!cari) return;
+
+    if (!isAdmin) {
+      // Standart kullanıcı doğrudan silemez -> Yönetici onayına talep açar
+      requestDeleteCari(id, reason || 'Personel cari kart silme talebi');
       return;
     }
+
     setCaris(prev => prev.filter(c => c.id !== id));
     if (user && dataStoreUid) deleteCariFromCloud(dataStoreUid, id);
-    showToast('Cari kartı silindi', 'info');
+
+    const pendingReq = deletionRequests.find(r => r.targetId === id);
+    if (pendingReq) {
+      setDeletionRequests(prev => prev.filter(r => r.id !== pendingReq.id));
+      if (user && dataStoreUid) deleteDeletionRequestFromCloud(dataStoreUid, pendingReq.id);
+    }
+
+    logAudit({
+      action: 'Kalıcı Silme',
+      entityType: 'Cari',
+      entityId: cari.id,
+      amount: cari.balance,
+      description: `'${cari.name}' (${cari.type}) cari kartı yönetici tarafından silindi.`,
+    });
+
+    showToast(`'${cari.name}' cari kartı silindi`, 'info');
+  };
+
+  const requestDeleteCari = async (id: string, reason?: string) => {
+    const cari = caris.find(c => c.id === id);
+    if (!cari) return;
+
+    if (isAdmin) {
+      deleteCari(id);
+      return;
+    }
+
+    const actorUser = userProfile?.username || user?.email || 'Personel';
+    const actorName = userProfile?.displayName || user?.displayName || userProfile?.username || user?.email || 'Personel';
+
+    const reqId = `del-cari-${Date.now()}`;
+    const req: DeletionRequest = {
+      id: reqId,
+      targetType: 'cari',
+      targetId: cari.id,
+      targetTitle: `Cari Kart: ${cari.name} (${cari.type})`,
+      amount: cari.balance,
+      requestedBy: actorUser,
+      requestedByName: actorName,
+      requestedAt: new Date().toISOString(),
+      reason: reason?.trim() || 'Personel tarafından cari silme talebi oluşturuldu.',
+      status: 'pending',
+    };
+
+    setDeletionRequests(prev => [req, ...prev]);
+    if (user && dataStoreUid) {
+      saveDeletionRequestToCloud(dataStoreUid, req);
+    }
+
+    logAudit({
+      action: 'Silme Talebi',
+      entityType: 'Cari',
+      entityId: cari.id,
+      amount: cari.balance,
+      description: `'${cari.name}' cari hesabı için silme talebi oluşturuldu (${req.reason}). Yönetici onayı bekleniyor.`,
+    });
+
+    showToast('Cari kart silme talebiniz Yönetici (Admin) onayına iletildi.', 'info');
+  };
+
+  const approveDeletionRequest = async (requestId: string) => {
+    if (!isAdmin) {
+      showToast('Silme taleplerini yalnızca Yöneticiler (Admin) onaylayabilir.', 'error');
+      return;
+    }
+
+    const req = deletionRequests.find(r => r.id === requestId);
+    if (!req) return;
+
+    if (req.targetType === 'transaction') {
+      const tx = transactions.find(t => t.id === req.targetId);
+      if (tx) {
+        // Rollback effects
+        if (tx.type === 'Gelir') {
+          adjustAccountBalance(tx.accountId, -tx.amount);
+          if (tx.cariId) adjustCariBalance(tx.cariId, tx.amount);
+          if (tx.isPosOffset && tx.supplierCariId) {
+            adjustCariBalance(tx.supplierCariId, -tx.amount);
+          }
+        } else if (tx.type === 'Gider') {
+          adjustAccountBalance(tx.accountId, tx.amount);
+          if (tx.cariId) adjustCariBalance(tx.cariId, -tx.amount);
+        } else if (tx.type === 'Mal Alımı') {
+          if (tx.cariId) adjustCariBalance(tx.cariId, tx.amount);
+        } else if (tx.type === 'Transfer' && tx.targetAccountId) {
+          adjustAccountBalance(tx.accountId, tx.amount);
+          adjustAccountBalance(tx.targetAccountId, -tx.amount);
+        }
+
+        setTransactions(prev => prev.filter(t => t.id !== tx.id));
+        if (user && dataStoreUid) deleteTransactionFromCloud(dataStoreUid, tx.id);
+      }
+    } else if (req.targetType === 'cari') {
+      setCaris(prev => prev.filter(c => c.id !== req.targetId));
+      if (user && dataStoreUid) deleteCariFromCloud(dataStoreUid, req.targetId);
+    }
+
+    setDeletionRequests(prev => prev.filter(r => r.id !== requestId));
+    if (user && dataStoreUid) {
+      deleteDeletionRequestFromCloud(dataStoreUid, requestId);
+    }
+
+    logAudit({
+      action: 'Silme Onayı',
+      entityType: req.targetType === 'transaction' ? 'Gelir' : 'Cari',
+      entityId: req.targetId,
+      amount: req.amount,
+      description: `Silme talebi onaylandı ve kalıcı olarak silindi: ${req.targetTitle} (Talep eden: ${req.requestedByName})`,
+    });
+
+    showToast('Silme talebi onaylandı ve işlem sistemden kaldırıldı.', 'success');
+  };
+
+  const rejectDeletionRequest = async (requestId: string, reason?: string) => {
+    if (!isAdmin) {
+      showToast('Silme taleplerini yalnızca Yöneticiler (Admin) reddedebilir.', 'error');
+      return;
+    }
+
+    const req = deletionRequests.find(r => r.id === requestId);
+    if (!req) return;
+
+    if (req.targetType === 'transaction') {
+      const tx = transactions.find(t => t.id === req.targetId);
+      if (tx) {
+        const unflagged: Transaction = {
+          ...tx,
+          pendingDeletion: false,
+          deletionRequestedBy: undefined,
+          deletionRequestedByName: undefined,
+          deletionRequestedAt: undefined,
+          deletionReason: undefined,
+        };
+        setTransactions(prev => prev.map(t => (t.id === tx.id ? unflagged : t)));
+        if (user && dataStoreUid) syncTransactionToCloud(dataStoreUid, unflagged);
+      }
+    }
+
+    setDeletionRequests(prev => prev.filter(r => r.id !== requestId));
+    if (user && dataStoreUid) {
+      deleteDeletionRequestFromCloud(dataStoreUid, requestId);
+    }
+
+    logAudit({
+      action: 'Silme Reddi',
+      entityType: req.targetType === 'transaction' ? 'Gelir' : 'Cari',
+      entityId: req.targetId,
+      amount: req.amount,
+      description: `Silme talebi yönetici tarafından reddedildi: ${req.targetTitle}${reason ? ` (Gerekçe: ${reason})` : ''}`,
+    });
+
+    showToast('Silme talebi reddedildi ve işlem aktif tutuldu.', 'info');
   };
 
   // Upcoming Dues & Installments
@@ -1068,7 +1414,17 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         staffAccounts,
         loginWithUsername,
         createStaffAccount,
+        updateStaffAccount,
         removeStaffAccount,
+
+        // Silme & İptal Onay Mekanizması & Denetim (Audit)
+        deletionRequests,
+        auditLogs,
+        requestDeleteTransaction,
+        requestDeleteCari,
+        approveDeletionRequest,
+        rejectDeletionRequest,
+        logAudit,
 
         // Operations
         addTransaction,

@@ -117,12 +117,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       >
         {/* Brand Header */}
         <div className="p-5 flex items-center justify-between border-b border-slate-800/80">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shadow-inner">
+          <div
+            onClick={() => handleSelectTab('dashboard')}
+            className="flex items-center gap-3 cursor-pointer group"
+            title="Ana Özet Panele Dön"
+          >
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
               <Wallet className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
-              <span className="text-base font-bold text-white tracking-tight block">
+              <span className="text-base font-bold text-white tracking-tight block group-hover:text-emerald-400 transition-colors">
                 Arslan Finans
               </span>
               <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider block">

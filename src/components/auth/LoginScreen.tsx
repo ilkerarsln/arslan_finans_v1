@@ -12,7 +12,6 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
-  Sparkles,
   Users,
 } from 'lucide-react';
 
@@ -51,12 +50,6 @@ export const LoginScreen: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleQuickFill = (user: string, pass: string) => {
-    setUsername(user);
-    setPassword(pass);
-    setErrorMessage(null);
   };
 
   return (
@@ -150,9 +143,9 @@ export const LoginScreen: React.FC = () => {
 
           {/* Mode 1: Staff Login (Username & Password) */}
           {authMode === 'staff' && (
-            <form onSubmit={handleStaffLogin} className="space-y-4">
+            <form onSubmit={handleStaffLogin} className="space-y-4" autoComplete="off">
               <p className="text-slate-300 text-xs leading-relaxed">
-                E-posta adresi gerekmeden kullanıcı adı ve şifrenizle doğrudan giriş yapın.
+                E-posta adresi gerekmeden kullanıcı adı ve şifrenizle güvenle giriş yapın.
               </p>
 
               {errorMessage && (
@@ -173,13 +166,17 @@ export const LoginScreen: React.FC = () => {
                   </div>
                   <input
                     type="text"
+                    name="arslan_auth_username_field"
+                    id="arslan_auth_username_field"
+                    autoComplete="off"
                     value={username}
                     onChange={e => setUsername(e.target.value)}
-                    placeholder="Örn: admin, kasa, muhasebe"
+                    placeholder="Kullanıcı adınızı girin"
                     className="w-full pl-9 pr-3 py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                     disabled={isSubmitting || isCloudSyncing}
                     autoCapitalize="none"
                     autoCorrect="off"
+                    spellCheck="false"
                   />
                 </div>
               </div>
@@ -195,6 +192,9 @@ export const LoginScreen: React.FC = () => {
                   </div>
                   <input
                     type={showPassword ? 'text' : 'password'}
+                    name="arslan_auth_password_field"
+                    id="arslan_auth_password_field"
+                    autoComplete="new-password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     placeholder="Şifrenizi girin"
@@ -226,39 +226,6 @@ export const LoginScreen: React.FC = () => {
                   </>
                 )}
               </button>
-
-              {/* Quick Fill / Demo Accounts */}
-              <div className="pt-3 border-t border-slate-700/60">
-                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 mb-2">
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Hızlı Demo Personel Hesapları (Tek Tıkla Doldur):</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill('admin', 'admin123')}
-                    className="p-2 text-left rounded-lg bg-slate-900/70 hover:bg-slate-700/60 border border-slate-700/60 transition-all group"
-                  >
-                    <div className="flex items-center justify-between text-[11px] font-semibold text-emerald-400 mb-0.5">
-                      <span>Yönetici (Admin)</span>
-                      <span className="text-[10px] text-slate-500 font-mono">admin</span>
-                    </div>
-                    <div className="text-[10px] text-slate-400 truncate">Şifre: admin123</div>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleQuickFill('kasa', '123456')}
-                    className="p-2 text-left rounded-lg bg-slate-900/70 hover:bg-slate-700/60 border border-slate-700/60 transition-all group"
-                  >
-                    <div className="flex items-center justify-between text-[11px] font-semibold text-sky-400 mb-0.5">
-                      <span>Kasa Personeli</span>
-                      <span className="text-[10px] text-slate-500 font-mono">kasa</span>
-                    </div>
-                    <div className="text-[10px] text-slate-400 truncate">Şifre: 123456</div>
-                  </button>
-                </div>
-              </div>
             </form>
           )}
 

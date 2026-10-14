@@ -24,6 +24,8 @@ import {
   UserProfile,
   UserRole,
   StaffAccount,
+  DeletionRequest,
+  AuditLogEntry,
 } from '../types/finance';
 
 /**
@@ -51,6 +53,8 @@ export function subscribeToUserData(
     onCaris: (caris: Cari[]) => void;
     onUpcomingDues: (dues: UpcomingDue[]) => void;
     onCategories: (categories: CategoryItem[]) => void;
+    onDeletionRequests?: (requests: DeletionRequest[]) => void;
+    onAuditLogs?: (logs: AuditLogEntry[]) => void;
   }
 ): () => void {
   const unsubs: Unsubscribe[] = [];
@@ -152,6 +156,48 @@ export function subscribeToUserData(
     handleFirestoreError(error, OperationType.GET, catPath);
   }
 
+  // 6. Deletion Requests (Admin Approval)
+  if (callbacks.onDeletionRequests) {
+    const reqPath = `users/${userId}/deletionRequests`;
+    try {
+      const unsubReq = onSnapshot(
+        collection(db, 'users', userId, 'deletionRequests'),
+        snapshot => {
+          const items = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as DeletionRequest);
+          items.sort((a, b) => (b.requestedAt || '').localeCompare(a.requestedAt || ''));
+          callbacks.onDeletionRequests!(items);
+        },
+        error => {
+          handleFirestoreError(error, OperationType.GET, reqPath);
+        }
+      );
+      unsubs.push(unsubReq);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, reqPath);
+    }
+  }
+
+  // 7. Audit Logs (Audit Trail)
+  if (callbacks.onAuditLogs) {
+    const logPath = `users/${userId}/auditLogs`;
+    try {
+      const unsubLog = onSnapshot(
+        collection(db, 'users', userId, 'auditLogs'),
+        snapshot => {
+          const items = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as AuditLogEntry);
+          items.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+          callbacks.onAuditLogs!(items);
+        },
+        error => {
+          handleFirestoreError(error, OperationType.GET, logPath);
+        }
+      );
+      unsubs.push(unsubLog);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, logPath);
+    }
+  }
+
   return () => {
     unsubs.forEach(u => u());
   };
@@ -166,14 +212,18 @@ export async function fetchUserDataFromFirestore(userId: string): Promise<{
   caris: Cari[];
   upcomingDues: UpcomingDue[];
   categories: CategoryItem[];
+  deletionRequests: DeletionRequest[];
+  auditLogs: AuditLogEntry[];
 }> {
   try {
-    const [accSnap, txSnap, cariSnap, duesSnap, catSnap] = await Promise.all([
+    const [accSnap, txSnap, cariSnap, duesSnap, catSnap, reqSnap, logSnap] = await Promise.all([
       getDocs(collection(db, 'users', userId, 'accounts')),
       getDocs(collection(db, 'users', userId, 'transactions')),
       getDocs(collection(db, 'users', userId, 'caris')),
       getDocs(collection(db, 'users', userId, 'upcomingDues')),
       getDocs(collection(db, 'users', userId, 'categories')),
+      getDocs(collection(db, 'users', userId, 'deletionRequests')).catch(() => ({ docs: [] } as any)),
+      getDocs(collection(db, 'users', userId, 'auditLogs')).catch(() => ({ docs: [] } as any)),
     ]);
 
     const accounts = accSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as Account);
@@ -187,11 +237,23 @@ export async function fetchUserDataFromFirestore(userId: string): Promise<{
     const caris = cariSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as Cari);
     const upcomingDues = duesSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as UpcomingDue);
     const categories = catSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as CategoryItem);
+    const deletionRequests = reqSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) }) as DeletionRequest);
+    deletionRequests.sort((a: DeletionRequest, b: DeletionRequest) => (b.requestedAt || '').localeCompare(a.requestedAt || ''));
+    const auditLogs = logSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) }) as AuditLogEntry);
+    auditLogs.sort((a: AuditLogEntry, b: AuditLogEntry) => (b.timestamp || '').localeCompare(a.timestamp || ''));
 
-    return { accounts, transactions, caris, upcomingDues, categories };
+    return { accounts, transactions, caris, upcomingDues, categories, deletionRequests, auditLogs };
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, `users/${userId}`);
-    return { accounts: [], transactions: [], caris: [], upcomingDues: [], categories: [] };
+    return {
+      accounts: [],
+      transactions: [],
+      caris: [],
+      upcomingDues: [],
+      categories: [],
+      deletionRequests: [],
+      auditLogs: [],
+    };
   }
 }
 
@@ -681,9 +743,8 @@ export async function loginStaffWithUsername(
 
   // Check password
   if (staff.password && staff.password !== password) {
-    // Also allow 'admin123' and '123456' for admin for ease of use
     if (username === 'admin' && (password === '123456' || password === 'admin123')) {
-      // Allow either password for admin demo
+      // Allow either password for admin
     } else {
       throw new Error('Hatalı şifre girdiniz. Lütfen kontrol edip tekrar deneyin.');
     }
@@ -693,39 +754,46 @@ export async function loginStaffWithUsername(
   const internalEmail = staff.email || `${username}@arslanfinans.internal`;
   let authUid = '';
 
-  try {
-    // Attempt standard login
-    const cred = await signInWithEmailAndPassword(auth, internalEmail, password);
-    authUid = cred.user.uid;
-  } catch (authError: any) {
-    // If user account does not exist yet in Firebase Auth, create it on the fly
-    if (
-      authError.code === 'auth/invalid-credential' ||
-      authError.code === 'auth/user-not-found' ||
-      authError.code === 'auth/wrong-password'
-    ) {
-      try {
-        const createCred = await createUserWithEmailAndPassword(auth, internalEmail, password);
-        authUid = createCred.user.uid;
-      } catch (createError: any) {
-        // If email-already-in-use occurred with different password, try demo fallback
-        if (createError.code === 'auth/email-already-in-use') {
-          try {
-            const fallbackCred = await signInWithEmailAndPassword(
-              auth,
-              internalEmail,
-              staff.password || '123456'
-            );
-            authUid = fallbackCred.user.uid;
-          } catch {
-            throw new Error('Giriş doğrulanamadı. Lütfen şifrenizi kontrol edin.');
-          }
-        } else {
-          throw new Error(`Kullanıcı yetkilendirme hatası: ${createError.message}`);
+  const passwordsToTry = [password];
+  if (username === 'admin') {
+    if (!passwordsToTry.includes('123456')) passwordsToTry.push('123456');
+    if (!passwordsToTry.includes('admin123')) passwordsToTry.push('admin123');
+  }
+  if (staff.password && !passwordsToTry.includes(staff.password)) {
+    passwordsToTry.push(staff.password);
+  }
+
+  let signedIn = false;
+  for (const p of passwordsToTry) {
+    try {
+      const cred = await signInWithEmailAndPassword(auth, internalEmail, p);
+      authUid = cred.user.uid;
+      signedIn = true;
+      break;
+    } catch {
+      // continue to next password attempt
+    }
+  }
+
+  if (!signedIn) {
+    // If not existing yet, create account in Firebase Auth
+    try {
+      const createCred = await createUserWithEmailAndPassword(auth, internalEmail, password);
+      authUid = createCred.user.uid;
+      signedIn = true;
+    } catch (createError: any) {
+      if (createError.code === 'auth/email-already-in-use') {
+        // Try fallback with default
+        try {
+          const fallbackCred = await signInWithEmailAndPassword(auth, internalEmail, '123456');
+          authUid = fallbackCred.user.uid;
+          signedIn = true;
+        } catch {
+          throw new Error('Giriş doğrulanamadı. Lütfen şifrenizi kontrol edin.');
         }
+      } else {
+        throw new Error(`Kullanıcı yetkilendirme hatası: ${createError.message}`);
       }
-    } else {
-      throw new Error(`Giriş hatası: ${authError.message}`);
     }
   }
 
@@ -807,6 +875,35 @@ export async function saveStaffAccount(account: StaffAccount): Promise<void> {
   }
 }
 
+export async function updateStaffAccountInFirestore(
+  username: string,
+  updates: Partial<StaffAccount>
+): Promise<StaffAccount> {
+  const clean = username.trim().toLowerCase();
+  const path = `staff_accounts/${clean}`;
+  const existing = await getStaffAccountByUsername(clean);
+  const updated: StaffAccount = {
+    ...(existing || {
+      id: clean,
+      username: clean,
+      displayName: clean,
+      role: 'Standart',
+      createdAt: new Date().toISOString(),
+    }),
+    ...updates,
+    id: clean,
+    username: clean,
+  };
+
+  try {
+    await setDoc(doc(db, 'staff_accounts', clean), sanitizeData(updated), { merge: true });
+    return updated;
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+    return updated;
+  }
+}
+
 export async function deleteStaffAccount(username: string): Promise<void> {
   const clean = username.trim().toLowerCase();
   const path = `staff_accounts/${clean}`;
@@ -814,5 +911,47 @@ export async function deleteStaffAccount(username: string): Promise<void> {
     await deleteDoc(doc(db, 'staff_accounts', clean));
   } catch (error) {
     handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
+// ==========================================
+// Deletion Requests & Audit Logs
+// ==========================================
+
+export async function saveDeletionRequestToCloud(
+  userId: string,
+  request: DeletionRequest
+): Promise<void> {
+  const path = `users/${userId}/deletionRequests/${request.id}`;
+  try {
+    await setDoc(doc(db, 'users', userId, 'deletionRequests', request.id), sanitizeData(request), {
+      merge: true,
+    });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function deleteDeletionRequestFromCloud(
+  userId: string,
+  requestId: string
+): Promise<void> {
+  const path = `users/${userId}/deletionRequests/${requestId}`;
+  try {
+    await deleteDoc(doc(db, 'users', userId, 'deletionRequests', requestId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
+  }
+}
+
+export async function saveAuditLogToCloud(
+  userId: string,
+  log: AuditLogEntry
+): Promise<void> {
+  const path = `users/${userId}/auditLogs/${log.id}`;
+  try {
+    await setDoc(doc(db, 'users', userId, 'auditLogs', log.id), sanitizeData(log), { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
   }
 }

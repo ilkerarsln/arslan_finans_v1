@@ -10,6 +10,9 @@ export interface Transaction {
   category: string;
   cariId?: string;
   cariName?: string;
+  supplierCariId?: string; // POS tahsilatı tedarikçi cari eşleştirmesi (mahsup)
+  supplierCariName?: string;
+  isPosOffset?: boolean;
   desc: string;
   amount: number;
   accountId: string;
@@ -17,12 +20,20 @@ export interface Transaction {
   status: TransactionStatus;
   documentNo?: string;
   createdAt: string;
+  createdBy?: string; // İşlemi ekleyen kullanıcı (Kullanıcı Adı veya E-posta)
+  createdByName?: string; // Ekleyen personelin adı
   installmentIndex?: number;
   totalInstallments?: number;
   installmentGroupId?: string;
+  // Silme / İptal onay mekanizması
+  pendingDeletion?: boolean;
+  deletionRequestedBy?: string;
+  deletionRequestedByName?: string;
+  deletionRequestedAt?: string;
+  deletionReason?: string;
 }
 
-export type AccountType = 'Ticari Hesap' | 'Kasa (Nakit)' | 'Şirket Kredi Kartı' | 'Döviz Hesabı';
+export type AccountType = 'Ticari Hesap' | 'Kasa (Nakit)' | 'Şirket Kredi Kartı' | 'POS Cihazı / Hesabı' | 'Döviz Hesabı';
 
 export interface Account {
   id: string;
@@ -130,4 +141,33 @@ export interface StaffAccount {
   createdBy?: string;
 }
 
-export type ActiveTab = 'dashboard' | 'transactions' | 'accounts' | 'currents' | 'upcoming' | 'reports' | 'users';
+export interface DeletionRequest {
+  id: string;
+  targetType: 'transaction' | 'cari';
+  targetId: string;
+  targetTitle: string;
+  amount?: number;
+  requestedBy: string; // username or email
+  requestedByName: string;
+  requestedAt: string;
+  reason: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reviewedBy?: string;
+  reviewedAt?: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  action: 'Ekleme' | 'Güncelleme' | 'Silme Talebi' | 'Silme Onayı' | 'Silme Reddi' | 'Kalıcı Silme';
+  entityType: 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alımı' | 'Cari' | 'Hesap' | 'Personel' | 'Sistem';
+  entityId: string;
+  description: string;
+  performedBy: string;
+  performedByName: string;
+  userRole: UserRole;
+  timestamp: string;
+  amount?: number;
+  details?: Record<string, any>;
+}
+
+export type ActiveTab = 'dashboard' | 'transactions' | 'accounts' | 'currents' | 'upcoming' | 'reports' | 'users' | 'audit';

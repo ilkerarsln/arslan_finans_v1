@@ -37,6 +37,10 @@ const TAB_TITLES: Record<ActiveTab, { title: string; subtitle: string }> = {
     title: 'Kullanıcı ve Rol Yönetimi',
     subtitle: 'Admin ve Normal Kullanıcı yetkilendirme, erişim izinleri',
   },
+  audit: {
+    title: 'İşlem Denetim Raporu & Onaylar',
+    subtitle: 'Kullanıcı işlem kayıtları, denetim izi ve silme onay talepleri',
+  },
 };
 
 export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
@@ -95,10 +99,19 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           <Menu className="w-5 h-5" />
         </button>
 
-        <div>
-          <h1 className="text-base md:text-lg font-bold text-slate-900 dark:text-white leading-tight">
-            {TAB_TITLES[activeTab].title}
-          </h1>
+        <div
+          onClick={() => setActiveTab('dashboard')}
+          className="cursor-pointer group"
+          title="Ana Özet Panele Dön"
+        >
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block sm:inline">
+              Arslan Finans {activeTab !== 'dashboard' && '›'}
+            </span>
+            <h1 className="text-base md:text-lg font-bold text-slate-900 dark:text-white leading-tight group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+              {TAB_TITLES[activeTab].title}
+            </h1>
+          </div>
           <p className="text-[11px] text-slate-400 hidden sm:block">
             {TAB_TITLES[activeTab].subtitle}
           </p>
