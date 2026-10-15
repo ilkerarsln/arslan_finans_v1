@@ -115,6 +115,7 @@ interface AppContextType {
   priceLists: PriceListItem[];
   updatePriceListItem: (id: string, updates: Partial<PriceListItem>) => void;
   addPriceListItem: (item: Omit<PriceListItem, 'id' | 'lastUpdated'>) => void;
+  resetToKategori3Data: () => void;
 
   // Purchases (Mal Alımları - Finans & Stok Entegre)
   purchaseOrders: PurchaseOrder[];
@@ -219,8 +220,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [openPurchaseModalType, setOpenPurchaseModalType] = useState<'none' | 'manuel' | 'excel'>('none');
 
+  // Migration Key for KATEGORİ_3
+  const K3_KEY = 'arslan_kategori3_migrated_v3_final';
+
   // Shared Data States
   const [suppliers, setSuppliers] = useState<Supplier[]>(() => {
+    const isV3 = localStorage.getItem(K3_KEY) === 'v3';
+    if (!isV3) return INITIAL_SUPPLIERS;
     const saved = localStorage.getItem('arslan_suppliers');
     return saved ? JSON.parse(saved) : INITIAL_SUPPLIERS;
   });
@@ -231,16 +237,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [products, setProducts] = useState<Product[]>(() => {
+    const isV3 = localStorage.getItem(K3_KEY) === 'v3';
+    if (!isV3) return INITIAL_PRODUCTS;
     const saved = localStorage.getItem('arslan_products');
     return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
   });
 
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(() => {
+    const isV3 = localStorage.getItem(K3_KEY) === 'v3';
+    if (!isV3) return INITIAL_PURCHASE_ORDERS;
     const saved = localStorage.getItem('arslan_purchases');
     return saved ? JSON.parse(saved) : INITIAL_PURCHASE_ORDERS;
   });
 
   const [sales, setSales] = useState<SaleItem[]>(() => {
+    const isV3 = localStorage.getItem(K3_KEY) === 'v3';
+    if (!isV3) return INITIAL_SALES;
     const saved = localStorage.getItem('arslan_sales');
     return saved ? JSON.parse(saved) : INITIAL_SALES;
   });
@@ -266,22 +278,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [matchRules, setMatchRules] = useState<ProductMatchRule[]>(() => {
+    const isV3 = localStorage.getItem(K3_KEY) === 'v3';
+    if (!isV3) return INITIAL_MATCH_RULES;
     const saved = localStorage.getItem('arslan_match_rules');
     return saved ? JSON.parse(saved) : INITIAL_MATCH_RULES;
   });
 
-  // Definitions States (Tanımlamalar)
+  // Definitions States (Tanımlamalar) - KATEGORİ_3
   const [categories, setCategories] = useState<CategoryDefinition[]>(() => {
+    const isV3 = localStorage.getItem(K3_KEY) === 'v3';
+    if (!isV3) {
+      localStorage.setItem(K3_KEY, 'v3');
+      return INITIAL_CATEGORIES;
+    }
     const saved = localStorage.getItem('arslan_categories');
     return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
   });
 
   const [subCategories, setSubCategories] = useState<SubCategoryDefinition[]>(() => {
+    const isV3 = localStorage.getItem(K3_KEY) === 'v3';
+    if (!isV3) return INITIAL_SUBCATEGORIES;
     const saved = localStorage.getItem('arslan_subcategories');
     return saved ? JSON.parse(saved) : INITIAL_SUBCATEGORIES;
   });
 
   const [brands, setBrands] = useState<BrandDefinition[]>(() => {
+    const isV3 = localStorage.getItem(K3_KEY) === 'v3';
+    if (!isV3) return INITIAL_BRANDS;
     const saved = localStorage.getItem('arslan_brands');
     return saved ? JSON.parse(saved) : INITIAL_BRANDS;
   });
@@ -292,6 +315,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [priceLists, setPriceLists] = useState<PriceListItem[]>(() => {
+    const isV3 = localStorage.getItem(K3_KEY) === 'v3';
+    if (!isV3) return INITIAL_PRICE_LIST;
     const saved = localStorage.getItem('arslan_price_lists');
     return saved ? JSON.parse(saved) : INITIAL_PRICE_LIST;
   });
@@ -575,6 +600,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
     setPriceLists((prev) => [...prev, newItem]);
     showToast('Ürün fiyat listesine eklendi.', 'success');
+  };
+
+  // Reset/Reload KATEGORİ_3 Data & 3 Sample Products per Subcategory
+  const resetToKategori3Data = () => {
+    setCategories(INITIAL_CATEGORIES);
+    setSubCategories(INITIAL_SUBCATEGORIES);
+    setBrands(INITIAL_BRANDS);
+    setSuppliers(INITIAL_SUPPLIERS);
+    setProducts(INITIAL_PRODUCTS);
+    setPurchaseOrders(INITIAL_PURCHASE_ORDERS);
+    setSales(INITIAL_SALES);
+    setPriceLists(INITIAL_PRICE_LIST);
+    setMatchRules(INITIAL_MATCH_RULES);
+    localStorage.setItem('arslan_kategori3_migrated_v3_final', 'v3');
+    showToast("KATEGORİ_3 listesi ve her alt kategori için 3'er adet örnek ürün sisteme yüklendi!", 'success');
   };
 
   // Direct Navigation to Mal Alımı
@@ -1215,6 +1255,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         priceLists,
         updatePriceListItem,
         addPriceListItem,
+        resetToKategori3Data,
         purchaseOrders,
         createPurchaseOrder,
         createBulkPurchasesFromExcel,

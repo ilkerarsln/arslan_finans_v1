@@ -41,6 +41,7 @@ export const TanimlamalarView: React.FC = () => {
     priceLists,
     updatePriceListItem,
     addPriceListItem,
+    resetToKategori3Data,
     products,
     showToast,
   } = useApp();
@@ -263,9 +264,26 @@ export const TanimlamalarView: React.FC = () => {
           </div>
           <h2 className="text-xl font-bold text-white tracking-tight">Sistem Tanımlamaları</h2>
           <p className="text-xs text-slate-400">
-            Aylık fiyat listeleri, bağımsız alt kategoriler, ana kategoriler, senetli satış vade farkı oranları, markalar ve ortak tedarikçiler.
+            KATEGORİ_3 Excel listesi, aylık fiyat listeleri, bağımsız alt kategoriler, senetli vade farkı oranları ve tedarikçiler.
           </p>
         </div>
+
+        <button
+          onClick={() => {
+            if (
+              window.confirm(
+                "KATEGORİ_3 listesindeki 12 kategori ve 89 alt kategoriyi yüklemek, eski kategorileri silmek ve her alt kategori için 3'er adet örnek ürün (toplam 267 ürün) oluşturup sisteme senkronize etmek istediğinize emin misiniz?"
+              )
+            ) {
+              resetToKategori3Data();
+            }
+          }}
+          className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-bold shadow-lg transition cursor-pointer"
+          title="KATEGORİ_3 Excel listesini ve 3'er adet örnek ürünü yükler"
+        >
+          <Boxes className="w-4 h-4" />
+          <span>KATEGORİ_3 ve Örnek Ürünleri Sıfırla / Yükle</span>
+        </button>
       </div>
 
       {/* Subtab Navigation Bar */}
