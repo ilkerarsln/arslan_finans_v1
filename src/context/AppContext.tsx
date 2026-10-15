@@ -76,6 +76,9 @@ interface AppContextType {
   openPurchaseModalType: 'none' | 'manuel' | 'excel';
   setOpenPurchaseModalType: (type: 'none' | 'manuel' | 'excel') => void;
   navigateToPurchase: (modalType?: 'manuel' | 'excel') => void;
+  isMobileSidebarOpen: boolean;
+  setIsMobileSidebarOpen: (open: boolean) => void;
+  toggleMobileSidebar: () => void;
 
   // Shared Suppliers (Ortak Tedarikçi Tablosu)
   suppliers: Supplier[];
@@ -219,6 +222,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [openPurchaseModalType, setOpenPurchaseModalType] = useState<'none' | 'manuel' | 'excel'>('none');
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const toggleMobileSidebar = () => setIsMobileSidebarOpen((prev) => !prev);
 
   // Migration Key for KATEGORİ_3
   const K3_KEY = 'arslan_kategori3_migrated_v3_final';
@@ -621,6 +626,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const navigateToPurchase = (modalType: 'manuel' | 'excel' = 'manuel') => {
     setActiveTab('mal_alim_stok');
     setOpenPurchaseModalType(modalType);
+    setIsMobileSidebarOpen(false);
   };
 
   // Suppliers
@@ -1228,6 +1234,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         openPurchaseModalType,
         setOpenPurchaseModalType,
         navigateToPurchase,
+        isMobileSidebarOpen,
+        setIsMobileSidebarOpen,
+        toggleMobileSidebar,
         suppliers,
         addSupplier,
         updateSupplier,

@@ -18,7 +18,7 @@ import { RaporlarView } from './components/rapor/RaporlarView';
 import { KullanicilarView } from './components/kullanicilar/KullanicilarView';
 
 const MainLayout: React.FC = () => {
-  const { currentUser, activeTab } = useApp();
+  const { currentUser, activeTab, isMobileSidebarOpen, setIsMobileSidebarOpen } = useApp();
 
   if (!currentUser) {
     return <LoginScreen />;
@@ -57,15 +57,24 @@ const MainLayout: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans antialiased selection:bg-amber-500 selection:text-slate-950">
-      {/* Vertical Sidebar */}
+      {/* Mobile Drawer Backdrop Overlay (Requirement 2: Responsive Mobile) */}
+      {isMobileSidebarOpen && (
+        <div
+          onClick={() => setIsMobileSidebarOpen(false)}
+          className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-40 lg:hidden transition-opacity cursor-pointer animate-in fade-in"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Vertical Sidebar (Responsive drawer on mobile, static on desktop) */}
       <Sidebar />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header />
 
-        <main className="flex-1 overflow-y-auto p-6 bg-slate-950">
-          <div className="max-w-7xl mx-auto pb-12">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6 bg-slate-950">
+          <div className="max-w-7xl mx-auto pb-12 w-full min-w-0">
             {renderActiveView()}
           </div>
         </main>
