@@ -7,7 +7,6 @@ import {
   Phone,
   Mail,
   Building,
-  MapPin,
   ArrowDownRight,
   ArrowUpRight,
   Receipt,
@@ -16,7 +15,9 @@ import {
   Calendar,
   Trash2,
   AlertTriangle,
+  MessageCircle,
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 interface CariDetailModalProps {
   cari: Cari | null;
@@ -41,7 +42,6 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
 
   if (!cari) return null;
 
-  // Filter transactions for this Cari, including POS collections offset to this supplier
   const cariTransactions = transactions.filter(
     tx =>
       tx.cariId === cari.id ||
@@ -50,7 +50,6 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
       (tx.isPosOffset && tx.supplierCariName && tx.supplierCariName.toLowerCase().includes(cari.name.toLowerCase()))
   );
 
-  // Filter upcoming dues for this Cari
   const cariUpcomingDues = upcomingDues.filter(
     d =>
       d.cariId === cari.id ||
@@ -62,7 +61,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
     .reduce((sum, t) => sum + t.amount, 0);
 
   const totalExpenseToCari = cariTransactions
-    .filter(t => t.type === 'Gider')
+    .filter(t => t.type === 'Gider' || t.type === 'Mal Alımı')
     .reduce((sum, t) => sum + t.amount, 0);
 
   const handleCollect = () => {
@@ -83,11 +82,35 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
       type: 'Gider',
       cariId: cari.id,
       cariName: cari.name,
-      category: 'Stok & Mal Alımı',
+      category: 'Mal / Stok Alımı',
       desc: `${cari.name} ödemesi`,
       amount: cari.balance < 0 ? Math.abs(cari.balance) : undefined,
     });
   };
+
+  const handleExportStatementExcel = () => {
+    if (cariTransactions.length === 0) {
+      alert('Bu cari hesaba ait hareket kaydı bulunamadı.');
+      return;
+    }
+    const workbook = XLSX.utils.book_new();
+    const rows = cariTransactions.map(tx => ({
+      'Tarih': tx.date,
+      'İşlem Türü': tx.type,
+      'Açıklama': tx.desc || tx.category,
+      'Kategori': tx.category,
+      'Belge No': tx.documentNo || '-',
+      'Tutar (TL)': tx.amount,
+      'Durum': tx.status,
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Cari Ekstre');
+    XLSX.writeFile(workbook, `${cari.name.replace(/\s+/g, '_')}_ekstre_${new Date().toISOString().split('T')[0]}.xlsx`);
+  };
+
+  const cleanPhone = cari.phone ? cari.phone.replace(/[^0-9]/g, '') : '';
+  const waPhone = cleanPhone.startsWith('0') ? `90${cleanPhone.slice(1)}` : cleanPhone.startsWith('90') ? cleanPhone : `90${cleanPhone}`;
+  const whatsappUrl = cleanPhone ? `https://wa.me/${waPhone}` : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
@@ -116,7 +139,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
             {isAdmin ? (
               <button
                 onClick={() => {
-                  if (window.confirm(`"${cari.name}" cari kartını silmek istediğinize emin misiniz?`)) {
+                  if (window.confirm(`"${cari.name}" cari kartı silmek istediğinize emin misiniz?`)) {
                     deleteCari(cari.id);
                     onClose();
                   }
@@ -131,8 +154,8 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
               <button
                 onClick={() => {
                   const reason = window.prompt(
-                    `"${cari.name}" cari kartını silmek için Yönetici (Admin) onayına gerekçe iletiniz:`,
-                    'Cari kapatıldı / mükerrer kayıt'
+                    `"${cari.name}" cari kartı silmek için Yönetici (Admin) onayına gerekçe iletiniz:`,
+                    'Cari kapatılışı / mükerrer kayıt'
                   );
                   if (reason !== null && reason.trim()) {
                     requestDeleteCari(cari.id, reason.trim());
@@ -220,29 +243,50 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
               }}
               className="w-full py-1.5 px-3 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center justify-center gap-1.5 transition shadow-xs"
             >
-              <Layers className="w-3.5 h-3.5" /> Taksit Planı Başlat
+              <Layers className="w-3.5 h-3.5" /> Taksit Planı
             </button>
           </div>
         </div>
 
-        {/* Contact info grid */}
+        {/* Contact info grid with WhatsApp Quick Action */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-          <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800">
+          <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800 relative group">
             <span className="text-slate-400 flex items-center gap-1 mb-1">
               <Phone className="w-3 h-3" /> Telefon
             </span>
-            <span className="font-medium text-slate-800 dark:text-slate-200">
-              {cari.phone || '-'}
-            </span>
+            <div className="flex items-center justify-between">
+              <a
+                href={cari.phone ? `tel:${cleanPhone}` : undefined}
+                className="font-medium text-slate-800 dark:text-slate-200 hover:text-emerald-600 underline font-mono"
+              >
+                {cari.phone || '-'}
+              </a>
+              {whatsappUrl && (
+                <a
+                  href={whatsappUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  title="WhatsApp ile İletişime Geç"
+                  className="p-1 rounded bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 transition"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />
+                </a>
+              )}
+            </div>
           </div>
+
           <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800">
             <span className="text-slate-400 flex items-center gap-1 mb-1">
               <Mail className="w-3 h-3" /> E-posta
             </span>
-            <span className="font-medium text-slate-800 dark:text-slate-200 truncate block">
+            <a
+              href={cari.email ? `mailto:${cari.email}` : undefined}
+              className="font-medium text-slate-800 dark:text-slate-200 hover:text-blue-600 truncate block"
+            >
               {cari.email || '-'}
-            </span>
+            </a>
           </div>
+
           <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800">
             <span className="text-slate-400 flex items-center gap-1 mb-1">
               <Building className="w-3 h-3" /> Vergi Dairesi
@@ -251,6 +295,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
               {cari.taxOffice || '-'}
             </span>
           </div>
+
           <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800">
             <span className="text-slate-400 flex items-center gap-1 mb-1">
               <Receipt className="w-3 h-3" /> Vergi / TCKN No
@@ -268,7 +313,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
           </div>
         )}
 
-        {/* Active Upcoming Dues / Installments preview for this Cari */}
+        {/* Active Upcoming Dues / Installments preview */}
         {cariUpcomingDues.length > 0 && (
           <div className="space-y-2 p-3 bg-indigo-50/60 dark:bg-indigo-950/40 rounded-xl border border-indigo-200/60 dark:border-indigo-900/50">
             <div className="flex items-center justify-between">
@@ -280,7 +325,6 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
                 Toplam: ₺{cariUpcomingDues.reduce((s, d) => s + d.amount, 0).toLocaleString('tr-TR')}
               </span>
             </div>
-
             <div className="flex gap-2 overflow-x-auto pb-1 text-xs">
               {cariUpcomingDues.map(due => (
                 <div
@@ -324,8 +368,14 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
               <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
               Cari Hareket Ekstresi ({cariTransactions.length})
             </h4>
+            <button
+              onClick={handleExportStatementExcel}
+              className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold hover:underline flex items-center gap-1"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>Ekstreyi Excel İndir</span>
+            </button>
           </div>
-
           <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
             {cariTransactions.length === 0 ? (
               <div className="p-6 text-center text-xs text-slate-400">
@@ -374,16 +424,6 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
                           {isSupplierPosOffset && (
                             <span className="text-[10px] text-teal-600 dark:text-teal-400 font-medium">
                               POS Tahsilatından Tedarikçi Borcuna Mahsup Edildi
-                            </span>
-                          )}
-                          {isAdmin && (tx.createdByName || tx.createdBy) && (
-                            <span className="text-[10px] text-slate-400 block">
-                              Ekleyen: {tx.createdByName || tx.createdBy}
-                            </span>
-                          )}
-                          {tx.installmentIndex && tx.totalInstallments && (
-                            <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                              {tx.installmentIndex}/{tx.totalInstallments}
                             </span>
                           )}
                         </td>

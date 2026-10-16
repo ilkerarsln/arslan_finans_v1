@@ -8,12 +8,12 @@ import {
   Plus,
   ArrowDownRight,
   ArrowUpRight,
-  Building,
   Phone,
   Mail,
   Edit2,
   Trash2,
   FileSpreadsheet,
+  MessageCircle,
 } from 'lucide-react';
 
 interface CurrentsTabProps {
@@ -28,7 +28,6 @@ export const CurrentsTab: React.FC<CurrentsTabProps> = ({
   onSelectCariDetail,
 }) => {
   const { caris, deleteCari, openTransactionModal } = useFinance();
-
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'All' | CariType>('All');
 
@@ -45,15 +44,12 @@ export const CurrentsTab: React.FC<CurrentsTabProps> = ({
     return true;
   });
 
-  // KPI Calculations
   const totalReceivables = caris
     .filter(c => c.balance > 0)
     .reduce((sum, c) => sum + c.balance, 0);
-
   const totalPayables = caris
     .filter(c => c.balance < 0)
     .reduce((sum, c) => sum + Math.abs(c.balance), 0);
-
   const netCariBalance = totalReceivables - totalPayables;
 
   const handleDelete = (id: string, name: string) => {
@@ -80,7 +76,7 @@ export const CurrentsTab: React.FC<CurrentsTabProps> = ({
       type: 'Gider',
       cariId: cari.id,
       cariName: cari.name,
-      category: 'Stok & Mal Alımı',
+      category: 'Mal / Stok Alımı',
       desc: `${cari.name} cari ödemesi`,
       amount: cari.balance < 0 ? Math.abs(cari.balance) : undefined,
     });
@@ -95,7 +91,7 @@ export const CurrentsTab: React.FC<CurrentsTabProps> = ({
             Cari Hesaplar (Müşteri & Tedarikçi)
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Borç, alacak ve hesap mutabakatlarının takibi
+            Borç, alacak ve hesap mutabakatlarının tek merkezden takibi
           </p>
         </div>
         <button
@@ -164,7 +160,6 @@ export const CurrentsTab: React.FC<CurrentsTabProps> = ({
           />
         </div>
 
-        {/* Segmented controls */}
         <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs">
           {(['All', 'Müşteri', 'Tedarikçi', 'Personel'] as const).map(tab => (
             <button
@@ -187,6 +182,9 @@ export const CurrentsTab: React.FC<CurrentsTabProps> = ({
         {filteredCaris.map(cari => {
           const isReceivable = cari.balance > 0;
           const isPayable = cari.balance < 0;
+          const cleanPhone = cari.phone ? cari.phone.replace(/[^0-9]/g, '') : '';
+          const waPhone = cleanPhone.startsWith('0') ? `90${cleanPhone.slice(1)}` : cleanPhone.startsWith('90') ? cleanPhone : `90${cleanPhone}`;
+          const whatsappUrl = cleanPhone ? `https://wa.me/${waPhone}` : null;
 
           return (
             <div
@@ -195,7 +193,6 @@ export const CurrentsTab: React.FC<CurrentsTabProps> = ({
               className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 p-5 shadow-xs transition cursor-pointer flex flex-col justify-between group"
             >
               <div>
-                {/* Header */}
                 <div className="flex items-center justify-between">
                   <span
                     className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
@@ -212,6 +209,17 @@ export const CurrentsTab: React.FC<CurrentsTabProps> = ({
                     className="flex items-center gap-1 opacity-80 group-hover:opacity-100"
                     onClick={e => e.stopPropagation()}
                   >
+                    {whatsappUrl && (
+                      <a
+                        href={whatsappUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="WhatsApp Mesajı Gönder"
+                        className="p-1 text-slate-400 hover:text-emerald-600 rounded transition"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                      </a>
+                    )}
                     <button
                       onClick={() => onEditCari(cari)}
                       title="Düzenle"
@@ -229,15 +237,13 @@ export const CurrentsTab: React.FC<CurrentsTabProps> = ({
                   </div>
                 </div>
 
-                {/* Company Name */}
                 <h3 className="font-bold text-slate-900 dark:text-white text-base mt-2 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition">
                   {cari.name}
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  {cari.city || 'Şehir belirtilmedi'} {cari.taxOffice ? `· ${cari.taxOffice}` : ''}
+                  {cari.city || 'Şehir belirtilmedi'} {cari.taxOffice ? ` · ${cari.taxOffice}` : ''}
                 </p>
 
-                {/* Balance display */}
                 <div className="mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">
                   <div>
                     <span className="text-[10px] font-semibold text-slate-400 uppercase">
@@ -269,7 +275,6 @@ export const CurrentsTab: React.FC<CurrentsTabProps> = ({
                 </div>
               </div>
 
-              {/* Action buttons at bottom */}
               <div
                 className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2"
                 onClick={e => e.stopPropagation()}
@@ -280,7 +285,6 @@ export const CurrentsTab: React.FC<CurrentsTabProps> = ({
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5" /> Ekstre Gör
                 </button>
-
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={e => handleQuickCollect(cari, e)}

@@ -15,7 +15,6 @@ export const AccountModal: React.FC<AccountModalProps> = ({
   editingAccount,
 }) => {
   const { addAccount, updateAccount } = useFinance();
-
   const [name, setName] = useState('');
   const [type, setType] = useState<AccountType>('Ticari Hesap');
   const [bankName, setBankName] = useState('');
@@ -61,14 +60,12 @@ export const AccountModal: React.FC<AccountModalProps> = ({
     e.preventDefault();
     const numBalance = parseFloat(balance) || 0;
     const numLimit = creditLimit ? parseFloat(creditLimit) : undefined;
-
     const icon =
       type === 'Kasa (Nakit)'
         ? 'Vault'
         : type === 'Şirket Kredi Kartı'
         ? 'CreditCard'
         : 'Building2';
-
     const derivedDay = cutOffDay
       ? parseInt(cutOffDay, 10)
       : cutOffDate
@@ -105,7 +102,6 @@ export const AccountModal: React.FC<AccountModalProps> = ({
         icon,
       });
     }
-
     onClose();
   };
 
@@ -132,7 +128,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Hesap Türü *
+              Hesap Türü
             </label>
             <select
               value={type}
@@ -142,20 +138,21 @@ export const AccountModal: React.FC<AccountModalProps> = ({
               <option value="Ticari Hesap">Ticari Banka Hesabı</option>
               <option value="Kasa (Nakit)">Fiziki Kasa (Nakit)</option>
               <option value="Şirket Kredi Kartı">Şirket Kredi Kartı</option>
+              <option value="POS Cihazı / Hesabı">POS Cihazı / Hesabı</option>
               <option value="Döviz Hesabı">Döviz Hesabı (USD/EUR)</option>
             </select>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Hesap Adı *
+              Hesap Adı
             </label>
             <input
               type="text"
               required
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="Örn: Garanti BBVA Şirket Hesabı, Merkez Kasa"
+              placeholder="Örn: Garanti Ticari Hesap, Merkez Kasa"
               className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
@@ -169,7 +166,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
                 type="text"
                 value={bankName}
                 onChange={e => setBankName(e.target.value)}
-                placeholder="Örn: QNB Finansbank, Yapı Kredi"
+                placeholder="Örn: Garanti BBVA, Yapı Kredi"
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
@@ -238,17 +235,14 @@ export const AccountModal: React.FC<AccountModalProps> = ({
             )}
           </div>
 
-          {/* Kredi Kartı Hesap Kesim Tarihi */}
           {type === 'Şirket Kredi Kartı' && (
             <div className="p-3 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/80 rounded-xl space-y-2">
               <label className="block text-xs font-semibold text-slate-800 dark:text-slate-200">
                 Hesap Kesim Tarihi
               </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[11px] text-slate-500 dark:text-slate-400 mb-0.5">
-                    Tarih Seçimi
-                  </label>
+                  <label className="block text-[11px] text-slate-500 mb-0.5">Tarih</label>
                   <input
                     type="date"
                     value={cutOffDate}
@@ -259,32 +253,22 @@ export const AccountModal: React.FC<AccountModalProps> = ({
                         if (!isNaN(day)) setCutOffDay(day.toString());
                       }
                     }}
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500 text-slate-800 dark:text-slate-200"
+                    className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] text-slate-500 dark:text-slate-400 mb-0.5">
-                    Ayın Kesim Günü
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      min="1"
-                      max="31"
-                      placeholder="15"
-                      value={cutOffDay}
-                      onChange={e => setCutOffDay(e.target.value)}
-                      className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono-num focus:ring-2 focus:ring-amber-500 text-slate-800 dark:text-slate-200"
-                    />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400">
-                      . Günü
-                    </span>
-                  </div>
+                  <label className="block text-[11px] text-slate-500 mb-0.5">Ayın Kesim Günü</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="31"
+                    placeholder="15"
+                    value={cutOffDay}
+                    onChange={e => setCutOffDay(e.target.value)}
+                    className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono-num"
+                  />
                 </div>
               </div>
-              <p className="text-[10px] text-amber-700 dark:text-amber-400">
-                Ekstre kesim gününde kart harcamalarınızın hesap özeti çıkar ve ödeme takviminde takip edilir.
-              </p>
             </div>
           )}
 

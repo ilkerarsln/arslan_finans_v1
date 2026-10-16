@@ -1,19 +1,15 @@
 export function formatCurrency(amount: number, currency: 'TRY' | 'USD' | 'EUR' = 'TRY'): string {
   const symbol = currency === 'TRY' ? '₺' : currency === 'USD' ? '$' : '€';
-  
-  // Format with Turkish locale standard (period for thousands, comma for decimals)
   const formatted = Math.abs(amount).toLocaleString('tr-TR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-
   return `${amount < 0 ? '-' : ''}${symbol}${formatted}`;
 }
 
 export function formatCompactCurrency(amount: number, currency: 'TRY' | 'USD' | 'EUR' = 'TRY'): string {
   const symbol = currency === 'TRY' ? '₺' : currency === 'USD' ? '$' : '€';
   const abs = Math.abs(amount);
-
   if (abs >= 1_000_000) {
     return `${amount < 0 ? '-' : ''}${symbol}${(abs / 1_000_000).toFixed(1)}M`;
   }
@@ -59,10 +55,8 @@ export function formatDateLong(dateStr: string): string {
 export function getDaysRemaining(dateStr: string): { days: number; text: string; status: 'overdue' | 'today' | 'upcoming' } {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
   const target = new Date(dateStr);
   target.setHours(0, 0, 0, 0);
-
   const diffTime = target.getTime() - today.getTime();
   const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
 
@@ -77,10 +71,6 @@ export function getDaysRemaining(dateStr: string): { days: number; text: string;
   }
 }
 
-/**
- * Adds an exact number of days to a YYYY-MM-DD date string.
- * Uses local calendar date math to avoid UTC time zone shifts.
- */
 export function addDays(dateStr: string, days: number): string {
   if (!dateStr) return '';
   const parts = dateStr.split('-').map(Number);
@@ -94,14 +84,6 @@ export function addDays(dateStr: string, days: number): string {
   return `${y}-${m}-${d}`;
 }
 
-/**
- * Calculates the exact date for an installment index (0-based)
- * where each interval is strictly +30 days:
- * index 0: firstDueDate
- * index 1: firstDueDate + 30 days
- * index 2: firstDueDate + 60 days
- * index N: firstDueDate + N * 30 days
- */
 export function calculateInstallmentDate(firstDueDate: string, installmentIndex: number): string {
   return addDays(firstDueDate, installmentIndex * 30);
 }
@@ -114,9 +96,6 @@ export interface InstallmentScheduleItem {
   daysRemaining: { days: number; text: string; status: 'overdue' | 'today' | 'upcoming' };
 }
 
-/**
- * Calculates full equal-split installment schedule with 30-day periods and penny precision.
- */
 export function calculateInstallmentSchedule(
   totalAmount: number,
   installmentsCount: number,
@@ -126,7 +105,6 @@ export function calculateInstallmentSchedule(
   const count = Math.max(1, Math.floor(installmentsCount));
   const baseAmount = Math.floor((totalAmount / count) * 100) / 100;
   const remainder = Math.round((totalAmount - baseAmount * count) * 100) / 100;
-
   const schedule: InstallmentScheduleItem[] = [];
   const displayName = firmName.trim() || 'Taksit';
 
@@ -142,6 +120,5 @@ export function calculateInstallmentSchedule(
       daysRemaining: getDaysRemaining(dueDate),
     });
   }
-
   return schedule;
 }

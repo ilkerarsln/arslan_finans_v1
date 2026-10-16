@@ -4,7 +4,6 @@ import { CheckCircle2, AlertCircle, Info } from 'lucide-react';
 
 export const Toast: React.FC = () => {
   const { toastMessage } = useFinance();
-
   if (!toastMessage) return null;
 
   return (

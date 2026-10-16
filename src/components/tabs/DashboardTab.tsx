@@ -15,22 +15,20 @@ import {
   Calendar,
   Wallet,
   CheckCircle2,
-  AlertCircle,
-  Plus,
   TrendingUp,
   TrendingDown,
-  CreditCard,
   Users,
   Layers,
   ShoppingBag,
-  FileSpreadsheet,
   Download,
   BarChart3,
+  Clock,
+  Sparkles,
 } from 'lucide-react';
 
 const MONTH_NAMES_TR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
 ];
 
 export const DashboardTab: React.FC<{
@@ -50,8 +48,8 @@ export const DashboardTab: React.FC<{
     toggleUpcomingDue,
   } = useFinance();
 
-  // Dynamic available months from transactions
   const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
   const availableMonths = useMemo(() => {
@@ -71,8 +69,6 @@ export const DashboardTab: React.FC<{
     return `${MONTH_NAMES_TR[mIdx] || m} ${y}`;
   }, [selectedMonthKey]);
 
-  const isCurrentMonth = selectedMonthKey === currentMonthKey;
-
   // Selected month calculations
   const currentMonthTxs = useMemo(() => {
     return transactions.filter(
@@ -88,87 +84,70 @@ export const DashboardTab: React.FC<{
 
   const totalExpenseThisMonth = useMemo(() => {
     return currentMonthTxs
-      .filter(tx => tx.type === 'Gider')
+      .filter(tx => tx.type === 'Gider' || tx.type === 'Mal Alımı')
       .reduce((sum, tx) => sum + tx.amount, 0);
   }, [currentMonthTxs]);
 
-  // Net Liquid Status / Net Cash Flow for the selected month (Gelirler - Giderler)
   const netCashFlowThisMonth = totalIncomeThisMonth - totalExpenseThisMonth;
 
-  // Liquid cash (bank + cash boxes, ignoring credit card debt)
+  // Liquid assets
   const totalLiquidAssets = accounts
     .filter(a => a.type !== 'Şirket Kredi Kartı')
     .reduce((sum, a) => sum + a.balance, 0);
 
-  // Total net worth (including credit card debts)
-  const totalNetBalance = accounts.reduce((sum, a) => sum + a.balance, 0);
-
-  // Caris total receivables (Alacaklar) & payables (Borçlar)
+  // Total receivables & payables
   const totalReceivables = caris
     .filter(c => c.balance > 0)
     .reduce((sum, c) => sum + c.balance, 0);
-
   const totalPayables = caris
     .filter(c => c.balance < 0)
     .reduce((sum, c) => sum + Math.abs(c.balance), 0);
 
+  // Today's summary
+  const todayIncome = transactions
+    .filter(t => t.date === todayStr && t.type === 'Gelir' && t.status !== 'İptal')
+    .reduce((s, t) => s + t.amount, 0);
+  const todayExpense = transactions
+    .filter(t => t.date === todayStr && (t.type === 'Gider' || t.type === 'Mal Alımı') && t.status !== 'İptal')
+    .reduce((s, t) => s + t.amount, 0);
+
   // Recent 6 transactions
   const recentTransactions = transactions.slice(0, 6);
 
-  // Pending dues (sorted by due date)
+  // Pending dues
   const activeDues = upcomingDues
     .filter(d => !d.isCompleted)
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
     .slice(0, 5);
 
-  // Periodic Performance Table State (Haftalık, Aylık, 6 Aylık, Yıllık)
+  // Periodic performance
   const [periodFilterMode, setPeriodFilterMode] = useState<'weekly' | 'monthly' | 'six_months' | 'yearly'>('monthly');
 
-  // Periodic Table Rows Calculation (Sorted chronologically so the current month/period is at the VERY END as the active row)
   const periodicRows = useMemo(() => {
-    interface PeriodRow {
-      key: string;
-      label: string;
-      income: number;
-      expense: number;
-      ciro: number;
-      netProfit: number;
-      margin: number;
-      isCurrent: boolean;
-    }
-
     const currentYear = now.getFullYear();
-
     if (periodFilterMode === 'monthly') {
-      // Past 5 months + current month (Total 6 months ending with current month)
-      const list: PeriodRow[] = [];
+      const list = [];
       for (let i = 5; i >= 0; i--) {
         const d = new Date(currentYear, now.getMonth() - i, 1);
         const y = d.getFullYear();
         const m = String(d.getMonth() + 1).padStart(2, '0');
         const ym = `${y}-${m}`;
         const isCurrent = ym === currentMonthKey;
-
         const mIncome = transactions
           .filter(t => t.date.startsWith(ym) && t.type === 'Gelir' && t.status !== 'İptal')
           .reduce((sum, t) => sum + t.amount, 0);
-
         const mExpense = transactions
           .filter(t => t.date.startsWith(ym) && (t.type === 'Gider' || t.type === 'Mal Alımı') && t.status !== 'İptal')
           .reduce((sum, t) => sum + t.amount, 0);
-
         const mCiro = sales
           .filter(s => s.date.startsWith(ym))
           .reduce((sum, s) => sum + s.totalSaleAmount, 0) || mIncome;
-
         const net = mIncome - mExpense;
         const margin = mCiro > 0 ? (net / mCiro) * 100 : (mIncome > 0 ? (net / mIncome) * 100 : 0);
         const mIdx = d.getMonth();
-        const label = `${MONTH_NAMES_TR[mIdx]} ${y}`;
-
         list.push({
           key: ym,
-          label,
+          label: `${MONTH_NAMES_TR[mIdx]} ${y}`,
           income: mIncome,
           expense: mExpense,
           ciro: mCiro,
@@ -179,8 +158,7 @@ export const DashboardTab: React.FC<{
       }
       return list;
     } else if (periodFilterMode === 'weekly') {
-      // Last 4 weeks ending with current week
-      const list: PeriodRow[] = [];
+      const list = [];
       const oneDay = 24 * 60 * 60 * 1000;
       for (let w = 3; w >= 0; w--) {
         const endDay = new Date(now.getTime() - w * 7 * oneDay);
@@ -188,22 +166,17 @@ export const DashboardTab: React.FC<{
         const startStr = startDay.toISOString().split('T')[0];
         const endStr = endDay.toISOString().split('T')[0];
         const isCurrent = w === 0;
-
         const wIncome = transactions
           .filter(t => t.date >= startStr && t.date <= endStr && t.type === 'Gelir' && t.status !== 'İptal')
           .reduce((sum, t) => sum + t.amount, 0);
-
         const wExpense = transactions
           .filter(t => t.date >= startStr && t.date <= endStr && (t.type === 'Gider' || t.type === 'Mal Alımı') && t.status !== 'İptal')
           .reduce((sum, t) => sum + t.amount, 0);
-
         const wCiro = sales
           .filter(s => s.date >= startStr && s.date <= endStr)
           .reduce((sum, s) => sum + s.totalSaleAmount, 0) || wIncome;
-
         const net = wIncome - wExpense;
         const margin = wCiro > 0 ? (net / wCiro) * 100 : 0;
-
         list.push({
           key: `week-${w}`,
           label: isCurrent ? 'Bu Hafta (Güncel)' : `${startDay.getDate()}/${startDay.getMonth() + 1} - ${endDay.getDate()}/${endDay.getMonth() + 1}`,
@@ -217,7 +190,6 @@ export const DashboardTab: React.FC<{
       }
       return list;
     } else if (periodFilterMode === 'six_months') {
-      // 6-Month Blocks ending with current
       const blocks = [
         { key: '2025-H1', label: '2025 1. Yarı (Oca - Haz)', start: '2025-01-01', end: '2025-06-30', isCurrent: false },
         { key: '2025-H2', label: '2025 2. Yarı (Tem - Ara)', start: '2025-07-01', end: '2025-12-31', isCurrent: false },
@@ -247,7 +219,6 @@ export const DashboardTab: React.FC<{
         };
       });
     } else {
-      // Yearly: 2024, 2025, 2026 (ending with current year)
       const years = [2024, 2025, 2026];
       return years.map(yr => {
         const yrStr = String(yr);
@@ -299,10 +270,9 @@ export const DashboardTab: React.FC<{
   return (
     <div className="space-y-6">
       {/* Top Banner & Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border border-slate-700/80 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border border-slate-700/80 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
         <div className="relative z-10">
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-emerald-400">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span>Finansal Durum Raporu · {selectedMonthLabel}</span>
             {availableMonths.length > 1 && (
               <div className="flex items-center gap-1.5 ml-1 bg-slate-800/90 border border-slate-700/80 rounded-lg px-2 py-0.5">
@@ -353,9 +323,9 @@ export const DashboardTab: React.FC<{
           <button
             onClick={() => openTransactionModal({ type: 'Mal Alımı' })}
             className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
-            title="Tedarikçiden Vadeli Mal Alımı (Kasadan düşmeden borçlandırır)"
+            title="Tedarikçiden Vadeli Mal Alımı"
           >
-            <ShoppingBag className="w-3.5 h-3.5" /> Mal Alımı Ekle
+            <ShoppingBag className="w-3.5 h-3.5" /> Mal Alımı
           </button>
           <button
             onClick={() => openInstallmentModal()}
@@ -367,17 +337,17 @@ export const DashboardTab: React.FC<{
             onClick={onOpenTransfer}
             className="px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition border border-slate-600 shadow-sm active:scale-95"
           >
-            <ArrowRightLeft className="w-3.5 h-3.5 text-blue-400" /> Virman Yap
+            <ArrowRightLeft className="w-3.5 h-3.5 text-blue-400" /> Virman
           </button>
         </div>
       </div>
 
       {/* KPI Stat Cards Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Toplam Likit Varlık / Nakit & Banka */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition">
+        {/* Card 1: Toplam Likit Varlık */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
               Toplam Likit Nakit & Banka
             </span>
             <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
@@ -388,21 +358,21 @@ export const DashboardTab: React.FC<{
             {formatCurrency(totalLiquidAssets)}
           </h3>
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <span>Net Likit Durum ({selectedMonthLabel}):</span>
+            <span>Bugünkü Net Giriş:</span>
             <span
               className={`font-mono-num font-semibold ${
-                netCashFlowThisMonth >= 0
+                todayIncome - todayExpense >= 0
                   ? 'text-emerald-600 dark:text-emerald-400'
                   : 'text-rose-600 dark:text-rose-400'
               }`}
             >
-              {netCashFlowThisMonth > 0 ? '+' : ''}{formatCurrency(netCashFlowThisMonth)}
+              {todayIncome - todayExpense > 0 ? '+' : ''}{formatCurrency(todayIncome - todayExpense)}
             </span>
           </div>
         </div>
 
         {/* Card 2: Seçilen Ayın Toplam Geliri */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
               {selectedMonthLabel} Toplam Gelir
@@ -412,7 +382,7 @@ export const DashboardTab: React.FC<{
             </div>
           </div>
           <h3 className="text-2xl font-bold font-mono-num text-emerald-600 dark:text-emerald-400 mt-2">
-            {formatCurrency(totalIncomeThisMonth)}
+            +{formatCurrency(totalIncomeThisMonth)}
           </h3>
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
             <span>İşlem Adedi:</span>
@@ -423,7 +393,7 @@ export const DashboardTab: React.FC<{
         </div>
 
         {/* Card 3: Seçilen Ayın Toplam Gideri */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition">
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
               {selectedMonthLabel} Toplam Gider
@@ -433,18 +403,18 @@ export const DashboardTab: React.FC<{
             </div>
           </div>
           <h3 className="text-2xl font-bold font-mono-num text-rose-600 dark:text-rose-400 mt-2">
-            {formatCurrency(totalExpenseThisMonth)}
+            -{formatCurrency(totalExpenseThisMonth)}
           </h3>
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
             <span>İşlem Adedi:</span>
             <span className="font-mono-num font-semibold text-slate-700 dark:text-slate-300">
-              {currentMonthTxs.filter(t => t.type === 'Gider').length} ödeme
+              {currentMonthTxs.filter(t => t.type === 'Gider' || t.type === 'Mal Alımı').length} ödeme
             </span>
           </div>
         </div>
 
-        {/* Card 4: Net Likit Varlık (Dinamik Kırmızı/Yeşil Renklendirme) */}
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs hover:border-slate-300 dark:hover:border-slate-700 transition">
+        {/* Card 4: Net Likit Varlık */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between">
             <span
               className={`text-xs font-semibold uppercase tracking-wider ${
@@ -453,10 +423,10 @@ export const DashboardTab: React.FC<{
                   : 'text-rose-600 dark:text-rose-400'
               }`}
             >
-              Net Likit Varlık ({selectedMonthLabel})
+              Net Nakit Akışı ({selectedMonthLabel})
             </span>
             <div
-              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+              className={`w-8 h-8 rounded-lg flex items-center justify-center ${
                 netCashFlowThisMonth >= 0
                   ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400'
                   : 'bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400'
@@ -470,7 +440,7 @@ export const DashboardTab: React.FC<{
             </div>
           </div>
           <h3
-            className={`text-2xl font-bold font-mono-num mt-2 transition-colors ${
+            className={`text-2xl font-bold font-mono-num mt-2 ${
               netCashFlowThisMonth >= 0
                 ? 'text-emerald-600 dark:text-emerald-400'
                 : 'text-rose-600 dark:text-rose-400'
@@ -479,7 +449,7 @@ export const DashboardTab: React.FC<{
             {netCashFlowThisMonth > 0 ? '+' : ''}{formatCurrency(netCashFlowThisMonth)}
           </h3>
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <span>Aylık Net Pozisyon:</span>
+            <span>Aylık Net Durum:</span>
             <span
               className={`font-semibold ${
                 netCashFlowThisMonth >= 0
@@ -493,7 +463,7 @@ export const DashboardTab: React.FC<{
         </div>
       </div>
 
-      {/* Secondary Quick Overview: Receivables vs Payables */}
+      {/* Receivables vs Payables overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -540,7 +510,7 @@ export const DashboardTab: React.FC<{
         </div>
       </div>
 
-      {/* Finansal Genel Bakış Aylık/Dönemsel Performans Tablosu (Gelir, Gider, Ciro, Kârlılık) */}
+      {/* Finansal Genel Bakış & Dönemsel Tablo */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
@@ -554,9 +524,7 @@ export const DashboardTab: React.FC<{
               Seçilen periyoda göre Gelir, Gider, Satış Cirosu ve Net Kârlılık analizi (Bulunulan dönem en altta güncel satır olarak gösterilir)
             </p>
           </div>
-
           <div className="flex items-center gap-2">
-            {/* Period selector: Haftalık, Aylık, 6 Aylık, Yıllık */}
             <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold">
               <button
                 onClick={() => setPeriodFilterMode('weekly')}
@@ -599,7 +567,6 @@ export const DashboardTab: React.FC<{
                 Yıllık
               </button>
             </div>
-
             <button
               onClick={handleExportPeriodicCSV}
               className="p-1.5 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
@@ -645,19 +612,15 @@ export const DashboardTab: React.FC<{
                       )}
                     </div>
                   </td>
-
                   <td className="py-3 px-4 text-right font-mono-num font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                     +{formatCurrency(row.income)}
                   </td>
-
                   <td className="py-3 px-4 text-right font-mono-num font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap">
                     -{formatCurrency(row.expense)}
                   </td>
-
                   <td className="py-3 px-4 text-right font-mono-num font-bold text-slate-900 dark:text-white whitespace-nowrap">
                     {formatCurrency(row.ciro)}
                   </td>
-
                   <td
                     className={`py-3 px-4 text-right font-mono-num font-bold whitespace-nowrap ${
                       row.netProfit >= 0
@@ -667,7 +630,6 @@ export const DashboardTab: React.FC<{
                   >
                     {row.netProfit > 0 ? '+' : ''}{formatCurrency(row.netProfit)}
                   </td>
-
                   <td className="py-3 px-4 text-center whitespace-nowrap">
                     <span
                       className={`font-mono-num font-bold px-2 py-0.5 rounded text-[11px] ${
@@ -681,12 +643,11 @@ export const DashboardTab: React.FC<{
                       %{row.margin.toFixed(1)}
                     </span>
                   </td>
-
                   <td className="py-3 px-4 text-center whitespace-nowrap">
                     {row.netProfit >= 0 ? (
                       <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full">
                         <TrendingUp className="w-3 h-3 text-emerald-600" />
-                        Kârlı (Artı)
+                        Kâr (Artı)
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/70 border border-rose-200 dark:border-rose-800 px-2 py-0.5 rounded-full">
@@ -732,7 +693,6 @@ export const DashboardTab: React.FC<{
               Tümünü Gör ({transactions.length})
             </button>
           </div>
-
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
@@ -816,7 +776,6 @@ export const DashboardTab: React.FC<{
                 Takvim ({upcomingDues.length})
               </button>
             </div>
-
             <div className="divide-y divide-slate-100 dark:divide-slate-800 mt-2">
               {activeDues.length === 0 ? (
                 <div className="py-8 text-center text-xs text-slate-400">
@@ -862,7 +821,6 @@ export const DashboardTab: React.FC<{
                           </span>
                         </div>
                       </div>
-
                       <div className="flex items-center gap-2 shrink-0">
                         <span
                           className={`text-xs font-mono-num font-bold ${
@@ -888,7 +846,6 @@ export const DashboardTab: React.FC<{
               )}
             </div>
           </div>
-
           <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs">
             <span className="text-slate-400">Vadesi gelen çek ve taksitler</span>
             <button

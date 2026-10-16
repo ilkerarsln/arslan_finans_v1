@@ -21,6 +21,8 @@ import {
   Smartphone,
   Monitor,
   RefreshCw,
+  Search,
+  Command,
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -45,6 +47,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     stockItems,
     sales,
     isCloudSyncing,
+    openCommandPalette,
   } = useFinance();
 
   const navItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: number | string }[] = [
@@ -61,7 +64,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     },
     {
       id: 'stock',
-      label: 'Mal Alım & Stok',
+      label: 'Mal Alımı & Stok',
       icon: <Boxes className="w-4 h-4 text-sky-400" />,
       badge: stockItems.length > 0 ? stockItems.length : undefined,
     },
@@ -119,9 +122,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       : []),
   ];
 
-  // Quick total balance & current month net calculation for sidebar
   const totalBalance = accounts.reduce((acc, curr) => acc + curr.balance, 0);
-
   const now = new Date();
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const currentMonthNet = transactions
@@ -176,6 +177,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             className="md:hidden text-slate-400 hover:text-white p-1"
           >
             <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Quick Command Launcher button inside Sidebar */}
+        <div className="px-3 pt-3">
+          <button
+            onClick={openCommandPalette}
+            className="w-full flex items-center justify-between px-3 py-2 bg-slate-900/90 hover:bg-slate-850 border border-slate-800 rounded-xl text-xs text-slate-400 hover:text-slate-200 transition group"
+          >
+            <div className="flex items-center gap-2">
+              <Search className="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-400 transition-colors" />
+              <span>Hızlı Komut Paleti</span>
+            </div>
+            <kbd className="px-1.5 py-0.5 text-[10px] bg-slate-800 text-slate-400 rounded font-mono">
+              Ctrl K
+            </kbd>
           </button>
         </div>
 
@@ -244,7 +261,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
         {/* Sidebar Footer */}
         <div className="p-3 border-t border-slate-800/80 text-xs text-slate-500 flex flex-col gap-2">
-          {/* OFİS - MOBİL Bulut Entegrasyon / Senkronizasyon Göstergesi (Kullanıcı profilinin hemen üstünde) */}
+          {/* OFİS - MOBİL Bulut Entegrasyon / Senkronizasyon Göstergesi */}
           <div className="bg-gradient-to-r from-emerald-950/70 via-slate-900 to-slate-900 border border-emerald-500/30 rounded-xl p-2.5 shadow-inner">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-1.5">
@@ -261,22 +278,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 <span>SENKRON</span>
               </span>
             </div>
-
             <div className="flex items-center justify-between text-[10px] text-slate-300">
               <span className="flex items-center gap-1">
                 <Monitor className="w-3 h-3 text-emerald-400" />
                 <span>Ofis PC</span>
               </span>
-              <span className="text-emerald-400 font-bold">⇄</span>
+              <span className="text-emerald-400 font-bold">↔</span>
               <span className="flex items-center gap-1">
                 <Smartphone className="w-3 h-3 text-emerald-400" />
                 <span>Cep Telefonu</span>
               </span>
             </div>
-
             <div className="text-[9px] text-slate-400 mt-1.5 flex items-center justify-between pt-1 border-t border-slate-800/80">
               <span>Bulut Entegrasyonu:</span>
-              <span className="text-emerald-300 font-medium font-mono">Aktif • 7/24</span>
+              <span className="text-emerald-300 font-medium font-mono">Aktif · 7/24</span>
             </div>
           </div>
 
@@ -304,7 +319,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           )}
 
           <div className="flex items-center justify-between text-[10px] px-1 text-slate-500">
-            <span>Kartakip Sürüm 2.4</span>
+            <span>Sürüm 2.5 Pro</span>
             <span className="font-mono text-emerald-400 font-semibold">Arslan ERP</span>
           </div>
         </div>

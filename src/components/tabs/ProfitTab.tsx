@@ -1,24 +1,20 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useFinance } from '../../context/FinanceContext';
 import {
   TrendingUp,
   Plus,
   Search,
-  Filter,
   Download,
   Calendar,
   User,
   ShoppingBag,
   CreditCard,
-  FileText,
   Boxes,
   Trash2,
   DollarSign,
   Percent,
   Calculator,
-  ChevronRight,
   ArrowRight,
-  AlertCircle,
   X,
   Check,
 } from 'lucide-react';
@@ -38,20 +34,20 @@ export const ProfitTab: React.FC = () => {
     setActiveTab,
     isAdmin,
     userProfile,
+    saleModalPrefillProduct,
+    setSaleModalPrefillProduct,
   } = useFinance();
 
   const now = new Date();
   const currentYearStr = String(now.getFullYear());
   const currentMonthStr = String(now.getMonth() + 1).padStart(2, '0');
 
-  // Filters
   const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
-  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr); // 'ALL' or '01'-'12'
+  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr);
   const [selectedSaleType, setSelectedSaleType] = useState<string>('ALL');
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState<string>('');
 
-  // Modal State for New Sale
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
   const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
   const [documentNo, setDocumentNo] = useState(`FAT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
@@ -69,7 +65,18 @@ export const ProfitTab: React.FC = () => {
   const [selectedAccountId, setSelectedAccountId] = useState(accounts[0]?.id || 'acc-kasa');
   const [notes, setNotes] = useState('');
 
-  // Auto-fill product cost & recommended sale price when product selected
+  // Handle prefill from StockTab if user clicked "Satış Yap" on a stock item
+  useEffect(() => {
+    if (saleModalPrefillProduct) {
+      setSelectedProductId(saleModalPrefillProduct.id);
+      setCostPrice(saleModalPrefillProduct.purchasePrice);
+      setSalePrice(saleModalPrefillProduct.salePrice || Math.round(saleModalPrefillProduct.purchasePrice * 1.35));
+      setQuantity(1);
+      setIsSaleModalOpen(true);
+      setSaleModalPrefillProduct(null);
+    }
+  }, [saleModalPrefillProduct, setSaleModalPrefillProduct]);
+
   const handleSelectProduct = (productId: string) => {
     setSelectedProductId(productId);
     const prod = stockItems.find(p => p.id === productId);
@@ -79,11 +86,9 @@ export const ProfitTab: React.FC = () => {
     }
   };
 
-  // Dynamic Vade Farkı Rate for selected sale date
-  const saleMonthKey = saleDate.substring(0, 7); // YYYY-MM
+  const saleMonthKey = saleDate.substring(0, 7);
   const currentVadeRateMonthly = getVadeRateForMonth(saleMonthKey);
 
-  // Live calculation of Vade Farkı and Profit in modal
   const modalTotalCost = +(quantity * costPrice).toFixed(2);
   const modalTotalSale = +(quantity * salePrice).toFixed(2);
   const modalVadeFarki =
@@ -94,25 +99,15 @@ export const ProfitTab: React.FC = () => {
   const modalNetProfit = +(modalTotalSale - modalEffectiveCost).toFixed(2);
   const modalProfitMargin = modalTotalSale > 0 ? +((modalNetProfit / modalTotalSale) * 100).toFixed(1) : 0;
 
-  // Filtered sales
   const filteredSales = useMemo(() => {
     return sales.filter(s => {
-      // Year filter
       if (selectedYear !== 'ALL' && !s.date.startsWith(selectedYear)) return false;
-
-      // Month filter
       if (selectedMonth !== 'ALL') {
         const saleMonth = s.date.substring(5, 7);
         if (saleMonth !== selectedMonth) return false;
       }
-
-      // Sale Type
       if (selectedSaleType !== 'ALL' && s.saleType !== selectedSaleType) return false;
-
-      // Category
       if (selectedCategory !== 'ALL' && s.category !== selectedCategory) return false;
-
-      // Search term
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase();
         const matchesCustomer = s.customerName.toLowerCase().includes(q);
@@ -124,12 +119,10 @@ export const ProfitTab: React.FC = () => {
           return false;
         }
       }
-
       return true;
     });
   }, [sales, selectedYear, selectedMonth, selectedSaleType, selectedCategory, searchTerm]);
 
-  // Aggregate KPI stats for filtered sales
   const totalCiro = filteredSales.reduce((sum, s) => sum + s.totalSaleAmount, 0);
   const totalCost = filteredSales.reduce((sum, s) => sum + s.totalCost, 0);
   const totalVadeFarki = filteredSales.reduce((sum, s) => sum + (s.vadeFarkiAmount || 0), 0);
@@ -140,7 +133,7 @@ export const ProfitTab: React.FC = () => {
     e.preventDefault();
     const prod = stockItems.find(p => p.id === selectedProductId);
     if (!prod && !selectedProductId) {
-      alert('Lütfen satışı yapılan ürünü seçin.');
+      alert('Lütfen satış yapılan ürünü seçin.');
       return;
     }
 
@@ -181,7 +174,6 @@ export const ProfitTab: React.FC = () => {
     });
 
     setIsSaleModalOpen(false);
-    // Reset form
     setCustomerName('');
     setSelectedCustomerId('');
     setSelectedProductId('');
@@ -196,7 +188,6 @@ export const ProfitTab: React.FC = () => {
       alert('Dışa aktarılacak satış kaydı bulunamadı.');
       return;
     }
-
     const headers = [
       'Tarih',
       'Belge No',
@@ -214,7 +205,6 @@ export const ProfitTab: React.FC = () => {
       'Kâr Marjı (%)',
       'Satış Personeli',
     ];
-
     const rows = filteredSales.map(s => [
       s.date,
       `"${s.documentNo || '-'}"`,
@@ -232,7 +222,6 @@ export const ProfitTab: React.FC = () => {
       s.profitMargin.toFixed(1),
       `"${s.salesPerson}"`,
     ]);
-
     const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -244,8 +233,8 @@ export const ProfitTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Top Banner & Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-900 to-emerald-950 p-5 rounded-2xl border border-slate-800 shadow-sm text-white">
+      {/* Top Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-850 to-emerald-950 p-5 rounded-2xl border border-slate-800 shadow-sm text-white">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
@@ -257,19 +246,16 @@ export const ProfitTab: React.FC = () => {
             Peşin, kredi kartı ve senetli satışların ürün bazlı maliyet ve kârlılık takibi. Senetli satışlarda Tanımlamalar sekmesindeki aylık vade farkı oranı taksit sayısına göre otomatik hesaplanır.
           </p>
         </div>
-
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          {/* Quick "Mal Alımı Yap" button linking directly to unified stock screen */}
           <button
             onClick={() => setActiveTab('stock')}
             className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition active:scale-95"
-            title="Tedarikçi Mal Alım & Stok Ekranına Git"
+            title="Tedarikçi Mal Alımı & Stok Ekranına Git"
           >
             <Boxes className="w-4 h-4 text-sky-400" />
             <span>Mal Alımı Yap</span>
             <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
           </button>
-
           <button
             onClick={() => setIsSaleModalOpen(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition shadow-lg shadow-emerald-600/20 active:scale-95"
@@ -282,7 +268,6 @@ export const ProfitTab: React.FC = () => {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* Card 1: Toplam Ciro */}
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
             <span>Toplam Satış Cirosu</span>
@@ -296,7 +281,6 @@ export const ProfitTab: React.FC = () => {
           </span>
         </div>
 
-        {/* Card 2: Ürün Alış Maliyeti */}
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
             <span>Ürün Alış Maliyeti</span>
@@ -310,7 +294,6 @@ export const ProfitTab: React.FC = () => {
           </span>
         </div>
 
-        {/* Card 3: Vade Farkı Maliyeti */}
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
             <span>Vade Farkı Maliyeti</span>
@@ -324,7 +307,6 @@ export const ProfitTab: React.FC = () => {
           </span>
         </div>
 
-        {/* Card 4: Net Kâr */}
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-500/30 dark:border-emerald-500/20 bg-emerald-50/20 dark:bg-emerald-950/20 shadow-xs">
           <div className="flex items-center justify-between text-xs font-semibold text-emerald-700 dark:text-emerald-400">
             <span>Elde Edilen Net Kâr</span>
@@ -338,7 +320,6 @@ export const ProfitTab: React.FC = () => {
           </span>
         </div>
 
-        {/* Card 5: Kâr Marjı % */}
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
             <span>Ortalama Kâr Marjı</span>
@@ -356,7 +337,6 @@ export const ProfitTab: React.FC = () => {
       {/* Filter Bar */}
       <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
         <div className="flex flex-1 flex-wrap gap-2.5 items-center">
-          {/* Search */}
           <div className="relative min-w-[200px] flex-1">
             <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
@@ -368,7 +348,6 @@ export const ProfitTab: React.FC = () => {
             />
           </div>
 
-          {/* Ay Filtresi */}
           <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs">
             <Calendar className="w-3.5 h-3.5 text-slate-400" />
             <select
@@ -392,7 +371,6 @@ export const ProfitTab: React.FC = () => {
             </select>
           </div>
 
-          {/* Yıl Filtresi */}
           <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs">
             <select
               value={selectedYear}
@@ -406,7 +384,6 @@ export const ProfitTab: React.FC = () => {
             </select>
           </div>
 
-          {/* Satış Şekli Filtresi */}
           <select
             value={selectedSaleType}
             onChange={e => setSelectedSaleType(e.target.value)}
@@ -418,7 +395,6 @@ export const ProfitTab: React.FC = () => {
             <option value="Senetli Satış">Senetli Satış (Vadeli)</option>
           </select>
 
-          {/* Kategori Filtresi */}
           <select
             value={selectedCategory}
             onChange={e => setSelectedCategory(e.target.value)}
@@ -460,7 +436,7 @@ export const ProfitTab: React.FC = () => {
               <ShoppingBag className="w-6 h-6" />
             </div>
             <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-              Seçilen kriterlere uygun satış kaydı bulunamadı.
+              Seçilen kriterlere uygun satış kaydı bulunamadı
             </p>
             <p className="text-xs text-slate-400">
               Filtreleri değiştirebilir veya yeni bir satış kaydı ekleyebilirsiniz.
@@ -486,122 +462,108 @@ export const ProfitTab: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filteredSales.map(sale => {
-                  return (
-                    <tr
-                      key={sale.id}
-                      className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition group"
-                    >
-                      <td className="py-3 px-3.5 text-slate-500 dark:text-slate-400 whitespace-nowrap font-mono text-[11px]">
-                        <div>{formatDate(sale.date)}</div>
-                        {sale.documentNo && (
-                          <span className="text-[10px] text-slate-400 block font-mono">
-                            {sale.documentNo}
+                {filteredSales.map(sale => (
+                  <tr
+                    key={sale.id}
+                    className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition group"
+                  >
+                    <td className="py-3 px-3.5 text-slate-500 dark:text-slate-400 whitespace-nowrap font-mono text-[11px]">
+                      <div>{formatDate(sale.date)}</div>
+                      {sale.documentNo && (
+                        <span className="text-[10px] text-slate-400 block font-mono">
+                          {sale.documentNo}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-3.5 whitespace-nowrap font-medium text-slate-900 dark:text-slate-100">
+                      {sale.customerName}
+                    </td>
+                    <td className="py-3 px-3.5 max-w-[220px]">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 block truncate">
+                        {sale.productName}
+                      </span>
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
+                        <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.2 rounded font-medium">
+                          {sale.category}
+                        </span>
+                        {sale.brand && (
+                          <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                            {sale.brand}
                           </span>
                         )}
-                      </td>
-
-                      <td className="py-3 px-3.5 whitespace-nowrap font-medium text-slate-900 dark:text-slate-100">
-                        {sale.customerName}
-                      </td>
-
-                      <td className="py-3 px-3.5 max-w-[220px]">
-                        <span className="font-semibold text-slate-800 dark:text-slate-200 block truncate">
-                          {sale.productName}
+                      </div>
+                    </td>
+                    <td className="py-3 px-3.5 text-center font-bold font-mono-num text-slate-800 dark:text-slate-200">
+                      {sale.quantity}
+                    </td>
+                    <td className="py-3 px-3.5 whitespace-nowrap">
+                      <span
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                          sale.saleType === 'Peşin'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                            : sale.saleType === 'Kredi Kartı'
+                            ? 'bg-blue-50 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
+                            : 'bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
+                        }`}
+                      >
+                        {sale.saleType}
+                      </span>
+                      {sale.saleType === 'Senetli Satış' && sale.installmentsCount && (
+                        <span className="block text-[10px] text-amber-600 dark:text-amber-400 font-mono mt-0.5 font-medium">
+                          {sale.installmentsCount} Ay Vade (%{sale.vadeRateMonthly || 3.5}/ay)
                         </span>
-                        <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
-                          <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.2 rounded font-medium">
-                            {sale.category}
-                          </span>
-                          {sale.brand && (
-                            <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
-                              {sale.brand}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      <td className="py-3 px-3.5 text-center font-bold font-mono-num text-slate-800 dark:text-slate-200">
-                        {sale.quantity}
-                      </td>
-
-                      <td className="py-3 px-3.5 whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            sale.saleType === 'Peşin'
-                              ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                              : sale.saleType === 'Kredi Kartı'
-                              ? 'bg-blue-50 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
-                              : 'bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700'
-                          }`}
+                      )}
+                    </td>
+                    <td className="py-3 px-3.5 text-right font-mono-num text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                      {formatCurrency(sale.totalCost)}
+                    </td>
+                    <td className="py-3 px-3.5 text-right font-mono-num whitespace-nowrap">
+                      {sale.vadeFarkiAmount ? (
+                        <span className="text-amber-600 dark:text-amber-400 font-medium">
+                          +{formatCurrency(sale.vadeFarkiAmount)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">-</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-3.5 text-right font-mono-num font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                      {formatCurrency(sale.totalSaleAmount)}
+                    </td>
+                    <td className="py-3 px-3.5 text-right font-mono-num font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                      +{formatCurrency(sale.netProfit)}
+                    </td>
+                    <td className="py-3 px-3.5 text-center whitespace-nowrap">
+                      <span
+                        className={`font-mono-num font-bold px-1.5 py-0.5 rounded text-[11px] ${
+                          sale.profitMargin >= 25
+                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
+                            : sale.profitMargin >= 15
+                            ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
+                            : 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
+                        }`}
+                      >
+                        %{sale.profitMargin.toFixed(1)}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3.5 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-medium">
+                        <User className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span>{sale.salesPerson}</span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-3 text-center whitespace-nowrap">
+                      {isAdmin && (
+                        <button
+                          onClick={() => deleteSaleRecord(sale.id)}
+                          title="Satışı Sil (Yönetici)"
+                          className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
                         >
-                          {sale.saleType}
-                        </span>
-                        {sale.saleType === 'Senetli Satış' && sale.installmentsCount && (
-                          <span className="block text-[10px] text-amber-600 dark:text-amber-400 font-mono mt-0.5 font-medium">
-                            {sale.installmentsCount} Ay Vade (%{sale.vadeRateMonthly || 3.5}/ay)
-                          </span>
-                        )}
-                      </td>
-
-                      <td className="py-3 px-3.5 text-right font-mono-num text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                        {formatCurrency(sale.totalCost)}
-                      </td>
-
-                      <td className="py-3 px-3.5 text-right font-mono-num whitespace-nowrap">
-                        {sale.vadeFarkiAmount ? (
-                          <span className="text-amber-600 dark:text-amber-400 font-medium">
-                            +{formatCurrency(sale.vadeFarkiAmount)}
-                          </span>
-                        ) : (
-                          <span className="text-slate-400">-</span>
-                        )}
-                      </td>
-
-                      <td className="py-3 px-3.5 text-right font-mono-num font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                        {formatCurrency(sale.totalSaleAmount)}
-                      </td>
-
-                      <td className="py-3 px-3.5 text-right font-mono-num font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
-                        +{formatCurrency(sale.netProfit)}
-                      </td>
-
-                      <td className="py-3 px-3.5 text-center whitespace-nowrap">
-                        <span
-                          className={`font-mono-num font-bold px-1.5 py-0.5 rounded text-[11px] ${
-                            sale.profitMargin >= 25
-                              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
-                              : sale.profitMargin >= 15
-                              ? 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300'
-                              : 'bg-rose-50 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
-                          }`}
-                        >
-                          %{sale.profitMargin.toFixed(1)}
-                        </span>
-                      </td>
-
-                      {/* Satış Personeli Sütunu (Kullanıcı Talebi 4) */}
-                      <td className="py-3 px-3.5 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-medium">
-                          <User className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                          <span>{sale.salesPerson}</span>
-                        </div>
-                      </td>
-
-                      <td className="py-3 px-3 text-center whitespace-nowrap">
-                        {isAdmin && (
-                          <button
-                            onClick={() => deleteSaleRecord(sale.id)}
-                            title="Satışı Sil (Yönetici)"
-                            className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
@@ -622,7 +584,7 @@ export const ProfitTab: React.FC = () => {
                     Yeni Satış ve Kârlılık Kaydı
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Satış şeklini seçin; senet vade farkı ve net kâr anlık hesaplanır.
+                    Satış şeklini seçin; senet vade farkı ve net kâr anlık hesaplanır
                   </p>
                 </div>
               </div>
@@ -636,7 +598,6 @@ export const ProfitTab: React.FC = () => {
 
             <form onSubmit={handleSaveSale} className="space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Tarih */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Satış Tarihi *
@@ -649,8 +610,6 @@ export const ProfitTab: React.FC = () => {
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
-
-                {/* Belge No */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Fatura / Fiş No
@@ -664,7 +623,6 @@ export const ProfitTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* Müşteri Seçimi / Adı */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -675,11 +633,10 @@ export const ProfitTab: React.FC = () => {
                     required
                     value={customerName}
                     onChange={e => setCustomerName(e.target.value)}
-                    placeholder="Müşteri adını girin..."
+                    placeholder="Müşteri adı girin..."
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                   />
                 </div>
-
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Kayıtlı Cari Seç (İsteğe Bağlı)
@@ -706,7 +663,6 @@ export const ProfitTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* Ürün Seçimi */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Satılan Ürün (Stoktan Seç) *
@@ -720,13 +676,12 @@ export const ProfitTab: React.FC = () => {
                   <option value="">Ürün seçin (Stoktaki mevcut ürünler)...</option>
                   {stockItems.map(stk => (
                     <option key={stk.id} value={stk.id}>
-                      {stk.name} [{stk.brand || stk.category}] — Mevcut Stok: {stk.quantity} {stk.unit} — Alış: ₺{stk.purchasePrice.toLocaleString('tr-TR')}
+                      {stk.name} [{stk.brand || stk.category}] — Mevcut Stok: {stk.quantity} {stk.unit} · Maliyet: ₺{stk.purchasePrice.toLocaleString('tr-TR')}
                     </option>
                   ))}
                 </select>
               </div>
 
-              {/* Adet, Alış Fiyatı, Satış Fiyatı */}
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -741,10 +696,9 @@ export const ProfitTab: React.FC = () => {
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono-num font-bold focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
-
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    Birim Maliyet (₺) *
+                    Birim Maliyet (₺)
                   </label>
                   <input
                     type="number"
@@ -755,7 +709,6 @@ export const ProfitTab: React.FC = () => {
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono-num focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
-
                 <div>
                   <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">
                     Birim Satış (₺) *
@@ -771,7 +724,7 @@ export const ProfitTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* SATIŞ ŞEKLİ SEÇİMİ (Peşin, Kredi Kartı, Senetli Satış) */}
+              {/* Satış Şekli */}
               <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
                 <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
                   Satış Şekli *
@@ -800,7 +753,6 @@ export const ProfitTab: React.FC = () => {
                   ))}
                 </div>
 
-                {/* Senetli Satış Seçildiyse: Taksit Sayısı ve Vade Farkı Oranı */}
                 {saleType === 'Senetli Satış' && (
                   <div className="pt-2 border-t border-slate-200 dark:border-slate-700/80 space-y-2.5">
                     <div className="flex items-center justify-between text-xs">
@@ -812,7 +764,6 @@ export const ProfitTab: React.FC = () => {
                         {saleMonthKey} Vade Oranı: %{currentVadeRateMonthly}/ay
                       </span>
                     </div>
-
                     <div className="grid grid-cols-5 gap-2">
                       {[3, 6, 9, 12, 18].map(count => (
                         <button
@@ -830,7 +781,6 @@ export const ProfitTab: React.FC = () => {
                       ))}
                     </div>
 
-                    {/* Vade Farkı Hesaplama Detayı */}
                     <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs space-y-1">
                       <div className="flex justify-between text-slate-700 dark:text-slate-300">
                         <span>Aylık Vade Farkı:</span>
@@ -864,7 +814,6 @@ export const ProfitTab: React.FC = () => {
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                   />
                 </div>
-
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Tahsilat Hesabı / Kasa
@@ -883,7 +832,7 @@ export const ProfitTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* Kârlılık Canlı Önizleme Kartı */}
+              {/* Kâr Önizleme */}
               <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-between text-xs font-medium">
                 <div>
                   <span className="text-slate-500 dark:text-slate-400 block text-[11px]">Toplam Satış Cirosu:</span>
@@ -897,20 +846,6 @@ export const ProfitTab: React.FC = () => {
                     +{formatCurrency(modalNetProfit)}
                   </span>
                 </div>
-              </div>
-
-              {/* Notlar */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Özel Notlar / Sevkiyat Bilgisi
-                </label>
-                <textarea
-                  rows={2}
-                  value={notes}
-                  onChange={e => setNotes(e.target.value)}
-                  placeholder="Müşteri adresi, montaj teslim tarihi vb..."
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
-                />
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">

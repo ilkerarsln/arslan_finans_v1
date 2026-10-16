@@ -14,8 +14,7 @@ import {
   X,
   Check,
   Layers,
-  Sparkles,
-  Info,
+  MessageCircle,
 } from 'lucide-react';
 
 export const UpcomingDuesTab: React.FC = () => {
@@ -28,43 +27,41 @@ export const UpcomingDuesTab: React.FC = () => {
     createInstallmentPlan,
     openInstallmentModal,
     openTransactionModal,
+    getWhatsAppReminderUrl,
     caris,
-    accounts,
   } = useFinance();
 
-  const [filter, setFilter] = useState<'pending' | 'completed' | 'installments' | 'all'>('pending');
+  const [filter, setFilter] = useState<'pending' | 'completed' | 'overdue' | 'installments' | 'all'>('pending');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  // Form fields for new due modal
   const [title, setTitle] = useState('');
   const [type, setType] = useState<'Gelir' | 'Gider'>('Gider');
   const [amount, setAmount] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [category, setCategory] = useState('Fatura & Hizmet');
+  const [category, setCategory] = useState('Mal / Stok Alımı');
   const [cariName, setCariName] = useState('');
   const [recurrence, setRecurrence] = useState<'Tek Seferlik' | 'Aylık' | 'Yıllık'>('Tek Seferlik');
 
-  // Installment toggle inside standard add modal
   const [isInstallmentMode, setIsInstallmentMode] = useState(false);
   const [installmentCount, setInstallmentCount] = useState<number>(6);
 
   const filteredDues = upcomingDues.filter(d => {
+    const remaining = getDaysRemaining(d.dueDate);
     if (filter === 'pending') return !d.isCompleted;
     if (filter === 'completed') return d.isCompleted;
+    if (filter === 'overdue') return !d.isCompleted && remaining.status === 'overdue';
     if (filter === 'installments') return !!d.installmentGroupId;
     return true;
   }).sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
-  // Count metrics
   const pendingCount = upcomingDues.filter(d => !d.isCompleted).length;
+  const overdueCount = upcomingDues.filter(d => !d.isCompleted && getDaysRemaining(d.dueDate).status === 'overdue').length;
   const completedCount = upcomingDues.filter(d => d.isCompleted).length;
   const installmentDuesCount = upcomingDues.filter(d => !!d.installmentGroupId).length;
 
-  // Pending totals
   const pendingIncome = upcomingDues
     .filter(d => !d.isCompleted && d.type === 'Gelir')
     .reduce((sum, d) => sum + d.amount, 0);
-
   const pendingExpense = upcomingDues
     .filter(d => !d.isCompleted && d.type === 'Gider')
     .reduce((sum, d) => sum + d.amount, 0);
@@ -75,7 +72,6 @@ export const UpcomingDuesTab: React.FC = () => {
     if (isNaN(numAmount) || numAmount <= 0 || !dueDate) return;
 
     if (isInstallmentMode && installmentCount > 1) {
-      // Create automated installment plan with 30-day periods
       const matchedCari = caris.find(c => c.name.toLowerCase() === cariName.trim().toLowerCase());
       createInstallmentPlan({
         type,
@@ -88,7 +84,6 @@ export const UpcomingDuesTab: React.FC = () => {
         category: category.trim() || (type === 'Gelir' ? 'Taksitli Satış' : 'Taksitli Mal Alımı'),
       });
     } else {
-      // Standard single due
       if (!title.trim()) return;
       addUpcomingDue({
         title: title.trim(),
@@ -101,7 +96,6 @@ export const UpcomingDuesTab: React.FC = () => {
         recurrence,
       });
     }
-
     setIsAddModalOpen(false);
     setTitle('');
     setAmount('');
@@ -112,7 +106,6 @@ export const UpcomingDuesTab: React.FC = () => {
   };
 
   const handlePayOrCollect = (due: UpcomingDue) => {
-    // Open transaction modal pre-filled
     openTransactionModal({
       type: due.type,
       category: due.category,
@@ -131,14 +124,14 @@ export const UpcomingDuesTab: React.FC = () => {
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             Vade & Planlı Ödemeler Takvimi
-            {installmentDuesCount > 0 && (
-              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300">
-                {installmentDuesCount} Taksit Kaydı
+            {overdueCount > 0 && (
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-100 dark:bg-rose-950 text-rose-700 dark:text-rose-300">
+                {overdueCount} Gecikmiş Vade
               </span>
             )}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Yaklaşan çekler, vergi yükümlülükleri, taksitli planlar ve vadeli müşteri alacakları
+            Yaklaşan çekler, vergi yükleri, taksitli planlar ve vadeli müşteri alacakları
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -179,7 +172,7 @@ export const UpcomingDuesTab: React.FC = () => {
             -{formatCurrency(pendingExpense)}
           </h3>
           <p className="text-[11px] text-slate-400 mt-1">
-            Kira, vergi, çek, taksit ve kart yükümlülükleri
+            Kira, vergi, çek, taksit ve tedarikçi borçları
           </p>
         </div>
 
@@ -216,14 +209,14 @@ export const UpcomingDuesTab: React.FC = () => {
             Bekleyenler ({pendingCount})
           </button>
           <button
-            onClick={() => setFilter('completed')}
+            onClick={() => setFilter('overdue')}
             className={`px-3 py-1.5 font-semibold rounded-lg transition ${
-              filter === 'completed'
-                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+              filter === 'overdue'
+                ? 'bg-white dark:bg-slate-700 text-rose-600 dark:text-rose-400 shadow-xs'
                 : 'text-slate-600 dark:text-slate-400'
             }`}
           >
-            Tamamlananlar ({completedCount})
+            Gecikenler ({overdueCount})
           </button>
           <button
             onClick={() => setFilter('installments')}
@@ -235,6 +228,16 @@ export const UpcomingDuesTab: React.FC = () => {
           >
             <Layers className="w-3.5 h-3.5 text-indigo-500" />
             Taksitli Planlar ({installmentDuesCount})
+          </button>
+          <button
+            onClick={() => setFilter('completed')}
+            className={`px-3 py-1.5 font-semibold rounded-lg transition ${
+              filter === 'completed'
+                ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                : 'text-slate-600 dark:text-slate-400'
+            }`}
+          >
+            Tamamlananlar ({completedCount})
           </button>
           <button
             onClick={() => setFilter('all')}
@@ -264,6 +267,7 @@ export const UpcomingDuesTab: React.FC = () => {
             {filteredDues.map(due => {
               const remaining = getDaysRemaining(due.dueDate);
               const isOverdue = remaining.status === 'overdue' && !due.isCompleted;
+              const waUrl = getWhatsAppReminderUrl(due.id);
 
               return (
                 <div
@@ -284,7 +288,6 @@ export const UpcomingDuesTab: React.FC = () => {
                     >
                       <Check className="w-3.5 h-3.5 stroke-[3]" />
                     </button>
-
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
                         <span
@@ -296,26 +299,22 @@ export const UpcomingDuesTab: React.FC = () => {
                         >
                           {due.title}
                         </span>
-
                         {due.installmentIndex && due.totalInstallments && (
                           <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
                             Taksit {due.installmentIndex}/{due.totalInstallments}
                           </span>
                         )}
-
                         {isOverdue && (
                           <span className="flex items-center gap-1 text-[10px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/60 px-2 py-0.5 rounded">
                             <AlertTriangle className="w-3 h-3" /> {remaining.text}
                           </span>
                         )}
-
                         {!due.isCompleted && !isOverdue && (
                           <span className="text-[10px] font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded">
                             {remaining.text}
                           </span>
                         )}
                       </div>
-
                       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 mt-1">
                         <span className="font-medium text-slate-600 dark:text-slate-300 font-mono">
                           {formatDate(due.dueDate)}
@@ -330,7 +329,7 @@ export const UpcomingDuesTab: React.FC = () => {
                         )}
                         <span>·</span>
                         <span className="text-[11px] text-slate-400">
-                          {due.installmentGroupId ? '30 Günlük Periyot' : due.recurrence}
+                          {due.installmentGroupId ? "30 Günlük Periyot" : due.recurrence}
                         </span>
                       </div>
                     </div>
@@ -349,21 +348,34 @@ export const UpcomingDuesTab: React.FC = () => {
                         {formatCurrency(due.amount)}
                       </div>
                       <span className="text-[10px] text-slate-400">
-                        {due.type === 'Gelir' ? 'Tahsilat Bekleniyor' : 'Ödeme Yükümlülüğü'}
+                        {due.type === 'Gelir' ? 'Tahsilat Bekleniyor' : 'Ödeme Yükü'}
                       </span>
                     </div>
 
                     {!due.isCompleted && (
-                      <button
-                        onClick={() => handlePayOrCollect(due)}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold text-white shadow-xs transition active:scale-95 ${
-                          due.type === 'Gelir'
-                            ? 'bg-emerald-600 hover:bg-emerald-500'
-                            : 'bg-rose-600 hover:bg-rose-500'
-                        }`}
-                      >
-                        {due.type === 'Gelir' ? 'Tahsil Et' : 'Öde'}
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        {waUrl && (
+                          <a
+                            href={waUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 transition"
+                            title="Müşteriye WhatsApp Vade Hatırlatması Gönder"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                          </a>
+                        )}
+                        <button
+                          onClick={() => handlePayOrCollect(due)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold text-white shadow-xs transition active:scale-95 ${
+                            due.type === 'Gelir'
+                              ? 'bg-emerald-600 hover:bg-emerald-500'
+                              : 'bg-rose-600 hover:bg-rose-500'
+                          }`}
+                        >
+                          {due.type === 'Gelir' ? 'Tahsil Et' : 'Öde'}
+                        </button>
+                      </div>
                     )}
 
                     <div className="flex items-center gap-1">
@@ -396,7 +408,7 @@ export const UpcomingDuesTab: React.FC = () => {
         )}
       </div>
 
-      {/* Add Due Modal with Integrated Installment Option */}
+      {/* Add Due Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-slate-800 dark:text-slate-100 max-h-[92vh] overflow-y-auto">
@@ -505,7 +517,6 @@ export const UpcomingDuesTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* Installment Plan Toggle */}
               <div className="p-3 bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 rounded-xl space-y-2">
                 <div className="flex items-center justify-between">
                   <label className="flex items-center gap-2 cursor-pointer">
@@ -550,9 +561,6 @@ export const UpcomingDuesTab: React.FC = () => {
                         </button>
                       ))}
                     </div>
-                    <p className="text-[10px] text-indigo-800/80 dark:text-indigo-300/80 leading-relaxed">
-                      İlk vade tarihinin üzerine tam 30'ar gün (+30 gün, +60 gün vb.) eklenerek {installmentCount} taksit otomatik hesaplanır, hem vade takvimine hem de cari hareketlerine kaydedilir.
-                    </p>
                   </div>
                 )}
               </div>
@@ -566,7 +574,7 @@ export const UpcomingDuesTab: React.FC = () => {
                     type="text"
                     value={category}
                     onChange={e => setCategory(e.target.value)}
-                    placeholder="Kira, Vergi, Mal Alımı..."
+                    placeholder="Mal Alımı, Fatura..."
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>

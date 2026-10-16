@@ -15,7 +15,6 @@ export const CariModal: React.FC<CariModalProps> = ({
   editingCari,
 }) => {
   const { addCari, updateCari } = useFinance();
-
   const [name, setName] = useState('');
   const [type, setType] = useState<CariType>('Müşteri');
   const [phone, setPhone] = useState('');
@@ -44,7 +43,7 @@ export const CariModal: React.FC<CariModalProps> = ({
       setEmail('');
       setTaxNumber('');
       setTaxOffice('');
-      setCity('İstanbul');
+      setCity('Karabük');
       setBalance('0');
       setNotes('');
     }
@@ -55,7 +54,6 @@ export const CariModal: React.FC<CariModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const numBalance = parseFloat(balance) || 0;
-
     if (editingCari) {
       updateCari({
         ...editingCari,
@@ -82,7 +80,6 @@ export const CariModal: React.FC<CariModalProps> = ({
         notes: notes.trim() || undefined,
       });
     }
-
     onClose();
   };
 
@@ -110,7 +107,7 @@ export const CariModal: React.FC<CariModalProps> = ({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Cari Türü *
+                Cari Türü
               </label>
               <select
                 value={type}
@@ -131,7 +128,7 @@ export const CariModal: React.FC<CariModalProps> = ({
                 type="text"
                 value={city}
                 onChange={e => setCity(e.target.value)}
-                placeholder="İstanbul, Ankara..."
+                placeholder="Karabük, Safranbolu, İstanbul..."
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
@@ -146,7 +143,7 @@ export const CariModal: React.FC<CariModalProps> = ({
               required
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="Örn: Anadolu Lojistik A.Ş. veya Ahmet Yılmaz"
+              placeholder="Örn: Bosch A.Ş. veya Ahmet Yılmaz"
               className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
@@ -160,8 +157,8 @@ export const CariModal: React.FC<CariModalProps> = ({
                 type="text"
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
-                placeholder="+90 5XX XXX XX XX"
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
+                placeholder="05XX XXX XX XX"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
               />
             </div>
             <div>
@@ -172,7 +169,7 @@ export const CariModal: React.FC<CariModalProps> = ({
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="muhasebe@sirket.com"
+                placeholder="muhasebe@firma.com"
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
@@ -187,7 +184,7 @@ export const CariModal: React.FC<CariModalProps> = ({
                 type="text"
                 value={taxOffice}
                 onChange={e => setTaxOffice(e.target.value)}
-                placeholder="Kadıköy V.D."
+                placeholder="Karabük V.D."
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
@@ -199,7 +196,7 @@ export const CariModal: React.FC<CariModalProps> = ({
                 type="text"
                 value={taxNumber}
                 onChange={e => setTaxNumber(e.target.value)}
-                placeholder="10 Haneli VKN"
+                placeholder="10 veya 11 Haneli No"
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono focus:ring-2 focus:ring-emerald-500"
               />
             </div>
@@ -231,7 +228,7 @@ export const CariModal: React.FC<CariModalProps> = ({
               value={notes}
               onChange={e => setNotes(e.target.value)}
               placeholder="Ödeme şartları, vade günleri veya özel anlaşmalar..."
-              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 resize-none"
             />
           </div>
 

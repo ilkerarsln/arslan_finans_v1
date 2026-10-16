@@ -10,25 +10,10 @@ import {
   FileSpreadsheet,
   Plus,
   Trash2,
-  Edit2,
-  Check,
-  X,
-  Search,
-  Calendar,
-  AlertCircle,
   TrendingUp,
-  Download,
-  Info,
+  X,
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
-import {
-  ProductCategory,
-  ProductSubCategory,
-  ProductBrand,
-  VadeRateEntry,
-  PriceListEntry,
-  Cari,
-} from '../../types/finance';
 
 export const DefinitionsTab: React.FC = () => {
   const {
@@ -52,43 +37,34 @@ export const DefinitionsTab: React.FC = () => {
     setActiveTab,
   } = useFinance();
 
-  // Active section tab
   const [activeSection, setActiveSection] = useState<
     'categories' | 'subcategories' | 'brands' | 'suppliers' | 'vaderates' | 'pricelists'
   >('categories');
 
-  const [searchTerm, setSearchTerm] = useState('');
-
-  // 1. Ana Kategori State
   const [newCatName, setNewCatName] = useState('');
   const [newCatColor, setNewCatColor] = useState('#0ea5e9');
 
-  // 2. Alt Kategori State
   const [newSubCatName, setNewSubCatName] = useState('');
   const [selectedParentCatId, setSelectedParentCatId] = useState(
     productCategories[0]?.id || 'pcat-1'
   );
   const [filterParentCat, setFilterParentCat] = useState<string>('ALL');
 
-  // 3. Marka State
   const [newBrandName, setNewBrandName] = useState('');
   const [selectedBrandCategories, setSelectedBrandCategories] = useState<string[]>(['Beyaz Eşya']);
 
-  // 4. Vade Farkı State
   const now = new Date();
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const [vadeMonth, setVadeMonth] = useState(currentMonthKey);
   const [vadeRateVal, setVadeRateVal] = useState<number>(3.5);
   const [vadeNotes, setVadeNotes] = useState('');
 
-  // 5. Fiyat Listesi State
   const [priceListMonth, setPriceListMonth] = useState(currentMonthKey);
   const [priceListTitle, setPriceListTitle] = useState('');
   const [priceListCategory, setPriceListCategory] = useState('Tüm Kategoriler');
   const [priceListItemsCount, setPriceListItemsCount] = useState<number>(45);
   const [priceListNotes, setPriceListNotes] = useState('');
 
-  // 6. Tedarikçi Ekleme Modal / State
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
   const [supplierName, setSupplierName] = useState('');
   const [supplierPhone, setSupplierPhone] = useState('');
@@ -96,12 +72,10 @@ export const DefinitionsTab: React.FC = () => {
   const [supplierCity, setSupplierCity] = useState('');
   const [supplierNotes, setSupplierNotes] = useState('');
 
-  // Filtered Suppliers from unified Cari
   const suppliers = useMemo(() => {
     return caris.filter(c => c.type === 'Tedarikçi');
   }, [caris]);
 
-  // Handle Add Main Category
   const handleAddCategory = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCatName.trim()) return;
@@ -113,13 +87,11 @@ export const DefinitionsTab: React.FC = () => {
     setNewCatName('');
   };
 
-  // Handle Add Subcategory
   const handleAddSubCategory = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSubCatName.trim()) return;
     const parent = productCategories.find(c => c.id === selectedParentCatId);
     if (!parent) return;
-
     addProductSubCategory({
       categoryId: parent.id,
       categoryName: parent.name,
@@ -128,7 +100,6 @@ export const DefinitionsTab: React.FC = () => {
     setNewSubCatName('');
   };
 
-  // Handle Add Brand
   const handleAddBrand = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBrandName.trim()) return;
@@ -139,7 +110,6 @@ export const DefinitionsTab: React.FC = () => {
     setNewBrandName('');
   };
 
-  // Handle Set Vade Rate
   const handleSaveVadeRate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!vadeMonth) return;
@@ -147,7 +117,6 @@ export const DefinitionsTab: React.FC = () => {
     setVadeNotes('');
   };
 
-  // Handle Add Price List
   const handleAddPriceList = (e: React.FormEvent) => {
     e.preventDefault();
     if (!priceListTitle.trim()) return;
@@ -162,7 +131,6 @@ export const DefinitionsTab: React.FC = () => {
     setPriceListNotes('');
   };
 
-  // Handle Add Supplier
   const handleAddSupplier = (e: React.FormEvent) => {
     e.preventDefault();
     if (!supplierName.trim()) return;
@@ -186,7 +154,7 @@ export const DefinitionsTab: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-900 to-amber-950 p-5 rounded-2xl border border-slate-800 shadow-sm text-white">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-850 to-amber-950 p-5 rounded-2xl border border-slate-800 shadow-sm text-white">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="p-1.5 rounded-lg bg-amber-500/20 text-amber-400">
@@ -198,7 +166,6 @@ export const DefinitionsTab: React.FC = () => {
             Ürün ana kategorileri, alt kategoriler, markalar (Beyaz Eşya & Mobilya), ortak tedarikçiler, aylık senetli satış vade farkı oranları ve aylık fiyat listeleri tek merkezden yönetilir.
           </p>
         </div>
-
         <div className="flex items-center gap-2">
           <button
             onClick={() => setActiveTab('profit')}
@@ -223,7 +190,6 @@ export const DefinitionsTab: React.FC = () => {
           <Layers className="w-4 h-4 text-emerald-500" />
           <span>Ana Kategoriler ({productCategories.length})</span>
         </button>
-
         <button
           onClick={() => setActiveSection('subcategories')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
@@ -235,7 +201,6 @@ export const DefinitionsTab: React.FC = () => {
           <FolderTree className="w-4 h-4 text-sky-500" />
           <span>Alt Kategoriler ({productSubCategories.length})</span>
         </button>
-
         <button
           onClick={() => setActiveSection('brands')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
@@ -247,7 +212,6 @@ export const DefinitionsTab: React.FC = () => {
           <Tag className="w-4 h-4 text-purple-500" />
           <span>Markalar ({productBrands.length})</span>
         </button>
-
         <button
           onClick={() => setActiveSection('suppliers')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
@@ -259,7 +223,6 @@ export const DefinitionsTab: React.FC = () => {
           <Building className="w-4 h-4 text-amber-500" />
           <span>Ortak Tedarikçiler ({suppliers.length})</span>
         </button>
-
         <button
           onClick={() => setActiveSection('vaderates')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
@@ -271,7 +234,6 @@ export const DefinitionsTab: React.FC = () => {
           <Percent className="w-4 h-4 text-rose-500" />
           <span>Aylık Vade Oranları ({vadeRates.length})</span>
         </button>
-
         <button
           onClick={() => setActiveSection('pricelists')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
@@ -288,7 +250,6 @@ export const DefinitionsTab: React.FC = () => {
       {/* SECTION 1: Ana Kategoriler */}
       {activeSection === 'categories' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Add Category Form */}
           <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <Plus className="w-4 h-4 text-emerald-600" />
@@ -297,7 +258,6 @@ export const DefinitionsTab: React.FC = () => {
             <p className="text-xs text-slate-500 dark:text-slate-400">
               Ürünlerin ve stokların gruplandırılacağı ana sektör kategorisi tanımlayın.
             </p>
-
             <form onSubmit={handleAddCategory} className="space-y-3 pt-2">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -312,7 +272,6 @@ export const DefinitionsTab: React.FC = () => {
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-100"
                 />
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Tema Rengi
@@ -327,7 +286,6 @@ export const DefinitionsTab: React.FC = () => {
                   <span className="text-xs font-mono text-slate-500">{newCatColor}</span>
                 </div>
               </div>
-
               <button
                 type="submit"
                 className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition active:scale-95 shadow-sm"
@@ -337,17 +295,12 @@ export const DefinitionsTab: React.FC = () => {
             </form>
           </div>
 
-          {/* List Categories */}
           <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-slate-900 dark:text-white text-sm">
                 Tanımlı Ana Kategoriler ({productCategories.length})
               </h3>
-              <span className="text-xs text-slate-400">
-                Beyaz Eşya, Mobilya, Masa, Aksesuar, Yatak, TV
-              </span>
             </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {productCategories.map(cat => {
                 const subCount = productSubCategories.filter(s => s.categoryId === cat.id || s.categoryName === cat.name).length;
@@ -370,7 +323,6 @@ export const DefinitionsTab: React.FC = () => {
                         </span>
                       </div>
                     </div>
-
                     {isAdmin && (
                       <button
                         onClick={() => deleteProductCategory(cat.id)}
@@ -388,19 +340,17 @@ export const DefinitionsTab: React.FC = () => {
         </div>
       )}
 
-      {/* SECTION 2: Alt Kategoriler (Farklı Sekmede Tanımlanan) */}
+      {/* SECTION 2: Alt Kategoriler */}
       {activeSection === 'subcategories' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Add Subcategory Form */}
           <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <Plus className="w-4 h-4 text-sky-600" />
               Yeni Alt Kategori Ekle
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Ana kategorilere ait alt ürün çeşitlerini (Örn: Buzdolabı, Çamaşır Makinesi, Bulaşık Makinesi, Ankastre Set) tanımlayın.
+              Ana kategorilere ait alt çeşitlerini tanımlayın.
             </p>
-
             <form onSubmit={handleAddSubCategory} className="space-y-3 pt-2">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -418,7 +368,6 @@ export const DefinitionsTab: React.FC = () => {
                   ))}
                 </select>
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Alt Kategori Adı
@@ -432,7 +381,6 @@ export const DefinitionsTab: React.FC = () => {
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-sky-500 text-slate-800 dark:text-slate-100"
                 />
               </div>
-
               <button
                 type="submit"
                 className="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-semibold transition active:scale-95 shadow-sm"
@@ -442,14 +390,11 @@ export const DefinitionsTab: React.FC = () => {
             </form>
           </div>
 
-          {/* List Subcategories */}
           <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h3 className="font-bold text-slate-900 dark:text-white text-sm">
                 Tanımlı Alt Kategoriler ({productSubCategories.length})
               </h3>
-
-              {/* Filter by parent category */}
               <div className="flex items-center gap-2">
                 <span className="text-xs text-slate-400">Filtrele:</span>
                 <select
@@ -466,7 +411,6 @@ export const DefinitionsTab: React.FC = () => {
                 </select>
               </div>
             </div>
-
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
@@ -515,16 +459,14 @@ export const DefinitionsTab: React.FC = () => {
       {/* SECTION 3: Markalar */}
       {activeSection === 'brands' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Add Brand Form */}
           <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <Plus className="w-4 h-4 text-purple-600" />
               Yeni Marka Ekle
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Ürün girişlerinde seçilecek markaları (Bambi, Altus, Bosch, Hoover, Uğur, Medisa, Kea, TV vb.) ekleyin.
+              Ürün girişlerinde seçilecek markaları ekleyin.
             </p>
-
             <form onSubmit={handleAddBrand} className="space-y-3 pt-2">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -539,7 +481,6 @@ export const DefinitionsTab: React.FC = () => {
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-100"
                 />
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   İlişkili Ürün Kategorileri
@@ -570,7 +511,6 @@ export const DefinitionsTab: React.FC = () => {
                   })}
                 </div>
               </div>
-
               <button
                 type="submit"
                 className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold transition active:scale-95 shadow-sm"
@@ -580,17 +520,12 @@ export const DefinitionsTab: React.FC = () => {
             </form>
           </div>
 
-          {/* List Brands */}
           <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-slate-900 dark:text-white text-sm">
                 Tanımlı Markalar Listesi ({productBrands.length})
               </h3>
-              <span className="text-xs text-slate-400">
-                Bosch, Altus, Bambi, Hoover, Uğur, Medisa, Kea, Arçelik, Beko, Vestel
-              </span>
             </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {productBrands.map(b => (
                 <div
@@ -613,7 +548,6 @@ export const DefinitionsTab: React.FC = () => {
                       ))}
                     </div>
                   </div>
-
                   {isAdmin && (
                     <button
                       onClick={() => deleteProductBrand(b.id)}
@@ -640,10 +574,9 @@ export const DefinitionsTab: React.FC = () => {
                 Ortak Tedarikçi Carileri ({suppliers.length})
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Finans ve Kâr Takip modülleri bu ortak tedarikçi tablosunu kullanır. Tedarikçiler birden fazla kategori ve ürünü barındırabilir.
+                Finans ve Kâr Takip modülleri bu ortak tedarikçi tablosunu kullanır.
               </p>
             </div>
-
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setIsSupplierModalOpen(true)}
@@ -660,7 +593,6 @@ export const DefinitionsTab: React.FC = () => {
               </button>
             </div>
           </div>
-
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
@@ -708,16 +640,14 @@ export const DefinitionsTab: React.FC = () => {
       {/* SECTION 5: Aylık Vade Farkı Oranları */}
       {activeSection === 'vaderates' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Add / Update Vade Rate Form */}
           <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <Percent className="w-4 h-4 text-rose-600" />
               Aylık Vade Farkı Oranı Belirle
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-              Kâr Takip sekmesinde yapılan &quot;Senetli Satış&quot; işlemlerinde taksit sayısına göre ürün maliyetine eklenecek aylık faiz/vade farkı oranını (%) belirleyin.
+              Kâr Takip sekmesinde yapılan "Senetli Satış" işlemlerinde taksit sayısına göre ürün maliyetine eklenecek aylık faiz/vade farkı oranını (%) belirleyin.
             </p>
-
             <form onSubmit={handleSaveVadeRate} className="space-y-3 pt-2">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -731,7 +661,6 @@ export const DefinitionsTab: React.FC = () => {
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 dark:text-slate-100"
                 />
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Aylık Vade Farkı Oranı (%)
@@ -752,11 +681,7 @@ export const DefinitionsTab: React.FC = () => {
                     %
                   </span>
                 </div>
-                <span className="text-[11px] text-slate-400 block mt-1">
-                  Örn: 12 ay senette toplam maliyet artışı: 12 × %{vadeRateVal} = %{(12 * vadeRateVal).toFixed(1)}
-                </span>
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Açıklama / Not
@@ -769,7 +694,6 @@ export const DefinitionsTab: React.FC = () => {
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 dark:text-slate-100"
                 />
               </div>
-
               <button
                 type="submit"
                 className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold transition active:scale-95 shadow-sm"
@@ -779,17 +703,12 @@ export const DefinitionsTab: React.FC = () => {
             </form>
           </div>
 
-          {/* List Vade Rates */}
           <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-slate-900 dark:text-white text-sm">
                 Kayıtlı Aylık Vade Farkı Oranları ({vadeRates.length})
               </h3>
-              <span className="text-xs text-slate-400">
-                Senetli satış kârlılık formüllerine doğrudan yansır
-              </span>
             </div>
-
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
@@ -830,16 +749,11 @@ export const DefinitionsTab: React.FC = () => {
       {/* SECTION 6: Aylık Fiyat Listeleri */}
       {activeSection === 'pricelists' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Add Price List Form */}
           <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <Plus className="w-4 h-4 text-indigo-600" />
               Yeni Aylık Fiyat Listesi Ekle
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Aylık güncellenen bayi alış veya perakende satış tavsiye fiyat listelerini sisteme kaydedin.
-            </p>
-
             <form onSubmit={handleAddPriceList} className="space-y-3 pt-2">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -853,7 +767,6 @@ export const DefinitionsTab: React.FC = () => {
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
                 />
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Liste Başlığı
@@ -867,7 +780,6 @@ export const DefinitionsTab: React.FC = () => {
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
                 />
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Kategori
@@ -885,7 +797,6 @@ export const DefinitionsTab: React.FC = () => {
                   ))}
                 </select>
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Ürün Sayısı (Kalem)
@@ -898,7 +809,6 @@ export const DefinitionsTab: React.FC = () => {
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
                 />
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Not / Açıklama
@@ -911,7 +821,6 @@ export const DefinitionsTab: React.FC = () => {
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
                 />
               </div>
-
               <button
                 type="submit"
                 className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition active:scale-95 shadow-sm"
@@ -921,17 +830,12 @@ export const DefinitionsTab: React.FC = () => {
             </form>
           </div>
 
-          {/* List Price Lists */}
           <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-slate-900 dark:text-white text-sm">
                 Tanımlı Aylık Fiyat Listeleri ({priceLists.length})
               </h3>
-              <span className="text-xs text-slate-400">
-                Aylık fiyat referans kayıtları
-              </span>
             </div>
-
             <div className="space-y-3">
               {priceLists.map(pl => (
                 <div
@@ -959,7 +863,6 @@ export const DefinitionsTab: React.FC = () => {
                       )}
                     </div>
                   </div>
-
                   {isAdmin && (
                     <button
                       onClick={() => deletePriceList(pl.id)}
@@ -992,7 +895,6 @@ export const DefinitionsTab: React.FC = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
-
             <form onSubmit={handleAddSupplier} className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -1007,7 +909,6 @@ export const DefinitionsTab: React.FC = () => {
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500 text-slate-800 dark:text-slate-100"
                 />
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -1034,7 +935,6 @@ export const DefinitionsTab: React.FC = () => {
                   />
                 </div>
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   E-posta
@@ -1047,7 +947,6 @@ export const DefinitionsTab: React.FC = () => {
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500 text-slate-800 dark:text-slate-100"
                 />
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Not / Tedarik Ürün Grupları
@@ -1060,7 +959,6 @@ export const DefinitionsTab: React.FC = () => {
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500 text-slate-800 dark:text-slate-100 resize-none"
                 />
               </div>
-
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"

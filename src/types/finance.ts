@@ -4,8 +4,8 @@ export type TransactionStatus = 'Tamamlandı' | 'Beklemede' | 'İptal';
 
 export interface Transaction {
   id: string;
-  date: string;
-  dueDate?: string; // Mal alımı için ödeme / vade tarihi
+  date: string; // YYYY-MM-DD
+  dueDate?: string; // Mal alımı ödeme / vade tarihi
   type: TransactionType;
   category: string;
   cariId?: string;
@@ -20,7 +20,7 @@ export interface Transaction {
   status: TransactionStatus;
   documentNo?: string;
   createdAt: string;
-  createdBy?: string; // İşlemi ekleyen kullanıcı (Kullanıcı Adı veya E-posta)
+  createdBy?: string; // İşlemi ekleyen kullanıcı (Kullanıcı adı veya E-posta)
   createdByName?: string; // Ekleyen personelin adı
   installmentIndex?: number;
   totalInstallments?: number;
@@ -33,7 +33,12 @@ export interface Transaction {
   deletionReason?: string;
 }
 
-export type AccountType = 'Ticari Hesap' | 'Kasa (Nakit)' | 'Şirket Kredi Kartı' | 'POS Cihazı / Hesabı' | 'Döviz Hesabı';
+export type AccountType =
+  | 'Ticari Hesap'
+  | 'Kasa (Nakit)'
+  | 'Şirket Kredi Kartı'
+  | 'POS Cihazı / Hesabı'
+  | 'Döviz Hesabı';
 
 export interface Account {
   id: string;
@@ -71,7 +76,7 @@ export interface UpcomingDue {
   title: string;
   type: 'Gelir' | 'Gider';
   amount: number;
-  dueDate: string;
+  dueDate: string; // YYYY-MM-DD
   cariId?: string;
   cariName?: string;
   category: string;
@@ -170,9 +175,7 @@ export interface AuditLogEntry {
   details?: Record<string, any>;
 }
 
-// ----------------------------------------------------------------------
 // Kâr Takip & Satış Türleri
-// ----------------------------------------------------------------------
 export type SaleType = 'Peşin' | 'Kredi Kartı' | 'Senetli Satış';
 
 export interface SaleRecord {
@@ -207,9 +210,7 @@ export interface SaleRecord {
   createdBy?: string;
 }
 
-// ----------------------------------------------------------------------
-// Mal Alım & Stok Yönetimi
-// ----------------------------------------------------------------------
+// Mal Alımı & Stok Yönetimi
 export interface StockItem {
   id: string;
   code?: string;
@@ -258,9 +259,7 @@ export interface StockPurchaseRecord {
   createdByName?: string;
 }
 
-// ----------------------------------------------------------------------
-// Tanımlamalar (Kategoriler, Alt Kategoriler, Markalar, Vade Oranları, Fiyat Listeleri)
-// ----------------------------------------------------------------------
+// Tanımlamalar
 export interface ProductCategory {
   id: string;
   name: string;

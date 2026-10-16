@@ -1,608 +1,484 @@
 import React, { useState, useMemo } from 'react';
 import { useFinance } from '../../context/FinanceContext';
+import { DeletionRequest, AuditLogEntry } from '../../types/finance';
+import { formatCurrency, formatDate } from '../../utils/formatters';
 import {
   ShieldAlert,
+  ShieldCheck,
   CheckCircle2,
   XCircle,
   Clock,
-  User,
   Search,
-  Download,
-  AlertTriangle,
-  Trash2,
   Filter,
-  ArrowDownRight,
-  ArrowUpRight,
+  AlertTriangle,
+  User,
+  Calendar,
+  FileSpreadsheet,
+  Trash2,
+  History,
+  Activity,
+  ArrowUpDown,
   Check,
   X,
-  FileSpreadsheet,
-  Shield,
-  UserCheck,
-  RefreshCw,
 } from 'lucide-react';
-import { formatCurrency, formatDate } from '../../utils/formatters';
-import { AuditLogEntry, DeletionRequest } from '../../types/finance';
+import * as XLSX from 'xlsx';
 
 export const AuditTab: React.FC = () => {
   const {
-    auditLogs,
     deletionRequests,
+    auditLogs,
     approveDeletionRequest,
     rejectDeletionRequest,
-    transactions,
     isAdmin,
     userProfile,
+    showToast,
   } = useFinance();
 
-  const [searchTerm, setSearchTerm] = useState('');
-  const [actionFilter, setActionFilter] = useState<string>('ALL');
-  const [userFilter, setUserFilter] = useState<string>('ALL');
-  const [activeSubTab, setActiveSubTab] = useState<'pending' | 'audit'>(
-    deletionRequests.filter(r => r.status === 'pending').length > 0 ? 'pending' : 'audit'
-  );
-  const [isProcessingId, setIsProcessingId] = useState<string | null>(null);
+  const [activeSubTab, setActiveSubTab] = useState<'requests' | 'logs'>('requests');
+  const [requestFilter, setRequestFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [logSearch, setLogSearch] = useState('');
+  const [selectedEntityType, setSelectedEntityType] = useState<string>('all');
+  const [rejectModalItem, setRejectModalItem] = useState<DeletionRequest | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  // Pending deletion requests
-  const pendingRequests = useMemo(() => {
-    return deletionRequests.filter(r => r.status === 'pending');
-  }, [deletionRequests]);
-
-  // Unique users list for filter dropdown
-  const uniqueUsers = useMemo(() => {
-    const usersSet = new Set<string>();
-    auditLogs.forEach(l => {
-      if (l.performedByName) usersSet.add(l.performedByName);
-      else if (l.performedBy) usersSet.add(l.performedBy);
+  // Filtered Deletion Requests
+  const filteredRequests = useMemo(() => {
+    return deletionRequests.filter(req => {
+      if (requestFilter === 'all') return true;
+      return req.status === requestFilter;
     });
-    // Also include creators from transactions
-    transactions.forEach(t => {
-      if (t.createdByName) usersSet.add(t.createdByName);
-      else if (t.createdBy) usersSet.add(t.createdBy);
-    });
-    return Array.from(usersSet);
-  }, [auditLogs, transactions]);
+  }, [deletionRequests, requestFilter]);
 
-  // Filtered audit logs
+  // Filtered Audit Logs
   const filteredLogs = useMemo(() => {
     return auditLogs.filter(log => {
       const matchesSearch =
-        searchTerm === '' ||
-        log.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        log.performedBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (log.performedByName && log.performedByName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (log.entityType && log.entityType.toLowerCase().includes(searchTerm.toLowerCase()));
-
-      const matchesAction = actionFilter === 'ALL' || log.action === actionFilter;
-      const matchesUser =
-        userFilter === 'ALL' ||
-        log.performedByName === userFilter ||
-        log.performedBy === userFilter;
-
-      return matchesSearch && matchesAction && matchesUser;
+        log.description.toLowerCase().includes(logSearch.toLowerCase()) ||
+        log.performedByName.toLowerCase().includes(logSearch.toLowerCase()) ||
+        log.entityId.toLowerCase().includes(logSearch.toLowerCase());
+      const matchesEntity =
+        selectedEntityType === 'all' || log.entityType === selectedEntityType;
+      return matchesSearch && matchesEntity;
     });
-  }, [auditLogs, searchTerm, actionFilter, userFilter]);
+  }, [auditLogs, logSearch, selectedEntityType]);
 
   const handleApprove = async (req: DeletionRequest) => {
-    if (!window.confirm(`"${req.targetTitle}" işlemini kalıcı olarak silmeyi ve onaylamayı kabul ediyor musunuz? Bakiye otomatik düzeltilecektir.`)) {
+    if (!isAdmin) {
+      showToast('Sadece yöneticiler onay verebilir.', 'error');
       return;
     }
-    setIsProcessingId(req.id);
     try {
+      setIsProcessing(true);
       await approveDeletionRequest(req.id);
+      showToast(`Silme talebi onaylandı ve kayıt kalıcı olarak kaldırıldı.`, 'success');
+    } catch (err: any) {
+      showToast(err?.message || 'Onaylama başarısız oldu.', 'error');
     } finally {
-      setIsProcessingId(null);
+      setIsProcessing(false);
     }
   };
 
-  const handleReject = async (req: DeletionRequest) => {
-    const reason = window.prompt(
-      `"${req.targetTitle}" silme talebini reddetme gerekçenizi yazın (isteğe bağlı):`,
-      'Yönetici tarafından işlem uygun görüldü, silinmedi.'
-    );
-    if (reason === null) return; // user cancelled prompt
-
-    setIsProcessingId(req.id);
+  const handleConfirmReject = async () => {
+    if (!rejectModalItem) return;
     try {
-      await rejectDeletionRequest(req.id, reason.trim() || undefined);
+      setIsProcessing(true);
+      await rejectDeletionRequest(rejectModalItem.id, rejectReason || 'Yönetici tarafından reddedildi');
+      showToast(`Silme talebi reddedildi.`, 'info');
+      setRejectModalItem(null);
+      setRejectReason('');
+    } catch (err: any) {
+      showToast(err?.message || 'Red işlemi başarısız.', 'error');
     } finally {
-      setIsProcessingId(null);
+      setIsProcessing(false);
     }
   };
 
-  const handleExportCSV = () => {
-    if (filteredLogs.length === 0) {
-      alert('Dışa aktarılacak denetim kaydı bulunamadı.');
+  const exportAuditLogsToExcel = () => {
+    if (auditLogs.length === 0) {
+      showToast('Dışa aktarılacak denetim kaydı bulunamadı.', 'info');
       return;
     }
-
-    const headers = ['Zaman Damgası', 'İşlem Yapan Kullanıcı', 'Yetki Rolü', 'Eylem', 'Varlık Türü', 'Açıklama', 'Tutar'];
-    const rows = filteredLogs.map(log => [
-      new Date(log.timestamp).toLocaleString('tr-TR'),
-      `"${log.performedByName || log.performedBy}"`,
-      log.userRole,
-      log.action,
-      log.entityType,
-      `"${log.description.replace(/"/g, '""')}"`,
-      log.amount ? log.amount : '',
-    ]);
-
-    const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `arslan_finans_denetim_raporu_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
+    const data = auditLogs.map(log => ({
+      'Tarih / Zaman': log.timestamp,
+      'İşlem': log.action,
+      'Modül / Tür': log.entityType,
+      'Kayıt ID': log.entityId,
+      'Açıklama': log.description,
+      'Tutar (₺)': log.amount || '',
+      'Gerçekleştiren': log.performedByName,
+      'Kullanıcı Rolü': log.userRole,
+    }));
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Denetim Günlüğü');
+    XLSX.writeFile(workbook, `ArslanFinans_Denetim_Kayitlari_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    showToast('Denetim günlüğü Excel dosyası olarak indirildi.', 'success');
   };
+
+  const pendingCount = deletionRequests.filter(r => r.status === 'pending').length;
 
   return (
     <div className="space-y-6">
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Onay Bekleyen Talepler */}
-        <div
-          onClick={() => setActiveSubTab('pending')}
-          className={`cursor-pointer p-4 rounded-2xl border transition-all ${
-            pendingRequests.length > 0
-              ? 'bg-amber-500/10 border-amber-500/40 hover:bg-amber-500/15 ring-1 ring-amber-500/30'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              Onay Bekleyen Silme Talepleri
-            </span>
-            <div className={`p-2 rounded-xl ${pendingRequests.length > 0 ? 'bg-amber-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
-              <AlertTriangle className="w-4 h-4" />
+      {/* Top Banner */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl">
+              <ShieldAlert className="w-5 h-5" />
             </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className={`text-2xl font-bold font-mono-num ${pendingRequests.length > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-800 dark:text-slate-100'}`}>
-              {pendingRequests.length}
-            </span>
-            <span className="text-xs text-slate-400 font-medium">talep</span>
-          </div>
-          {pendingRequests.length > 0 && (
-            <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 font-medium flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping" />
-              Yönetici incelemesi ve onayı gerekiyor
-            </p>
-          )}
-        </div>
-
-        {/* Card 2: Toplam Denetim Kaydı */}
-        <div
-          onClick={() => setActiveSubTab('audit')}
-          className="cursor-pointer p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-500/40 transition-all"
-        >
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              Toplam Denetim Kaydı
-            </span>
-            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
-              <ShieldAlert className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono-num text-slate-900 dark:text-white">
-              {auditLogs.length}
-            </span>
-            <span className="text-xs text-slate-400 font-medium">kayıt</span>
-          </div>
-          <p className="text-[11px] text-slate-400 mt-1">
-            Eklenen, güncellenen ve silinen tüm finansal hareketler
-          </p>
-        </div>
-
-        {/* Card 3: İşlem Yapan Kullanıcılar */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              İşlem Kaydeden Personel
-            </span>
-            <div className="p-2 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
-              <User className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-mono-num text-slate-900 dark:text-white">
-              {uniqueUsers.length}
-            </span>
-            <span className="text-xs text-slate-400 font-medium">aktif kullanıcı</span>
-          </div>
-          <p className="text-[11px] text-slate-400 mt-1">
-            Her işlemin kim tarafından eklendiği takip altındadır
-          </p>
-        </div>
-
-        {/* Card 4: Silme & Yetki Güvencesi */}
-        <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-              Silme & İptal Politikası
-            </span>
-            <div className="p-2 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400">
-              <Shield className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="mt-2.5">
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
-              Yalnızca Admin Onaylı
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-400 mt-1.5">
-            Personeller doğrudan silemez, Admin onayına sunulur
-          </p>
-        </div>
-      </div>
-
-      {/* Sub Tabs Selector */}
-      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
-        <button
-          onClick={() => setActiveSubTab('pending')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-            activeSubTab === 'pending'
-              ? 'bg-amber-500 text-white shadow-sm'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
-        >
-          <AlertTriangle className="w-4 h-4" />
-          <span>Onay Bekleyen Silme Talepleri</span>
-          {pendingRequests.length > 0 && (
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-              activeSubTab === 'pending' ? 'bg-amber-700 text-white' : 'bg-amber-100 text-amber-800 dark:bg-amber-900/60 dark:text-amber-300'
-            }`}>
-              {pendingRequests.length}
-            </span>
-          )}
-        </button>
-
-        <button
-          onClick={() => setActiveSubTab('audit')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-            activeSubTab === 'audit'
-              ? 'bg-emerald-600 text-white shadow-sm'
-              : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
-          }`}
-        >
-          <ShieldAlert className="w-4 h-4" />
-          <span>İşlem Denetim Raporu (Audit Trail)</span>
-          <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
-            activeSubTab === 'audit' ? 'bg-emerald-800 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-          }`}>
-            {auditLogs.length}
-          </span>
-        </button>
-      </div>
-
-      {/* SECTION 1: Onay Bekleyen Silme Talepleri */}
-      {activeSubTab === 'pending' && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 text-amber-500" />
-                Personel Silme & İptal Onay Talepleri ({pendingRequests.length})
-              </h3>
+              <h2 className="text-xl font-bold text-white tracking-tight">
+                Denetim, Onaylar ve Güvenlik
+              </h2>
               <p className="text-xs text-slate-400">
-                Standart kullanıcıların silmek istediği işlemler bu listeye düşer. Yönetici onayı olmadan işlem silinmez.
+                Personel silme taleplerini onaylayın, sistem hareketlerini denetleyin ve çift onay mekanizmasını yönetin.
               </p>
             </div>
-            {pendingRequests.length > 0 && (
-              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 self-start sm:self-auto">
-                {pendingRequests.length} talep onay bekliyor
-              </span>
-            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={exportAuditLogsToExcel}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors shadow-xs"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+            <span>Excel'e Aktar</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Sub Tabs Navigation */}
+      <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+        <button
+          onClick={() => setActiveSubTab('requests')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeSubTab === 'requests'
+              ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
+              : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800'
+          }`}
+        >
+          <Clock className="w-3.5 h-3.5" />
+          <span>Silme Talepleri ve Onaylar</span>
+          {pendingCount > 0 && (
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-rose-500 text-white">
+              {pendingCount}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('logs')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeSubTab === 'logs'
+              ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
+              : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800'
+          }`}
+        >
+          <Activity className="w-3.5 h-3.5" />
+          <span>Sistem Denetim Günlüğü (Audit Log)</span>
+          <span className="text-[10px] text-slate-400">({auditLogs.length})</span>
+        </button>
+      </div>
+
+      {/* Sub Tab: Deletion Requests */}
+      {activeSubTab === 'requests' && (
+        <div className="space-y-4">
+          {/* Filters */}
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-900/60 border border-slate-800/80 p-3 rounded-xl">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-slate-400 font-medium mr-2">Durum Filtresi:</span>
+              {(['all', 'pending', 'approved', 'rejected'] as const).map(statusKey => {
+                const labels: Record<typeof statusKey, string> = {
+                  all: 'Tümü',
+                  pending: 'Bekleyenler',
+                  approved: 'Onaylananlar',
+                  rejected: 'Reddedilenler',
+                };
+                return (
+                  <button
+                    key={statusKey}
+                    onClick={() => setRequestFilter(statusKey)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      requestFilter === statusKey
+                        ? 'bg-slate-800 text-white font-bold border border-slate-700'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    {labels[statusKey]}
+                  </button>
+                );
+              })}
+            </div>
+            <span className="text-xs text-slate-400 font-mono">
+              Toplam {filteredRequests.length} kayıt
+            </span>
           </div>
 
-          {pendingRequests.length === 0 ? (
-            <div className="p-12 text-center space-y-3">
-              <div className="w-12 h-12 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
-                <CheckCircle2 className="w-6 h-6" />
-              </div>
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                Onay bekleyen silme veya iptal talebi bulunmuyor.
+          {filteredRequests.length === 0 ? (
+            <div className="p-12 text-center bg-slate-900/40 border border-slate-800 rounded-2xl">
+              <ShieldCheck className="w-12 h-12 text-slate-600 mx-auto mb-3" />
+              <p className="text-slate-300 font-medium text-sm">
+                {requestFilter === 'pending'
+                  ? 'Bekleyen silme veya iptal onayı bulunmuyor.'
+                  : 'Filtreye uygun talep bulunamadı.'}
               </p>
-              <p className="text-xs text-slate-400 max-w-md mx-auto">
-                Personeller herhangi bir işlemi veya cari kartı silmek istediğinde talep burada görüntülenecektir.
+              <p className="text-slate-500 text-xs mt-1">
+                Standart personeller bir kaydı silmek istediğinde yönetici onayına düşer.
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-semibold">
-                  <tr>
-                    <th className="py-3 px-4">Talep Tarihi</th>
-                    <th className="py-3 px-4">Talep Eden Personel</th>
-                    <th className="py-3 px-4">Tür & İşlem Başlığı</th>
-                    <th className="py-3 px-4 text-right">Tutar</th>
-                    <th className="py-3 px-4">Silme Gerekçesi</th>
-                    <th className="py-3 px-4 text-center">Yönetici Kararı</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {pendingRequests.map(req => {
-                    const isProcessing = isProcessingId === req.id;
-                    return (
-                      <tr
-                        key={req.id}
-                        className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition"
-                      >
-                        <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                          <div className="flex items-center gap-1.5">
-                            <Clock className="w-3.5 h-3.5 text-slate-400" />
-                            <span>{new Date(req.requestedAt).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })}</span>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          <div className="flex items-center gap-1.5">
-                            <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-300 font-bold text-[10px]">
-                              {req.requestedByName ? req.requestedByName[0].toUpperCase() : 'P'}
-                            </div>
-                            <div>
-                              <span className="font-semibold text-slate-800 dark:text-slate-200 block">
-                                {req.requestedByName}
-                              </span>
-                              <span className="text-[10px] text-slate-400 block font-mono">
-                                @{req.requestedBy}
-                              </span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 max-w-[260px]">
-                          <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1 mr-1">
-                            {req.targetType === 'transaction' ? 'Finansal İşlem' : 'Cari Kart'}
-                          </span>
-                          <span className="font-medium text-slate-800 dark:text-slate-200 block truncate">
-                            {req.targetTitle}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-mono">
-                            ID: {req.targetId}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-mono-num font-bold whitespace-nowrap text-slate-900 dark:text-white">
-                          {req.amount !== undefined ? formatCurrency(req.amount) : '-'}
-                        </td>
-                        <td className="py-3.5 px-4 max-w-[240px]">
-                          <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-[11px] text-slate-700 dark:text-slate-300 italic">
-                            &ldquo;{req.reason}&rdquo;
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => handleApprove(req)}
-                              disabled={isProcessing}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition shadow-xs active:scale-95 disabled:opacity-50"
-                              title="Silme talebini onayla: İşlem kalıcı olarak silinir ve bakiye geri alınır"
-                            >
-                              <Check className="w-3.5 h-3.5" />
-                              <span>Onayla & Sil</span>
-                            </button>
-                            <button
-                              onClick={() => handleReject(req)}
-                              disabled={isProcessing}
-                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 font-semibold text-xs transition active:scale-95 disabled:opacity-50"
-                              title="Silme talebini reddet: İşlem aktif tutulur"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                              <span>Reddet</span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredRequests.map(req => {
+                const isPending = req.status === 'pending';
+                return (
+                  <div
+                    key={req.id}
+                    className={`p-5 rounded-2xl border transition-all ${
+                      isPending
+                        ? 'bg-slate-900/90 border-amber-500/30 hover:border-amber-500/50 shadow-sm'
+                        : req.status === 'approved'
+                        ? 'bg-slate-900/50 border-slate-800 opacity-80'
+                        : 'bg-slate-900/50 border-slate-800 opacity-70'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3 mb-3">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                            req.targetType === 'transaction'
+                              ? 'bg-blue-500/15 text-blue-300 border border-blue-500/30'
+                              : 'bg-purple-500/15 text-purple-300 border border-purple-500/30'
+                          }`}
+                        >
+                          {req.targetType === 'transaction' ? 'Gelir/Gider İşlemi' : 'Cari Kartı'}
+                        </span>
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                            isPending
+                              ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
+                              : req.status === 'approved'
+                              ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                              : 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                          }`}
+                        >
+                          {isPending ? 'Beklemede' : req.status === 'approved' ? 'Onaylandı' : 'Reddedildi'}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-slate-500 font-mono">
+                        {formatDate(req.requestedAt)}
+                      </span>
+                    </div>
+
+                    <div className="mb-3">
+                      <h4 className="text-white font-bold text-sm tracking-tight mb-1">
+                        {req.targetTitle}
+                      </h4>
+                      {req.amount !== undefined && (
+                        <div className="text-base font-extrabold font-mono text-emerald-400">
+                          {formatCurrency(req.amount)}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-800/80 mb-4 space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between text-slate-400">
+                        <span>Talep Eden Personel:</span>
+                        <span className="text-slate-200 font-semibold">{req.requestedByName}</span>
+                      </div>
+                      <div className="flex items-start justify-between gap-2 text-slate-400">
+                        <span>Gerekçe:</span>
+                        <span className="text-amber-300/90 italic text-right">{req.reason || 'Belirtilmedi'}</span>
+                      </div>
+                      {req.reviewedBy && (
+                        <div className="flex items-center justify-between text-slate-400 pt-1 border-t border-slate-800">
+                          <span>İnceleyen:</span>
+                          <span className="text-slate-300 font-mono text-[11px]">{req.reviewedBy}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {isPending && (
+                      <div className="flex items-center gap-2 pt-2 border-t border-slate-800">
+                        <button
+                          onClick={() => handleApprove(req)}
+                          disabled={isProcessing}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition-all shadow-md shadow-emerald-500/15 disabled:opacity-50"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Onayla ve Sil</span>
+                        </button>
+                        <button
+                          onClick={() => setRejectModalItem(req)}
+                          disabled={isProcessing}
+                          className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-slate-800 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 text-xs font-bold border border-slate-700 hover:border-rose-500/30 transition-all disabled:opacity-50"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          <span>Reddet</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
       )}
 
-      {/* SECTION 2: Detaylı İşlem Denetim Raporu */}
-      {activeSubTab === 'audit' && (
+      {/* Sub Tab: Audit Logs */}
+      {activeSubTab === 'logs' && (
         <div className="space-y-4">
-          {/* Filters Bar */}
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-            <div className="flex flex-1 flex-col sm:flex-row gap-2.5">
-              {/* Search */}
-              <div className="relative flex-1">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                  placeholder="Denetim loglarında ara (personel, işlem, açıklama)..."
-                  className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 outline-none focus:ring-2 focus:ring-emerald-500"
-                />
-              </div>
-
-              {/* Action Filter */}
+          {/* Search & Filter Bar */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl">
+            <div className="relative md:col-span-2">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Açıklama, personel adı veya ID ile ara..."
+                value={logSearch}
+                onChange={e => setLogSearch(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700/80 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+            <div>
               <select
-                value={actionFilter}
-                onChange={e => setActionFilter(e.target.value)}
-                className="px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-emerald-500"
+                value={selectedEntityType}
+                onChange={e => setSelectedEntityType(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700/80 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
-                <option value="ALL">Tüm Eylemler</option>
-                <option value="Ekleme">Yalnızca Eklemeler</option>
-                <option value="Güncelleme">Güncellemeler</option>
-                <option value="Silme Talebi">Silme Talepleri</option>
-                <option value="Silme Onayı">Silme Onayları</option>
-                <option value="Silme Reddi">Silme Redleri</option>
-                <option value="Kalıcı Silme">Kalıcı Silmeler</option>
-              </select>
-
-              {/* User Filter */}
-              <select
-                value={userFilter}
-                onChange={e => setUserFilter(e.target.value)}
-                className="px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-emerald-500"
-              >
-                <option value="ALL">Tüm Kullanıcılar</option>
-                {uniqueUsers.map(u => (
-                  <option key={u} value={u}>
-                    {u}
-                  </option>
-                ))}
+                <option value="all">Tüm Modüller</option>
+                <option value="Gelir">Gelir İşlemleri</option>
+                <option value="Gider">Gider İşlemleri</option>
+                <option value="Transfer">Virman / Transfer</option>
+                <option value="Mal Alımı">Mal Alımı & Tedarik</option>
+                <option value="Satış">Satış & Kâr Takip</option>
+                <option value="Stok">Stok Kartları</option>
+                <option value="Cari">Cari Kartlar</option>
+                <option value="Hesap">Kasa & Bankalar</option>
+                <option value="Personel">Personel & Roller</option>
+                <option value="Sistem">Sistem Hareketleri</option>
               </select>
             </div>
-
-            {/* Export CSV */}
-            <button
-              onClick={handleExportCSV}
-              className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 transition shadow-xs shrink-0"
-              title="Filtrelenen denetim raporunu CSV olarak indir"
-            >
-              <Download className="w-3.5 h-3.5 text-emerald-600" />
-              <span>CSV Raporu İndir</span>
-            </button>
           </div>
 
           {/* Audit Logs Table */}
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
-              <h3 className="font-bold text-slate-800 dark:text-white text-sm flex items-center gap-2">
-                <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-                İşlem Denetim Kayıtları ({filteredLogs.length})
-              </h3>
-              <span className="text-xs text-slate-400">
-                Sistemdeki tüm kayıtların izlenebilirliği
-              </span>
-            </div>
-
-            {filteredLogs.length === 0 ? (
-              <div className="p-12 text-center space-y-3">
-                <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
-                  <Search className="w-6 h-6" />
-                </div>
-                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-                  Filtreye uygun denetim kaydı bulunamadı.
-                </p>
-                <p className="text-xs text-slate-400">
-                  Arama terimini değiştirebilir veya filtreleri sıfırlayabilirsiniz.
-                </p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-semibold">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="bg-slate-950/80 text-slate-400 border-b border-slate-800">
+                    <th className="py-3 px-4 font-semibold">Tarih / Zaman</th>
+                    <th className="py-3 px-4 font-semibold">İşlem Türü</th>
+                    <th className="py-3 px-4 font-semibold">Modül</th>
+                    <th className="py-3 px-4 font-semibold">Açıklama</th>
+                    <th className="py-3 px-4 font-semibold text-right">Tutar</th>
+                    <th className="py-3 px-4 font-semibold">Personel</th>
+                    <th className="py-3 px-4 font-semibold">Rol</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {filteredLogs.length === 0 ? (
                     <tr>
-                      <th className="py-3 px-4">Tarih & Zaman</th>
-                      <th className="py-3 px-4">İşlem Yapan Kullanıcı</th>
-                      <th className="py-3 px-4">Eylem</th>
-                      <th className="py-3 px-4">Varlık</th>
-                      <th className="py-3 px-4">Açıklama / İşlem Detayı</th>
-                      <th className="py-3 px-4 text-right">Tutar</th>
+                      <td colSpan={7} className="py-12 text-center text-slate-500">
+                        Kayıtlı denetim hareketi bulunamadı.
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {filteredLogs.map(log => {
-                      const logDate = new Date(log.timestamp);
-                      const formattedTime = logDate.toLocaleTimeString('tr-TR', {
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        second: '2-digit',
-                      });
-                      const formattedDate = logDate.toLocaleDateString('tr-TR', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                      });
-
+                  ) : (
+                    filteredLogs.map(log => {
+                      const isDanger = log.action.includes('Silme') || log.action.includes('İptal');
+                      const isSuccess = log.action.includes('Ekleme') || log.action.includes('Onay');
                       return (
-                        <tr
-                          key={log.id}
-                          className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition"
-                        >
-                          <td className="py-3 px-4 whitespace-nowrap text-slate-500 dark:text-slate-400 font-mono text-[11px]">
-                            <div className="font-semibold text-slate-700 dark:text-slate-300">
-                              {formattedDate}
-                            </div>
-                            <div className="text-[10px] text-slate-400 flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {formattedTime}
-                            </div>
+                        <tr key={log.id} className="hover:bg-slate-800/40 transition-colors">
+                          <td className="py-3 px-4 text-slate-400 font-mono text-[11px] whitespace-nowrap">
+                            {formatDate(log.timestamp)}
                           </td>
-
-                          <td className="py-3 px-4 whitespace-nowrap">
-                            <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center font-bold text-[10px] text-slate-700 dark:text-slate-300">
-                                {log.performedByName ? log.performedByName[0].toUpperCase() : 'U'}
-                              </div>
-                              <div>
-                                <span className="font-semibold text-slate-900 dark:text-slate-100 block">
-                                  {log.performedByName || log.performedBy}
-                                </span>
-                                <div className="flex items-center gap-1">
-                                  {log.userRole === 'Admin' ? (
-                                    <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-amber-700 dark:text-amber-400">
-                                      <Shield className="w-2.5 h-2.5" /> Admin
-                                    </span>
-                                  ) : (
-                                    <span className="inline-flex items-center gap-0.5 text-[9px] font-bold text-blue-600 dark:text-blue-400">
-                                      <UserCheck className="w-2.5 h-2.5" /> Personel
-                                    </span>
-                                  )}
-                                  {log.performedBy && (
-                                    <span className="text-[9px] text-slate-400 font-mono">
-                                      (@{log.performedBy})
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </td>
-
-                          <td className="py-3 px-4 whitespace-nowrap">
+                          <td className="py-3 px-4">
                             <span
-                              className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                                log.action === 'Ekleme'
-                                  ? 'bg-emerald-50 dark:bg-emerald-950/70 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
-                                  : log.action === 'Güncelleme'
-                                  ? 'bg-blue-50 dark:bg-blue-950/70 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
-                                  : log.action === 'Silme Talebi'
-                                  ? 'bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
-                                  : log.action === 'Silme Onayı'
-                                  ? 'bg-purple-50 dark:bg-purple-950/70 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800'
-                                  : log.action === 'Silme Reddi'
-                                  ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-                                  : 'bg-rose-50 dark:bg-rose-950/70 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800'
+                              className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                                isDanger
+                                  ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30'
+                                  : isSuccess
+                                  ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                                  : 'bg-blue-500/15 text-blue-300 border border-blue-500/30'
                               }`}
                             >
                               {log.action}
                             </span>
                           </td>
-
-                          <td className="py-3 px-4 whitespace-nowrap">
-                            <span className="font-medium text-slate-700 dark:text-slate-300">
-                              {log.entityType}
+                          <td className="py-3 px-4 font-medium text-slate-300">
+                            {log.entityType}
+                          </td>
+                          <td className="py-3 px-4 text-slate-200 max-w-xs truncate" title={log.description}>
+                            {log.description}
+                          </td>
+                          <td className="py-3 px-4 text-right font-mono font-bold text-slate-200 whitespace-nowrap">
+                            {log.amount ? formatCurrency(log.amount) : '-'}
+                          </td>
+                          <td className="py-3 px-4 text-slate-300 whitespace-nowrap">
+                            {log.performedByName}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span
+                              className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                                log.userRole === 'Admin'
+                                  ? 'bg-amber-500/20 text-amber-300'
+                                  : 'bg-slate-800 text-slate-400'
+                              }`}
+                            >
+                              {log.userRole}
                             </span>
-                          </td>
-
-                          <td className="py-3 px-4 max-w-[340px]">
-                            <div className="text-slate-800 dark:text-slate-200 leading-relaxed font-medium">
-                              {log.description}
-                            </div>
-                            {log.entityId && (
-                              <span className="text-[10px] text-slate-400 font-mono block mt-0.5">
-                                Ref ID: {log.entityId}
-                              </span>
-                            )}
-                          </td>
-
-                          <td className="py-3 px-4 text-right font-mono-num font-bold whitespace-nowrap text-slate-900 dark:text-white">
-                            {log.amount !== undefined && log.amount !== null
-                              ? formatCurrency(log.amount)
-                              : '-'}
                           </td>
                         </tr>
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Modal */}
+      {rejectModalItem && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl">
+            <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
+              <XCircle className="w-5 h-5 text-rose-400" />
+              <span>Silme Talebini Reddet</span>
+            </h3>
+            <p className="text-xs text-slate-400 mb-4">
+              "{rejectModalItem.targetTitle}" başlıklı kaydın silme talebi reddedilecek ve işlem aktif kalacaktır.
+            </p>
+            <div className="mb-4">
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Red Gerekçesi (Opsiyonel)
+              </label>
+              <textarea
+                value={rejectReason}
+                onChange={e => setRejectReason(e.target.value)}
+                placeholder="Personel bilgilendirmesi için red sebebi giriniz..."
+                rows={3}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500"
+              />
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <button
+                onClick={() => setRejectModalItem(null)}
+                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 transition-colors"
+              >
+                Vazgeç
+              </button>
+              <button
+                onClick={handleConfirmReject}
+                disabled={isProcessing}
+                className="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold transition-all shadow-md shadow-rose-500/20 disabled:opacity-50"
+              >
+                Talebi Reddet
+              </button>
+            </div>
           </div>
         </div>
       )}

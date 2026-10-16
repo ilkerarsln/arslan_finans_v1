@@ -14,7 +14,6 @@ import {
   StockPurchaseRecord,
 } from '../types/finance';
 
-// Varsayılan hesaplar
 export const INITIAL_ACCOUNTS: Account[] = [
   {
     id: 'acc-kasa',
@@ -63,13 +62,10 @@ export const INITIAL_ACCOUNTS: Account[] = [
 ];
 
 export const INITIAL_CATEGORIES: CategoryItem[] = [
-  // Gelir Kategorileri
   { id: 'cat-inc-1', name: 'Mobilya & Beyaz Eşya Satışı', type: 'Gelir', color: '#10b981' },
   { id: 'cat-inc-2', name: 'Senet Tahsilatı', type: 'Gelir', color: '#06b6d4' },
   { id: 'cat-inc-3', name: 'Cari Hesap Tahsilatı', type: 'Gelir', color: '#8b5cf6' },
   { id: 'cat-inc-4', name: 'Servis & Montaj Hizmeti', type: 'Gelir', color: '#64748b' },
-
-  // Gider Kategorileri
   { id: 'cat-exp-1', name: 'Mal / Stok Alımı', type: 'Gider', color: '#3b82f6' },
   { id: 'cat-exp-2', name: 'Kira & Mağaza Gideri', type: 'Gider', color: '#f59e0b' },
   { id: 'cat-exp-3', name: 'Personel & Maaş & Prim', type: 'Gider', color: '#8b5cf6' },
@@ -81,7 +77,6 @@ export const INITIAL_CATEGORIES: CategoryItem[] = [
   { id: 'cat-exp-9', name: 'Genel Yönetim Masrafları', type: 'Gider', color: '#64748b' },
 ];
 
-// Ürün Ana Kategorileri (Beyaz Eşya, Mobilya, vb.)
 export const INITIAL_PRODUCT_CATEGORIES: ProductCategory[] = [
   { id: 'pcat-1', name: 'Beyaz Eşya', type: 'Beyaz Eşya', color: '#0ea5e9' },
   { id: 'pcat-2', name: 'Mobilya', type: 'Mobilya', color: '#10b981' },
@@ -91,9 +86,7 @@ export const INITIAL_PRODUCT_CATEGORIES: ProductCategory[] = [
   { id: 'pcat-6', name: 'Televizyon & Elektronik (TV)', type: 'TV', color: '#6366f1' },
 ];
 
-// Alt Kategoriler (Özellikle Beyaz Eşya ve Mobilya Detayları)
 export const INITIAL_SUB_CATEGORIES: ProductSubCategory[] = [
-  // Beyaz Eşya Alt Kategorileri
   { id: 'sub-1', categoryId: 'pcat-1', categoryName: 'Beyaz Eşya', name: 'Buzdolabı' },
   { id: 'sub-2', categoryId: 'pcat-1', categoryName: 'Beyaz Eşya', name: 'Çamaşır Makinesi' },
   { id: 'sub-3', categoryId: 'pcat-1', categoryName: 'Beyaz Eşya', name: 'Bulaşık Makinesi' },
@@ -101,33 +94,22 @@ export const INITIAL_SUB_CATEGORIES: ProductSubCategory[] = [
   { id: 'sub-5', categoryId: 'pcat-1', categoryName: 'Beyaz Eşya', name: 'Fırın & Ocak' },
   { id: 'sub-6', categoryId: 'pcat-1', categoryName: 'Beyaz Eşya', name: 'Derin Dondurucu' },
   { id: 'sub-7', categoryId: 'pcat-1', categoryName: 'Beyaz Eşya', name: 'Kurutma Makinesi' },
-
-  // Mobilya Alt Kategorileri
   { id: 'sub-8', categoryId: 'pcat-2', categoryName: 'Mobilya', name: 'Koltuk Takımı' },
   { id: 'sub-9', categoryId: 'pcat-2', categoryName: 'Mobilya', name: 'Köşe Takımı (L Koltuk)' },
   { id: 'sub-10', categoryId: 'pcat-2', categoryName: 'Mobilya', name: 'Yatak Odası Takımı' },
   { id: 'sub-11', categoryId: 'pcat-2', categoryName: 'Mobilya', name: 'Yemek Odası Takımı' },
   { id: 'sub-12', categoryId: 'pcat-2', categoryName: 'Mobilya', name: 'TV Ünitesi' },
   { id: 'sub-13', categoryId: 'pcat-2', categoryName: 'Mobilya', name: 'Gardırop' },
-
-  // Yatak & Baza
   { id: 'sub-14', categoryId: 'pcat-3', categoryName: 'Yatak & Baza', name: 'Ortopedik Yatak' },
   { id: 'sub-15', categoryId: 'pcat-3', categoryName: 'Yatak & Baza', name: 'Baza & Başlık Seti' },
-
-  // Masa & Sandalye
   { id: 'sub-16', categoryId: 'pcat-4', categoryName: 'Masa & Sandalye', name: 'Açılır Yemek Masası' },
   { id: 'sub-17', categoryId: 'pcat-4', categoryName: 'Masa & Sandalye', name: 'Masa + 6 Sandalye Seti' },
-
-  // Aksesuar
   { id: 'sub-18', categoryId: 'pcat-5', categoryName: 'Aksesuar & Ev Tekstili', name: 'Zigon Sehpa' },
   { id: 'sub-19', categoryId: 'pcat-5', categoryName: 'Aksesuar & Ev Tekstili', name: 'Orta Sehpa' },
-
-  // TV
   { id: 'sub-20', categoryId: 'pcat-6', categoryName: 'Televizyon & Elektronik (TV)', name: 'Smart LED TV' },
   { id: 'sub-21', categoryId: 'pcat-6', categoryName: 'Televizyon & Elektronik (TV)', name: 'QLED 4K TV' },
 ];
 
-// Markalar (Kullanıcının talep ettiği ve daha önce yüklenen tam liste)
 export const INITIAL_BRANDS: ProductBrand[] = [
   { id: 'brand-1', name: 'Bambi', categoryNames: ['Yatak & Baza', 'Mobilya'] },
   { id: 'brand-2', name: 'Altus', categoryNames: ['Beyaz Eşya', 'Televizyon & Elektronik (TV)'] },
@@ -141,7 +123,6 @@ export const INITIAL_BRANDS: ProductBrand[] = [
   { id: 'brand-10', name: 'Vestel', categoryNames: ['Beyaz Eşya', 'Televizyon & Elektronik (TV)'] },
 ];
 
-// Aylık Vade Farkı Oranları (Tanımlardan yönetilir, senetli satışta taksit sayısına göre otomatik maliyete eklenir)
 export const INITIAL_VADE_RATES: VadeRateEntry[] = [
   { id: 'vr-1', monthKey: '2026-10', rateMonthly: 3.5, notes: 'Ekim 2026 Standart Senet Vade Farkı Oranı' },
   { id: 'vr-2', monthKey: '2026-09', rateMonthly: 3.5, notes: 'Eylül 2026 Vade Farkı Oranı' },
@@ -149,15 +130,12 @@ export const INITIAL_VADE_RATES: VadeRateEntry[] = [
   { id: 'vr-4', monthKey: '2026-07', rateMonthly: 3.0, notes: 'Temmuz 2026 Vade Farkı Oranı' },
 ];
 
-// Aylık Fiyat Listeleri
 export const INITIAL_PRICE_LISTS: PriceListEntry[] = [
   { id: 'pl-1', monthKey: '2026-10', title: 'Ekim 2026 Perakende Fiyat Listesi', categoryName: 'Tüm Kategoriler', itemsCount: 42, notes: 'Güncel bayi ve perakende satış fiyatları' },
   { id: 'pl-2', monthKey: '2026-09', title: 'Eylül 2026 Beyaz Eşya Fiyat Listesi', categoryName: 'Beyaz Eşya', itemsCount: 28, notes: 'Bosch & Altus bayi tavsiye fiyatları' },
 ];
 
-// Ortak Cari Hesaplar (Tedarikçiler ve Müşteriler tek ortak tabloda)
 export const INITIAL_CARIS: Cari[] = [
-  // Tedarikçiler (Borçlu Olduğumuz, Bakiye Negatif)
   {
     id: 'sup-bosch',
     name: 'Bosch Ev Aletleri San. Tic. A.Ş.',
@@ -228,8 +206,6 @@ export const INITIAL_CARIS: Cari[] = [
     balance: -31000,
     notes: 'Yemek masası takımları ve sandalyeler',
   },
-
-  // Müşteriler (Alacaklı Olduğumuz, Bakiye Pozitif)
   {
     id: 'cus-1',
     name: 'Ahmet Yılmaz',
@@ -259,7 +235,6 @@ export const INITIAL_CARIS: Cari[] = [
   },
 ];
 
-// Stok Kartları (Mevcut Depo ve Mağaza Stokları)
 export const INITIAL_STOCK_ITEMS: StockItem[] = [
   {
     id: 'stk-1',
@@ -403,11 +378,10 @@ export const INITIAL_STOCK_ITEMS: StockItem[] = [
     salePrice: 24900,
     minStockLevel: 1,
     lastPurchaseDate: '2026-10-06',
-    notes: 'A++ Enerji sınıfı Aquavision kapak tankı',
+    notes: 'A++ Enerji sınıfı, Aquavision kapak tankı',
   },
 ];
 
-// Kâr Takip Satış Kayıtları (Peşin, Kredi Kartı, Senetli Satış ve Vade Farkı Örnekleri)
 export const INITIAL_SALES: SaleRecord[] = [
   {
     id: 'sale-1',
@@ -428,15 +402,15 @@ export const INITIAL_SALES: SaleRecord[] = [
     saleType: 'Senetli Satış',
     installmentsCount: 12,
     vadeRateMonthly: 3.5,
-    vadeFarkiAmount: 15960, // 38000 * (3.5% * 12) = 15960 TL
-    effectiveCost: 53960, // Maliyet + Vade Farkı
+    vadeFarkiAmount: 15960,
+    effectiveCost: 53960,
     salePrice: 68500,
     totalSaleAmount: 68500,
     netProfit: 14540,
     profitMargin: 21.2,
     salesPerson: 'İlker Arslan',
     accountId: 'acc-kasa',
-    notes: '12 ay eşit taksitli senetli satış. İlk peşinat 8.500 TL nakit alındı.',
+    notes: '12 ay eşit taksitli senetli satış, ilk peşinat 8.500 TL nakit alındı.',
     createdAt: '2026-10-14T10:30:00Z',
     createdBy: 'ilkerarslan78@gmail.com',
   },
@@ -517,7 +491,7 @@ export const INITIAL_SALES: SaleRecord[] = [
     saleType: 'Senetli Satış',
     installmentsCount: 9,
     vadeRateMonthly: 3.5,
-    vadeFarkiAmount: 4473, // 14200 * (3.5% * 9) = 4473 TL
+    vadeFarkiAmount: 4473,
     effectiveCost: 18673,
     salePrice: 24500,
     totalSaleAmount: 24500,
@@ -531,7 +505,6 @@ export const INITIAL_SALES: SaleRecord[] = [
   },
 ];
 
-// Örnek Mal Alımı Faturaları (Alımlar doğrudan stok ve tedarikçi borcuna işlenir)
 export const INITIAL_PURCHASES: StockPurchaseRecord[] = [
   {
     id: 'pur-1',
@@ -589,7 +562,6 @@ export const INITIAL_PURCHASES: StockPurchaseRecord[] = [
   },
 ];
 
-// İlk Finansal İşlemler
 export const INITIAL_TRANSACTIONS: Transaction[] = [
   {
     id: 'tx-init-1',
@@ -653,7 +625,6 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
   },
 ];
 
-// Vade Takvimi
 export const INITIAL_UPCOMING_DUES: UpcomingDue[] = [
   {
     id: 'due-1',
@@ -683,7 +654,7 @@ export const INITIAL_UPCOMING_DUES: UpcomingDue[] = [
   },
   {
     id: 'due-3',
-    title: 'Bambi Yatak Vadeli Çek Ödemesi',
+    title: 'Bambi Yatak Vadeli Ödemesi',
     type: 'Gider',
     amount: 46000,
     dueDate: '2026-11-05',

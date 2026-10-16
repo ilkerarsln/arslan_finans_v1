@@ -76,7 +76,6 @@ export async function testConnection() {
   }
 }
 
-// Test connection on boot as mandated by skill
 testConnection();
 
 export { signInWithPopup, firebaseSignOut, onAuthStateChanged };

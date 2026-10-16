@@ -28,10 +28,6 @@ import {
   AuditLogEntry,
 } from '../types/finance';
 
-/**
- * Purges `undefined` properties so Firestore never throws
- * "Unsupported field value: undefined"
- */
 export function sanitizeData<T extends Record<string, any>>(obj: T): Record<string, any> {
   const clean: Record<string, any> = {};
   for (const [key, val] of Object.entries(obj)) {
@@ -42,9 +38,6 @@ export function sanitizeData<T extends Record<string, any>>(obj: T): Record<stri
   return clean;
 }
 
-/**
- * Real-time listener for all user subcollections
- */
 export function subscribeToUserData(
   userId: string,
   callbacks: {
@@ -84,7 +77,6 @@ export function subscribeToUserData(
       collection(db, 'users', userId, 'transactions'),
       snapshot => {
         const items = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as Transaction);
-        // Sort newest date first, then createdAt
         items.sort((a, b) => {
           const timeA = new Date(a.date).getTime();
           const timeB = new Date(b.date).getTime();
@@ -156,7 +148,7 @@ export function subscribeToUserData(
     handleFirestoreError(error, OperationType.GET, catPath);
   }
 
-  // 6. Deletion Requests (Admin Approval)
+  // 6. Deletion Requests
   if (callbacks.onDeletionRequests) {
     const reqPath = `users/${userId}/deletionRequests`;
     try {
@@ -177,7 +169,7 @@ export function subscribeToUserData(
     }
   }
 
-  // 7. Audit Logs (Audit Trail)
+  // 7. Audit Logs
   if (callbacks.onAuditLogs) {
     const logPath = `users/${userId}/auditLogs`;
     try {
@@ -203,9 +195,6 @@ export function subscribeToUserData(
   };
 }
 
-/**
- * Immediate one-shot fetch for page boot / refresh using getDocs
- */
 export async function fetchUserDataFromFirestore(userId: string): Promise<{
   accounts: Account[];
   transactions: Transaction[];
@@ -257,9 +246,6 @@ export async function fetchUserDataFromFirestore(userId: string): Promise<{
   }
 }
 
-/**
- * Add a transaction using addDoc directly to Firestore
- */
 export async function addTransactionToCloud(
   userId: string,
   tx: Omit<Transaction, 'id' | 'createdAt'> & { id?: string; createdAt?: string }
@@ -271,9 +257,7 @@ export async function addTransactionToCloud(
       userId,
       createdAt: tx.createdAt || new Date().toISOString(),
     });
-
     if (tx.id) {
-      // If a specific ID is provided, use setDoc
       await setDoc(doc(db, 'users', userId, 'transactions', tx.id), payload);
       return {
         ...tx,
@@ -281,7 +265,6 @@ export async function addTransactionToCloud(
         createdAt: payload.createdAt,
       } as Transaction;
     } else {
-      // Use addDoc for auto-generated ID as explicitly requested
       const colRef = collection(db, 'users', userId, 'transactions');
       const docRef = await addDoc(colRef, payload);
       return {
@@ -424,7 +407,6 @@ export async function uploadAllInitialDataToCloud(
 ) {
   const batch = writeBatch(db);
   const path = `users/${userId}`;
-
   try {
     data.accounts.forEach(acc => {
       batch.set(
@@ -435,7 +417,6 @@ export async function uploadAllInitialDataToCloud(
         })
       );
     });
-
     data.transactions.forEach(tx => {
       batch.set(
         doc(db, 'users', userId, 'transactions', tx.id),
@@ -445,7 +426,6 @@ export async function uploadAllInitialDataToCloud(
         })
       );
     });
-
     data.caris.forEach(c => {
       batch.set(
         doc(db, 'users', userId, 'caris', c.id),
@@ -455,7 +435,6 @@ export async function uploadAllInitialDataToCloud(
         })
       );
     });
-
     data.upcomingDues.forEach(d => {
       batch.set(
         doc(db, 'users', userId, 'upcomingDues', d.id),
@@ -465,7 +444,6 @@ export async function uploadAllInitialDataToCloud(
         })
       );
     });
-
     data.categories.forEach(cat => {
       batch.set(
         doc(db, 'users', userId, 'categories', cat.id),
@@ -475,7 +453,6 @@ export async function uploadAllInitialDataToCloud(
         })
       );
     });
-
     await batch.commit();
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -498,9 +475,7 @@ export async function clearAllCloudData(userId: string) {
   }
 }
 
-/**
- * User Profile & Role Management (RBAC)
- */
+// User Profile & Role Management (RBAC)
 export async function fetchUserProfile(userId: string): Promise<UserProfile | null> {
   const path = `users/${userId}`;
   try {
@@ -546,19 +521,6 @@ export function subscribeToUserProfile(
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, path);
     return () => {};
-  }
-}
-
-export async function getAllUsersFromFirestore(): Promise<UserProfile[]> {
-  const path = 'users';
-  try {
-    const snap = await getDocs(collection(db, 'users'));
-    return snap.docs
-      .map(d => ({ uid: d.id, ...(d.data() as any) }) as UserProfile)
-      .filter(u => u && u.email);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, path);
-    return [];
   }
 }
 
@@ -610,7 +572,6 @@ export async function preAssignUserByEmail(
   assignedByEmail: string,
   displayName?: string
 ): Promise<UserProfile> {
-  // Normalize ID from email or unique key
   const safeId = email.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
   const path = `users/${safeId}`;
   const now = new Date().toISOString();
@@ -657,10 +618,7 @@ export async function deletePreAssignedUser(targetUserId: string): Promise<void>
   }
 }
 
-// ==========================================
 // Staff (Username & Password) Personnel System
-// ==========================================
-
 export const DEFAULT_STAFF_ACCOUNTS: StaffAccount[] = [
   {
     id: 'admin',
@@ -717,26 +675,20 @@ export const DEFAULT_STAFF_ACCOUNTS: StaffAccount[] = [
 export async function getStaffAccountByUsername(username: string): Promise<StaffAccount | null> {
   const clean = username.trim().toLowerCase();
   if (!clean) return null;
-
   try {
     const snap = await getDoc(doc(db, 'staff_accounts', clean));
     if (snap.exists()) {
       return { id: snap.id, ...(snap.data() as any) } as StaffAccount;
     }
-
-    // Check default staff templates
-    const defaultStaff = DEFAULT_STAFF_ACCOUNTS.find(s => s.username === clean || s.email.toLowerCase() === clean);
+    const defaultStaff = DEFAULT_STAFF_ACCOUNTS.find(s => s.username === clean || s.email?.toLowerCase() === clean);
     if (defaultStaff) {
-      // Auto-seed into Firestore staff_accounts collection
       await setDoc(doc(db, 'staff_accounts', clean), sanitizeData(defaultStaff), { merge: true });
       return defaultStaff;
     }
-
     return null;
   } catch (error) {
     console.warn('getStaffAccountByUsername check error:', error);
-    // Fallback to local default if offline or network issue
-    const defaultStaff = DEFAULT_STAFF_ACCOUNTS.find(s => s.username === clean || s.email.toLowerCase() === clean);
+    const defaultStaff = DEFAULT_STAFF_ACCOUNTS.find(s => s.username === clean || s.email?.toLowerCase() === clean);
     return defaultStaff || null;
   }
 }
@@ -747,22 +699,19 @@ export async function loginStaffWithUsername(
 ): Promise<{ staff: StaffAccount; role: UserRole }> {
   const username = rawUsername.trim().toLowerCase();
   const password = rawPassword.trim();
-
   if (!username) {
-    throw new Error('Lütfen kullanıcı adınızı girin.');
+    throw new Error('Lütfen kullanıcı adı girin.');
   }
   if (!password) {
     throw new Error('Lütfen şifrenizi girin.');
   }
 
-  // 1. Verify against Firestore staff_accounts table
   let staff = await getStaffAccountByUsername(username);
   if (!staff && (username === 'admin' || username === 'ilkerarslan78@gmail' || username === 'ilkerarslan78@gmail.com')) {
     staff = DEFAULT_STAFF_ACCOUNTS[0];
   }
-
   if (!staff) {
-    throw new Error('Kullanıcı adı bulunamadı. Lütfen girdiğiniz bilgileri kontrol edin.');
+    throw new Error('Kullanıcı bulunamadı. Lütfen girdiğiniz bilgileri kontrol edin.');
   }
 
   const isAdminUser =
@@ -772,7 +721,6 @@ export async function loginStaffWithUsername(
     staff.username === 'admin' ||
     staff.email?.toLowerCase() === 'ilkerarslan78@gmail.com';
 
-  // Check password
   if (isAdminUser) {
     if (password !== '140514' && password !== 'admin123' && staff.password !== password) {
       throw new Error('Hatalı şifre girdiniz. Yönetici şifrenizi kontrol edin.');
@@ -781,10 +729,8 @@ export async function loginStaffWithUsername(
     throw new Error('Hatalı şifre girdiniz. Lütfen kontrol edip tekrar deneyin.');
   }
 
-  // 2. Perform Firebase Auth to obtain a real session for Firestore Security Rules
   const internalEmail = staff.email || `${username}@arslanfinans.internal`;
   let authUid = '';
-
   const passwordsToTry = [password];
   if (isAdminUser) {
     if (!passwordsToTry.includes('140514')) passwordsToTry.push('140514');
@@ -803,19 +749,17 @@ export async function loginStaffWithUsername(
       signedIn = true;
       break;
     } catch {
-      // continue to next password attempt
+      // try next
     }
   }
 
   if (!signedIn) {
-    // If not existing yet, create account in Firebase Auth
     try {
       const createCred = await createUserWithEmailAndPassword(auth, internalEmail, password);
       authUid = createCred.user.uid;
       signedIn = true;
     } catch (createError: any) {
       if (createError.code === 'auth/email-already-in-use') {
-        // Try fallback with default
         try {
           const fallbackCred = await signInWithEmailAndPassword(auth, internalEmail, '123456');
           authUid = fallbackCred.user.uid;
@@ -829,7 +773,6 @@ export async function loginStaffWithUsername(
     }
   }
 
-  // 3. Ensure UserProfile document exists in Firestore /users/{uid}
   if (authUid) {
     const profile: UserProfile = {
       uid: authUid,
@@ -866,14 +809,12 @@ export function subscribeToStaffAccounts(
       collection(db, 'staff_accounts'),
       async snap => {
         if (snap.empty) {
-          // Auto-seed defaults if collection is empty
           for (const item of DEFAULT_STAFF_ACCOUNTS) {
             await setDoc(doc(db, 'staff_accounts', item.username), sanitizeData(item), { merge: true });
           }
           callback(DEFAULT_STAFF_ACCOUNTS);
           return;
         }
-
         const list = snap.docs.map(
           d => ({ id: d.id, ...(d.data() as any) }) as StaffAccount
         );
@@ -899,7 +840,6 @@ export async function saveStaffAccount(account: StaffAccount): Promise<void> {
     email: account.email || `${clean}@arslanfinans.internal`,
     createdAt: account.createdAt || new Date().toISOString(),
   };
-
   try {
     await setDoc(doc(db, 'staff_accounts', clean), sanitizeData(data), { merge: true });
   } catch (error) {
@@ -926,7 +866,6 @@ export async function updateStaffAccountInFirestore(
     id: clean,
     username: clean,
   };
-
   try {
     await setDoc(doc(db, 'staff_accounts', clean), sanitizeData(updated), { merge: true });
     return updated;
@@ -945,10 +884,6 @@ export async function deleteStaffAccount(username: string): Promise<void> {
     handleFirestoreError(error, OperationType.DELETE, path);
   }
 }
-
-// ==========================================
-// Deletion Requests & Audit Logs
-// ==========================================
 
 export async function saveDeletionRequestToCloud(
   userId: string,

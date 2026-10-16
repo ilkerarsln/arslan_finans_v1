@@ -13,15 +13,13 @@ import {
   Trash2,
   Edit2,
   Copy,
-  ChevronDown,
   FileSpreadsheet,
   Layers,
   ShoppingBag,
   Boxes,
   AlertTriangle,
   Clock,
-  UserCheck,
-  Shield,
+  Calendar,
 } from 'lucide-react';
 
 export const TransactionsTab: React.FC = () => {
@@ -41,17 +39,17 @@ export const TransactionsTab: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'All' | TransactionType>('All');
   const [accountFilter, setAccountFilter] = useState<string>('All');
-  const [periodFilter, setPeriodFilter] = useState<string>('all'); // 'this-month', 'last-month', 'last-90', 'all'
+  const [periodFilter, setPeriodFilter] = useState<string>('all'); // 'today', 'this-week', 'this-month', 'last-month', 'all'
   const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc'>('date-desc');
 
-  // Filter logic
-  const filteredTransactions = useMemo(() => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonth = now.getMonth();
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
+  const filteredTransactions = useMemo(() => {
     return transactions.filter(tx => {
-      // Search term
       if (searchTerm.trim()) {
         const query = searchTerm.toLowerCase();
         const matchesDesc = tx.desc.toLowerCase().includes(query);
@@ -63,42 +61,33 @@ export const TransactionsTab: React.FC = () => {
         }
       }
 
-      // Type filter
       if (typeFilter !== 'All' && tx.type !== typeFilter) {
         return false;
       }
 
-      // Account filter
       if (accountFilter !== 'All') {
         if (tx.accountId !== accountFilter && tx.targetAccountId !== accountFilter) {
           return false;
         }
       }
 
-      // Period filter
-      if (periodFilter !== 'all') {
+      if (periodFilter === 'today') {
+        if (tx.date !== todayStr) return false;
+      } else if (periodFilter === 'this-week') {
+        if (tx.date < sevenDaysAgo) return false;
+      } else if (periodFilter === 'this-month') {
         const txDate = new Date(tx.date);
-        if (periodFilter === 'this-month') {
-          if (
-            txDate.getFullYear() !== currentYear ||
-            txDate.getMonth() !== currentMonth
-          ) {
-            return false;
-          }
-        } else if (periodFilter === 'last-month') {
-          const lastMonthDate = new Date(currentYear, currentMonth - 1, 1);
-          if (
-            txDate.getFullYear() !== lastMonthDate.getFullYear() ||
-            txDate.getMonth() !== lastMonthDate.getMonth()
-          ) {
-            return false;
-          }
-        } else if (periodFilter === 'last-90') {
-          const ninetyDaysAgo = new Date();
-          ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-          if (txDate < ninetyDaysAgo) {
-            return false;
-          }
+        if (txDate.getFullYear() !== currentYear || txDate.getMonth() !== currentMonth) {
+          return false;
+        }
+      } else if (periodFilter === 'last-month') {
+        const txDate = new Date(tx.date);
+        const lastMonthDate = new Date(currentYear, currentMonth - 1, 1);
+        if (
+          txDate.getFullYear() !== lastMonthDate.getFullYear() ||
+          txDate.getMonth() !== lastMonthDate.getMonth()
+        ) {
+          return false;
         }
       }
 
@@ -118,27 +107,22 @@ export const TransactionsTab: React.FC = () => {
       }
       return 0;
     });
-  }, [transactions, searchTerm, typeFilter, accountFilter, periodFilter, sortBy]);
+  }, [transactions, searchTerm, typeFilter, accountFilter, periodFilter, sortBy, todayStr, sevenDaysAgo, currentYear, currentMonth]);
 
-  // Aggregate stats for filtered result
   const filteredIncome = filteredTransactions
     .filter(t => t.type === 'Gelir')
     .reduce((sum, t) => sum + t.amount, 0);
-
   const filteredExpense = filteredTransactions
-    .filter(t => t.type === 'Gider')
+    .filter(t => t.type === 'Gider' || t.type === 'Mal Alımı')
     .reduce((sum, t) => sum + t.amount, 0);
-
   const filteredNet = filteredIncome - filteredExpense;
 
-  // Export CSV
   const handleExportCSV = () => {
     if (filteredTransactions.length === 0) {
       showToast('Dışa aktarılacak işlem bulunamadı', 'info');
       return;
     }
-
-    const headers = ['Tarih', 'Tür', 'Kategori', 'Cari/Firma', 'Açıklama', 'Hesap', 'Tutar (TL)', 'Belge No'];
+    const headers = ['Tarih', 'İşlem Türü', 'Kategori', 'Cari/Firma', 'Açıklama', 'Hesap', 'Tutar (TL)', 'Belge No'];
     const rows = filteredTransactions.map(tx => {
       const acc = accounts.find(a => a.id === tx.accountId)?.name || tx.accountId;
       return [
@@ -152,7 +136,6 @@ export const TransactionsTab: React.FC = () => {
         `"${tx.documentNo || '-'}"`,
       ].join(';');
     });
-
     const csvContent = '\uFEFF' + [headers.join(';'), ...rows].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -174,7 +157,7 @@ export const TransactionsTab: React.FC = () => {
 
   const handleDelete = (id: string) => {
     if (!isAdmin) {
-      showToast('İşlem doğrudan silme yetkisi yalnızca Yöneticilere (Admin) aittir. Silme talebi oluşturabilirsiniz.', 'info');
+      showToast('İşlem doğrudan silme yetkisi yalnızca Yöneticilere aittir. Silme talebi oluşturabilirsiniz.', 'info');
       return;
     }
     if (window.confirm('Bu finansal işlemi silmek istediğinize emin misiniz? Bakiye otomatik güncellenecektir.')) {
@@ -184,7 +167,7 @@ export const TransactionsTab: React.FC = () => {
 
   const handleRequestDelete = (tx: Transaction) => {
     const reason = window.prompt(
-      `"${tx.type} - ${tx.desc || tx.category} (₺${tx.amount.toLocaleString('tr-TR')})" işlemini iptal etme / silme gerekçenizi yazın:\n\n(Bu talep Yönetici (Admin) onayına sunulacaktır ve onaylanana kadar işlem aktif kalacaktır)`,
+      `"${tx.type} - ${tx.desc || tx.category} (₺${tx.amount.toLocaleString('tr-TR')})" işlemini iptal etme / silme gerekçenizi yazın:\n\n(Bu talep Yönetici onayına sunulacak ve onaylanana kadar işlem aktif kalacaktır)`,
       'Hatalı tutar girildi / İşlem iptal talebi'
     );
     if (reason !== null && reason.trim()) {
@@ -210,10 +193,10 @@ export const TransactionsTab: React.FC = () => {
           </div>
 
           {/* Quick Buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               onClick={exportDataToExcel}
-              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
+              className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
               title="Tüm verileri Excel olarak indir (.xlsx)"
             >
               <FileSpreadsheet className="w-3.5 h-3.5" /> Excel (.xlsx)
@@ -227,27 +210,19 @@ export const TransactionsTab: React.FC = () => {
             </button>
             <button
               onClick={() => openInstallmentModal()}
-              className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
+              className="px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
             >
               <Layers className="w-3.5 h-3.5" /> Taksitlendir
             </button>
             <button
               onClick={() => setActiveTab('stock')}
-              className="px-3.5 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
-              title="Birleşik Mal Alım & Stok Ekranına Git"
+              className="px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
             >
-              <Boxes className="w-3.5 h-3.5" /> Mal Alımı Yap (Stok)
-            </button>
-            <button
-              onClick={() => openTransactionModal({ type: 'Mal Alımı' })}
-              className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
-              title="Tedarikçiden Vadeli Mal Alımı Ekle"
-            >
-              <ShoppingBag className="w-3.5 h-3.5" /> Hızlı Mal Girişi
+              <Boxes className="w-3.5 h-3.5" /> Mal Alımı Yap
             </button>
             <button
               onClick={() => openTransactionModal()}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
+              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
             >
               <Plus className="w-3.5 h-3.5" /> Yeni İşlem Ekle
             </button>
@@ -256,7 +231,6 @@ export const TransactionsTab: React.FC = () => {
 
         {/* Filter Badges & Selects */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
-          {/* Segmented Type Filter */}
           <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
             {(['All', 'Gelir', 'Gider', 'Mal Alımı', 'Transfer'] as const).map(tab => (
               <button
@@ -274,7 +248,6 @@ export const TransactionsTab: React.FC = () => {
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* Account filter */}
             <select
               value={accountFilter}
               onChange={e => setAccountFilter(e.target.value)}
@@ -288,19 +261,18 @@ export const TransactionsTab: React.FC = () => {
               ))}
             </select>
 
-            {/* Period filter */}
             <select
               value={periodFilter}
               onChange={e => setPeriodFilter(e.target.value)}
               className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-500 text-slate-700 dark:text-slate-300"
             >
               <option value="all">Tüm Zamanlar</option>
-              <option value="this-month">Bu Ay (Ekim)</option>
-              <option value="last-month">Geçen Ay (Eylül)</option>
-              <option value="last-90">Son 90 Gün</option>
+              <option value="today">Bugün</option>
+              <option value="this-week">Bu Hafta (Son 7 Gün)</option>
+              <option value="this-month">Bu Ay</option>
+              <option value="last-month">Geçen Ay</option>
             </select>
 
-            {/* Sorting */}
             <select
               value={sortBy}
               onChange={e => setSortBy(e.target.value as any)}
@@ -333,9 +305,7 @@ export const TransactionsTab: React.FC = () => {
           <span className="text-slate-500 dark:text-slate-400">Filtre Net Akışı:</span>
           <span
             className={`font-bold font-mono-num text-sm ${
-              filteredNet >= 0
-                ? 'text-slate-900 dark:text-white'
-                : 'text-rose-600 dark:text-rose-400'
+              filteredNet >= 0 ? 'text-slate-900 dark:text-white' : 'text-rose-600 dark:text-rose-400'
             }`}
           >
             {formatCurrency(filteredNet)}
@@ -360,7 +330,7 @@ export const TransactionsTab: React.FC = () => {
               <Search className="w-6 h-6" />
             </div>
             <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-              Arama kriterlerine uygun işlem bulunamadı.
+              Arama kriterlerine uygun işlem bulunamadı
             </p>
             <p className="text-xs text-slate-400">
               Filtreleri sıfırlayabilir veya yeni bir işlem ekleyebilirsiniz.
@@ -388,7 +358,6 @@ export const TransactionsTab: React.FC = () => {
                   const targetAcc = tx.targetAccountId
                     ? accounts.find(a => a.id === tx.targetAccountId)
                     : null;
-
                   return (
                     <tr
                       key={tx.id}
@@ -407,11 +376,6 @@ export const TransactionsTab: React.FC = () => {
                               <span className="font-semibold text-slate-800 dark:text-slate-200 block text-[11px]">
                                 {tx.createdByName || tx.createdBy || 'Sistem'}
                               </span>
-                              {tx.createdBy && tx.createdByName && tx.createdBy !== tx.createdByName && (
-                                <span className="text-[9px] text-slate-400 block font-mono">
-                                  @{tx.createdBy}
-                                </span>
-                              )}
                             </div>
                           </div>
                         </td>
@@ -444,7 +408,7 @@ export const TransactionsTab: React.FC = () => {
                       <td className="py-3 px-4 text-slate-600 dark:text-slate-400 whitespace-nowrap">
                         {tx.type === 'Transfer' ? (
                           <span className="text-[11px]">
-                            {sourceAcc?.name} ➔ {targetAcc?.name}
+                            {sourceAcc?.name} → {targetAcc?.name}
                           </span>
                         ) : tx.type === 'Mal Alımı' ? (
                           <span className="text-[11px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/70 border border-amber-200 dark:border-amber-800/60 px-2 py-0.5 rounded-md">
@@ -459,7 +423,7 @@ export const TransactionsTab: React.FC = () => {
                           <span className="truncate font-medium text-slate-800 dark:text-slate-200">{tx.desc || '-'}</span>
                           {tx.isPosOffset && (
                             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 shrink-0">
-                              POS Mahsup ➔ {tx.supplierCariName || 'Tedarikçi'}
+                              POS Mahsup → {tx.supplierCariName || 'Tedarikçi'}
                             </span>
                           )}
                           {tx.pendingDeletion && (
@@ -478,11 +442,6 @@ export const TransactionsTab: React.FC = () => {
                               {tx.installmentIndex}/{tx.totalInstallments} Taksit
                             </span>
                           )}
-                          {tx.status === 'Beklemede' && (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 shrink-0">
-                              Beklemede
-                            </span>
-                          )}
                         </div>
                         {tx.documentNo && (
                           <span className="text-[10px] text-slate-400 font-mono block">
@@ -496,16 +455,11 @@ export const TransactionsTab: React.FC = () => {
                             ? 'text-emerald-600 dark:text-emerald-400'
                             : tx.type === 'Mal Alımı'
                             ? 'text-amber-600 dark:text-amber-400'
-                            : tx.type === 'Gider'
-                            ? 'text-rose-600 dark:text-rose-400'
-                            : 'text-blue-600 dark:text-blue-400'
+                            : 'text-rose-600 dark:text-rose-400'
                         }`}
                       >
-                        {tx.type === 'Gelir' ? '+' : tx.type === 'Gider' ? '-' : tx.type === 'Mal Alımı' ? '-' : ''}
+                        {tx.type === 'Gelir' ? '+' : '-'}
                         {formatCurrency(tx.amount)}
-                        {tx.type === 'Mal Alımı' && (
-                          <span className="block text-[10px] font-normal text-amber-500">Borç</span>
-                        )}
                       </td>
                       <td className="py-3 px-4 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center gap-1 opacity-80 group-hover:opacity-100 transition">
