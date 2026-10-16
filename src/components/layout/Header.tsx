@@ -1,112 +1,273 @@
-import React from 'react';
-import { useApp } from '../../context/AppContext';
-import { ShoppingBag, FileSpreadsheet, Shield, Calendar, Menu, Cloud } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { useFinance } from '../../context/FinanceContext';
+import {
+  Menu,
+  Plus,
+  Bell,
+  RefreshCw,
+  LogOut,
+  Smartphone,
+  Shield,
+  UserCheck,
+  Eye,
+  Command,
+  Sun,
+  Moon,
+  Coins,
+  Search,
+} from 'lucide-react';
+import { ActiveTab } from '../../types/finance';
+import { useLiveCurrency } from '../../services/currencyService';
 
-export const Header: React.FC = () => {
-  const { activeTab, navigateToPurchase, currentUser, toggleMobileSidebar } = useApp();
+interface HeaderProps {
+  onToggleSidebar: () => void;
+}
 
-  const getTitle = () => {
-    switch (activeTab) {
-      case 'dashboard':
-        return { title: 'Finansal Genel Bakış', subtitle: 'Şirket nakit akışı, tedarikçi borçları ve kâr özeti' };
-      case 'mal_alim_stok':
-        return { title: 'Mal Alım & Stok Yönetimi', subtitle: 'Ortak tedarikçilerden mal alımları, cari borç ve envanter' };
-      case 'detayli_stok':
-        return { title: 'Detaylı Stok & Envanter Yönetimi', subtitle: 'Kategori, alt kategori, marka ve ortak tedarikçi alanlarıyla ürün yönetimi' };
-      case 'kar_takip':
-        return { title: 'Kâr Takip & Satış Analizi', subtitle: 'Satış şekli, senetli vade farkı maliyeti ve personel bazlı net kârlılık' };
-      case 'cari_hesaplar':
-        return { title: 'Cari Hesaplar (Ortak Veritabanı)', subtitle: 'Tedarikçi ve müşteri borç/alacak bakiyeleri ve ekstreler' };
-      case 'kasa_banka':
-        return { title: 'Kasa & Banka Hesapları', subtitle: 'Nakit kasa, ticari banka ve POS hesap hareketleri' };
-      case 'masraflar':
-        return { title: 'Gider & Masraf Takibi', subtitle: 'Kira, personel maaşı, lojistik ve genel işletme masrafları' };
-      case 'aylik_takip':
-        return { title: 'Aylık Takip & Finansal Tablo', subtitle: 'Aylık ciro, maliyet, brüt/net kâr ve gider dökümü' };
-      case 'urun_eslestirme':
-        return { title: 'Ürün Eşleştirme Mekanizması', subtitle: 'Satış ürünleri ile tedarikçi kodları & maliyet eşleştirme' };
-      case 'tanimlamalar':
-        return { title: 'Sistem Tanımlamaları', subtitle: 'Kategoriler, alt kategoriler, markalar ve aylık vade farkı oranları' };
-      case 'raporlar':
-        return { title: 'Raporlar & Analizler', subtitle: 'Kategori, ürün ve tedarikçi performans grafikleri' };
-      case 'kullanicilar':
-        return { title: 'Kullanıcılar & Yetkiler', subtitle: 'Yönetici hesabı üzerinden kullanıcı ekleme ve yetkilendirme' };
-      default:
-        return { title: 'Arslan Mobilya ERP', subtitle: 'Entegre Yönetim Sistemi' };
-    }
-  };
+const TAB_TITLES: Record<ActiveTab, { title: string; subtitle: string }> = {
+  dashboard: {
+    title: 'Genel Finansal Özet & Kasa',
+    subtitle: 'Nakit akışı, dönemsel kâr-zarar tablosu ve şirket mali durumu',
+  },
+  profit: {
+    title: 'Kâr Takip (Satışlar & Kârlılık)',
+    subtitle: 'Peşin, kredi kartı ve senetli satış takibi, vade farkı maliyetleri ve personel performansı',
+  },
+  stock: {
+    title: 'Mal Alımı & Stok Yönetimi',
+    subtitle: 'Tedarikçi borçlandırması, ürün stok girişleri ve toplu Excel alım entegrasyonu',
+  },
+  transactions: {
+    title: 'Gelir ve Gider Hareketleri (Kasa)',
+    subtitle: 'Kasa ve banka kayıtları, masraf takibi ve denetim izi',
+  },
+  accounts: {
+    title: 'Banka Hesapları & Kasalar',
+    subtitle: 'Kasa, banka ve POS hesapları, dönemsel hareket ekstreleri ve transferler',
+  },
+  currents: {
+    title: 'Cari Hesap Yönetimi',
+    subtitle: 'Ortak müşteri ve tedarikçi borç/alacak takibi ve ekstreler',
+  },
+  definitions: {
+    title: 'Tanımlamalar & Fiyat Listeleri',
+    subtitle: 'Beyaz eşya & mobilya kategorileri, alt kategoriler, markalar, vade oranları ve fiyat listeleri',
+  },
+  upcoming: {
+    title: 'Vade & Ödeme Takvimi',
+    subtitle: 'Gelecek ödemeler, vadesi gelen çekler, senetler ve tedarikçi borçları',
+  },
+  reports: {
+    title: 'Mali Raporlar & Kategori Dağılımı',
+    subtitle: 'Kategorilere göre stok payı ve kâr analizi, aylık masraf detayları',
+  },
+  audit: {
+    title: 'İşlem Denetim Raporu & Onaylar',
+    subtitle: 'Kullanıcı işlem kayıtları, denetim izi ve silme onay talepleri',
+  },
+  users: {
+    title: 'Personel ve Rol Yönetimi',
+    subtitle: 'Yönetici ve Standart personel yetkilendirme, erişim izinleri',
+  },
+};
 
-  const info = getTitle();
-  const todayStr = new Intl.DateTimeFormat('tr-TR', {
-    day: 'numeric',
-    month: 'short',
-  }).format(new Date());
+export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
+  const {
+    activeTab,
+    openTransactionModal,
+    upcomingDues,
+    setActiveTab,
+    user,
+    userProfile,
+    isAdmin,
+    isRoleSimulated,
+    toggleRoleSimulation,
+    isCloudSyncing,
+    loginWithGoogle,
+    logout,
+    openCommandPalette,
+    openCurrencyConverter,
+    isDarkMode,
+    toggleDarkMode,
+  } = useFinance();
+
+  const { usd, eur, lastUpdated, isLoading: isRatesLoading, refreshRates } = useLiveCurrency();
+
+  // Listen to keyboard shortcut "N" to quickly open transaction modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT'
+      ) {
+        return;
+      }
+      if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        openTransactionModal();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [openTransactionModal]);
+
+  const pendingDuesCount = upcomingDues.filter(d => !d.isCompleted).length;
 
   return (
-    <header className="h-16 md:h-18 bg-slate-900/90 border-b border-slate-800 backdrop-blur-md px-3 sm:px-6 flex items-center justify-between sticky top-0 z-30 shrink-0">
-      {/* Left: Mobile Hamburger & Title */}
-      <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
-        {/* Mobile Hamburger Button (Requirement 2) */}
+    <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 md:px-6 py-2.5 flex items-center justify-between sticky top-0 z-30 shadow-xs backdrop-blur-md">
+      {/* Left: Mobile hamburger & Dynamic Title */}
+      <div className="flex items-center gap-3">
         <button
-          onClick={toggleMobileSidebar}
-          className="p-2 -ml-1 rounded-xl text-slate-300 hover:text-white hover:bg-slate-800 lg:hidden focus:outline-none focus:ring-2 focus:ring-amber-500/40 cursor-pointer transition shrink-0"
-          title="Menüyü Aç"
-          aria-label="Menüyü Aç"
+          onClick={onToggleSidebar}
+          className="md:hidden text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700"
+          aria-label="Menü"
         >
           <Menu className="w-5 h-5" />
         </button>
-
-        <div className="min-w-0">
-          <h1 className="text-sm sm:text-base font-bold text-white tracking-tight truncate">{info.title}</h1>
-          <p className="text-[11px] sm:text-xs text-slate-400 truncate hidden sm:block">{info.subtitle}</p>
+        <div
+          onClick={() => setActiveTab('dashboard')}
+          className="cursor-pointer group"
+          title="Ana Özet Panele Dön"
+        >
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider hidden sm:inline">
+              Arslan Finans
+            </span>
+            <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">/</span>
+            <h1 className="text-sm md:text-base font-bold text-slate-900 dark:text-white leading-tight group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+              {TAB_TITLES[activeTab].title}
+            </h1>
+          </div>
+          <p className="text-[11px] text-slate-400 hidden lg:block">
+            {TAB_TITLES[activeTab].subtitle}
+          </p>
         </div>
       </div>
 
-      {/* Right: Actions, Cloud Indicator & User Badge */}
-      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        {/* Compact Cloud Status Pill (Visible on md and up) */}
-        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-[11px] font-semibold text-emerald-400">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
-          <Cloud className="w-3.5 h-3.5" />
-          <span>OFİS - MOBİL</span>
-        </div>
-
-        {/* Date Display */}
-        <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/60 border border-slate-700/50 text-xs text-slate-300">
-          <Calendar className="w-3.5 h-3.5 text-amber-400" />
-          <span>{todayStr}</span>
-        </div>
-
-        {/* Global Action: Excel ile Mal Alımı */}
+      {/* Center: Command Palette Launch Bar (Quick Productivity Tool) */}
+      <div className="hidden md:flex items-center">
         <button
-          onClick={() => navigateToPurchase('excel')}
-          className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 sm:py-2 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-200 border border-slate-700 text-xs font-medium transition cursor-pointer active:scale-95"
-          title="Toplu Excel ile Mal Alımı"
+          onClick={openCommandPalette}
+          className="flex items-center gap-2.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-500 dark:text-slate-400 transition shadow-xs group"
+          title="Hızlı Komut Paleti (Ctrl+K / Cmd+K)"
         >
-          <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Excel Alımı</span>
+          <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-500 transition-colors" />
+          <span className="text-slate-600 dark:text-slate-300">Hızlı işlem veya arama yap...</span>
+          <kbd className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 rounded border border-slate-200 dark:border-slate-700 shadow-2xs">
+            Ctrl K
+          </kbd>
         </button>
+      </div>
 
-        {/* Global Action: Mal Alımı Yap (Highlighted Core Requirement) */}
+      {/* Right: Currency Rates, Theme Switcher, Cloud Sync & Actions */}
+      <div className="flex items-center gap-2 md:gap-2.5">
+        {/* Live Currency Rates Button / Modal Trigger */}
         <button
-          onClick={() => navigateToPurchase('manuel')}
-          className="flex items-center gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 text-xs font-semibold shadow-md shadow-amber-500/20 transition cursor-pointer active:scale-95"
+          onClick={openCurrencyConverter}
+          className="hidden sm:flex items-center gap-2 px-2.5 py-1 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-[11px] font-mono font-medium text-slate-700 dark:text-slate-300 shadow-2xs transition"
+          title={`Canlı Döviz: USD ₺${usd.toFixed(2)} | EUR ₺${eur.toFixed(2)}. Tıklayarak çeviriciyi açın.`}
         >
-          <ShoppingBag className="w-3.5 h-3.5 stroke-[2.3]" />
-          <span className="hidden xs:inline sm:inline">Mal Alımı</span>
-          <span className="xs:hidden sm:hidden">Alım</span>
-        </button>
-
-        {/* User Role Badge */}
-        <div className="hidden xs:flex sm:flex items-center gap-1.5 pl-2 border-l border-slate-800">
-          <div className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[11px] sm:text-xs font-medium">
-            <Shield className="w-3 h-3" />
-            <span className="capitalize">{currentUser?.role === 'admin' ? 'Admin' : 'Personel'}</span>
+          <Coins className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+          <div className="flex items-center gap-1">
+            <span className="text-slate-400">USD:</span>
+            <span className="font-bold text-slate-900 dark:text-white">₺{usd.toFixed(2)}</span>
           </div>
-        </div>
+          <span className="text-slate-300 dark:text-slate-700">|</span>
+          <div className="flex items-center gap-1">
+            <span className="text-slate-400">EUR:</span>
+            <span className="font-bold text-slate-900 dark:text-white">₺{eur.toFixed(2)}</span>
+          </div>
+        </button>
+
+        {/* Dark / Light Mode Switcher */}
+        <button
+          onClick={toggleDarkMode}
+          className="p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+          title={isDarkMode ? 'Açık Temaya Geç' : 'Koyu Temaya Geç'}
+          aria-label="Tema Değiştir"
+        >
+          {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+        </button>
+
+        {/* Notifications / Pending Alert button */}
+        <button
+          onClick={() => setActiveTab('upcoming')}
+          className="relative p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+          title={`${pendingDuesCount} bekleyen ödeme veya tahsilat`}
+        >
+          <Bell className="w-4 h-4" />
+          {pendingDuesCount > 0 && (
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900 animate-pulse" />
+          )}
+        </button>
+
+        {/* Cloud Sync Status / User Badge */}
+        {user ? (
+          <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl px-2 py-1 text-xs text-emerald-800 dark:text-emerald-300">
+            <div className="flex items-center gap-1.5">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <Smartphone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 hidden sm:inline" />
+              {isCloudSyncing && <RefreshCw className="w-3 h-3 animate-spin text-emerald-600" />}
+            </div>
+
+            {/* Role Badge in Header */}
+            {isRoleSimulated ? (
+              <button
+                onClick={toggleRoleSimulation}
+                className="flex items-center gap-1 text-[10px] font-bold bg-purple-600 hover:bg-purple-500 text-white px-2 py-0.5 rounded-full transition shadow-xs"
+                title="Standart kullanıcı simülasyonunu sonlandır ve Yöneticiye dön"
+              >
+                <Eye className="w-3 h-3" /> Test Modu
+              </button>
+            ) : isAdmin ? (
+              <button
+                onClick={() => setActiveTab('users')}
+                className="flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-700 px-2 py-0.5 rounded-full hover:bg-amber-200 transition"
+                title="Sistem Yöneticisi"
+              >
+                <Shield className="w-3 h-3 text-amber-500" /> Admin
+              </button>
+            ) : (
+              <span
+                className="flex items-center gap-1 text-[10px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 border border-blue-300 dark:border-blue-700 px-2 py-0.5 rounded-full"
+                title="Normal Personel"
+              >
+                <UserCheck className="w-3 h-3 text-blue-500" /> Standart
+              </span>
+            )}
+
+            <button
+              onClick={logout}
+              title="Oturumu Kapat"
+              className="text-emerald-700 hover:text-rose-600 dark:text-emerald-400 dark:hover:text-rose-400 p-0.5 rounded transition ml-1"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={loginWithGoogle}
+            className="flex items-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition shadow-xs active:scale-95"
+          >
+            <span className="font-semibold whitespace-nowrap">Giriş Yap</span>
+          </button>
+        )}
+
+        {/* Primary Action Button: Yeni İşlem Ekle */}
+        <button
+          onClick={() => openTransactionModal()}
+          className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 md:py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm active:scale-95 shrink-0"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Yeni İşlem</span>
+          <kbd className="hidden lg:inline-block px-1.5 py-0.5 text-[10px] bg-emerald-700/60 rounded font-mono text-emerald-200">
+            N
+          </kbd>
+        </button>
       </div>
     </header>
   );

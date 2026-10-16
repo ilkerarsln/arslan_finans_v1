@@ -1,0 +1,862 @@
+import React, { useState, useMemo } from 'react';
+import { useFinance } from '../../context/FinanceContext';
+import {
+  formatCurrency,
+  formatDate,
+  getDaysRemaining,
+} from '../../utils/formatters';
+import { MonthlyFlowChart } from '../charts/MonthlyFlowChart';
+import { CategoryBreakdownChart } from '../charts/CategoryBreakdownChart';
+import {
+  ArrowDownRight,
+  ArrowUpRight,
+  ArrowRightLeft,
+  Building2,
+  Calendar,
+  Wallet,
+  CheckCircle2,
+  TrendingUp,
+  TrendingDown,
+  Users,
+  Layers,
+  ShoppingBag,
+  Download,
+  BarChart3,
+  Clock,
+  Sparkles,
+} from 'lucide-react';
+
+const MONTH_NAMES_TR = [
+  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
+];
+
+export const DashboardTab: React.FC<{
+  onOpenTransfer: () => void;
+  onOpenAddAccount: () => void;
+  onOpenAddCari: () => void;
+}> = ({ onOpenTransfer, onOpenAddAccount, onOpenAddCari }) => {
+  const {
+    transactions,
+    accounts,
+    caris,
+    upcomingDues,
+    sales,
+    openTransactionModal,
+    openInstallmentModal,
+    setActiveTab,
+    toggleUpcomingDue,
+  } = useFinance();
+
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+  const availableMonths = useMemo(() => {
+    const set = new Set<string>();
+    set.add(currentMonthKey);
+    transactions.forEach(t => {
+      if (t.date && t.date.length >= 7) set.add(t.date.slice(0, 7));
+    });
+    return Array.from(set).sort().reverse();
+  }, [transactions, currentMonthKey]);
+
+  const [selectedMonthKey, setSelectedMonthKey] = useState<string>(currentMonthKey);
+
+  const selectedMonthLabel = useMemo(() => {
+    const [y, m] = selectedMonthKey.split('-');
+    const mIdx = parseInt(m, 10) - 1;
+    return `${MONTH_NAMES_TR[mIdx] || m} ${y}`;
+  }, [selectedMonthKey]);
+
+  // Selected month calculations
+  const currentMonthTxs = useMemo(() => {
+    return transactions.filter(
+      tx => tx.date.startsWith(selectedMonthKey) && tx.status !== 'İptal'
+    );
+  }, [transactions, selectedMonthKey]);
+
+  const totalIncomeThisMonth = useMemo(() => {
+    return currentMonthTxs
+      .filter(tx => tx.type === 'Gelir')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+  }, [currentMonthTxs]);
+
+  const totalExpenseThisMonth = useMemo(() => {
+    return currentMonthTxs
+      .filter(tx => tx.type === 'Gider' || tx.type === 'Mal Alımı')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+  }, [currentMonthTxs]);
+
+  const netCashFlowThisMonth = totalIncomeThisMonth - totalExpenseThisMonth;
+
+  // Liquid assets
+  const totalLiquidAssets = accounts
+    .filter(a => a.type !== 'Şirket Kredi Kartı')
+    .reduce((sum, a) => sum + a.balance, 0);
+
+  // Total receivables & payables
+  const totalReceivables = caris
+    .filter(c => c.balance > 0)
+    .reduce((sum, c) => sum + c.balance, 0);
+  const totalPayables = caris
+    .filter(c => c.balance < 0)
+    .reduce((sum, c) => sum + Math.abs(c.balance), 0);
+
+  // Today's summary
+  const todayIncome = transactions
+    .filter(t => t.date === todayStr && t.type === 'Gelir' && t.status !== 'İptal')
+    .reduce((s, t) => s + t.amount, 0);
+  const todayExpense = transactions
+    .filter(t => t.date === todayStr && (t.type === 'Gider' || t.type === 'Mal Alımı') && t.status !== 'İptal')
+    .reduce((s, t) => s + t.amount, 0);
+
+  // Recent 6 transactions
+  const recentTransactions = transactions.slice(0, 6);
+
+  // Pending dues
+  const activeDues = upcomingDues
+    .filter(d => !d.isCompleted)
+    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+    .slice(0, 5);
+
+  // Periodic performance
+  const [periodFilterMode, setPeriodFilterMode] = useState<'weekly' | 'monthly' | 'six_months' | 'yearly'>('monthly');
+
+  const periodicRows = useMemo(() => {
+    const currentYear = now.getFullYear();
+    if (periodFilterMode === 'monthly') {
+      const list = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(currentYear, now.getMonth() - i, 1);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const ym = `${y}-${m}`;
+        const isCurrent = ym === currentMonthKey;
+        const mIncome = transactions
+          .filter(t => t.date.startsWith(ym) && t.type === 'Gelir' && t.status !== 'İptal')
+          .reduce((sum, t) => sum + t.amount, 0);
+        const mExpense = transactions
+          .filter(t => t.date.startsWith(ym) && (t.type === 'Gider' || t.type === 'Mal Alımı') && t.status !== 'İptal')
+          .reduce((sum, t) => sum + t.amount, 0);
+        const mCiro = sales
+          .filter(s => s.date.startsWith(ym))
+          .reduce((sum, s) => sum + s.totalSaleAmount, 0) || mIncome;
+        const net = mIncome - mExpense;
+        const margin = mCiro > 0 ? (net / mCiro) * 100 : (mIncome > 0 ? (net / mIncome) * 100 : 0);
+        const mIdx = d.getMonth();
+        list.push({
+          key: ym,
+          label: `${MONTH_NAMES_TR[mIdx]} ${y}`,
+          income: mIncome,
+          expense: mExpense,
+          ciro: mCiro,
+          netProfit: net,
+          margin,
+          isCurrent,
+        });
+      }
+      return list;
+    } else if (periodFilterMode === 'weekly') {
+      const list = [];
+      const oneDay = 24 * 60 * 60 * 1000;
+      for (let w = 3; w >= 0; w--) {
+        const endDay = new Date(now.getTime() - w * 7 * oneDay);
+        const startDay = new Date(endDay.getTime() - 6 * oneDay);
+        const startStr = startDay.toISOString().split('T')[0];
+        const endStr = endDay.toISOString().split('T')[0];
+        const isCurrent = w === 0;
+        const wIncome = transactions
+          .filter(t => t.date >= startStr && t.date <= endStr && t.type === 'Gelir' && t.status !== 'İptal')
+          .reduce((sum, t) => sum + t.amount, 0);
+        const wExpense = transactions
+          .filter(t => t.date >= startStr && t.date <= endStr && (t.type === 'Gider' || t.type === 'Mal Alımı') && t.status !== 'İptal')
+          .reduce((sum, t) => sum + t.amount, 0);
+        const wCiro = sales
+          .filter(s => s.date >= startStr && s.date <= endStr)
+          .reduce((sum, s) => sum + s.totalSaleAmount, 0) || wIncome;
+        const net = wIncome - wExpense;
+        const margin = wCiro > 0 ? (net / wCiro) * 100 : 0;
+        list.push({
+          key: `week-${w}`,
+          label: isCurrent ? 'Bu Hafta (Güncel)' : `${startDay.getDate()}/${startDay.getMonth() + 1} - ${endDay.getDate()}/${endDay.getMonth() + 1}`,
+          income: wIncome,
+          expense: wExpense,
+          ciro: wCiro,
+          netProfit: net,
+          margin,
+          isCurrent,
+        });
+      }
+      return list;
+    } else if (periodFilterMode === 'six_months') {
+      const blocks = [
+        { key: '2025-H1', label: '2025 1. Yarı (Oca - Haz)', start: '2025-01-01', end: '2025-06-30', isCurrent: false },
+        { key: '2025-H2', label: '2025 2. Yarı (Tem - Ara)', start: '2025-07-01', end: '2025-12-31', isCurrent: false },
+        { key: '2026-H1', label: '2026 1. Yarı (Oca - Haz)', start: '2026-01-01', end: '2026-06-30', isCurrent: false },
+        { key: '2026-H2', label: '2026 2. Yarı (Tem - Ara - Güncel)', start: '2026-07-01', end: '2026-12-31', isCurrent: true },
+      ];
+      return blocks.map(b => {
+        const bIncome = transactions
+          .filter(t => t.date >= b.start && t.date <= b.end && t.type === 'Gelir' && t.status !== 'İptal')
+          .reduce((sum, t) => sum + t.amount, 0);
+        const bExpense = transactions
+          .filter(t => t.date >= b.start && t.date <= b.end && (t.type === 'Gider' || t.type === 'Mal Alımı') && t.status !== 'İptal')
+          .reduce((sum, t) => sum + t.amount, 0);
+        const bCiro = sales
+          .filter(s => s.date >= b.start && s.date <= b.end)
+          .reduce((sum, s) => sum + s.totalSaleAmount, 0) || bIncome;
+        const net = bIncome - bExpense;
+        return {
+          key: b.key,
+          label: b.label,
+          income: bIncome,
+          expense: bExpense,
+          ciro: bCiro,
+          netProfit: net,
+          margin: bCiro > 0 ? (net / bCiro) * 100 : 0,
+          isCurrent: b.isCurrent,
+        };
+      });
+    } else {
+      const years = [2024, 2025, 2026];
+      return years.map(yr => {
+        const yrStr = String(yr);
+        const isCurrent = yr === currentYear;
+        const yIncome = transactions
+          .filter(t => t.date.startsWith(yrStr) && t.type === 'Gelir' && t.status !== 'İptal')
+          .reduce((sum, t) => sum + t.amount, 0);
+        const yExpense = transactions
+          .filter(t => t.date.startsWith(yrStr) && (t.type === 'Gider' || t.type === 'Mal Alımı') && t.status !== 'İptal')
+          .reduce((sum, t) => sum + t.amount, 0);
+        const yCiro = sales
+          .filter(s => s.date.startsWith(yrStr))
+          .reduce((sum, s) => sum + s.totalSaleAmount, 0) || yIncome;
+        const net = yIncome - yExpense;
+        return {
+          key: yrStr,
+          label: isCurrent ? `${yr} Yılı (Güncel)` : `${yr} Yılı`,
+          income: yIncome,
+          expense: yExpense,
+          ciro: yCiro,
+          netProfit: net,
+          margin: yCiro > 0 ? (net / yCiro) * 100 : 0,
+          isCurrent,
+        };
+      });
+    }
+  }, [transactions, sales, periodFilterMode, currentMonthKey, now]);
+
+  const handleExportPeriodicCSV = () => {
+    const headers = ['Dönem Periyodu', 'Toplam Gelir (TL)', 'Toplam Gider (TL)', 'Satış Cirosu (TL)', 'Net Kâr (TL)', 'Kârlılık Marjı (%)', 'Durum'];
+    const rows = periodicRows.map(r => [
+      `"${r.label}"`,
+      r.income,
+      r.expense,
+      r.ciro,
+      r.netProfit,
+      r.margin.toFixed(1),
+      r.isCurrent ? 'Bulunulan Ay (Güncel)' : 'Geçmiş Dönem',
+    ]);
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `finansal_genel_bakis_${periodFilterMode}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Top Banner & Quick Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border border-slate-700/80 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
+        <div className="relative z-10">
+          <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-emerald-400">
+            <span>Finansal Durum Raporu · {selectedMonthLabel}</span>
+            {availableMonths.length > 1 && (
+              <div className="flex items-center gap-1.5 ml-1 bg-slate-800/90 border border-slate-700/80 rounded-lg px-2 py-0.5">
+                <Calendar className="w-3 h-3 text-emerald-400" />
+                <select
+                  value={selectedMonthKey}
+                  onChange={e => setSelectedMonthKey(e.target.value)}
+                  className="bg-transparent text-emerald-300 text-[11px] font-semibold outline-none cursor-pointer"
+                  title="Görüntülenecek ayı seçin"
+                >
+                  {availableMonths.map(ym => {
+                    const [y, m] = ym.split('-');
+                    const mIdx = parseInt(m, 10) - 1;
+                    return (
+                      <option key={ym} value={ym} className="bg-slate-900 text-white">
+                        {MONTH_NAMES_TR[mIdx] || m} {y} {ym === currentMonthKey ? '(Güncel Ay)' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            )}
+          </div>
+          <h2 className="text-xl md:text-2xl font-bold tracking-tight mt-1.5">
+            Nakit Akışı ve Mali Kontrol Paneli
+          </h2>
+          <p className="text-xs text-slate-300 mt-1 max-w-xl">
+            Tüm şirket banka hesapları, nakit kasalar, cari borç/alacaklar ve planlanan ödemelerin anlık özeti.
+          </p>
+        </div>
+
+        {/* Quick Action Buttons */}
+        <div className="flex flex-wrap items-center gap-2 relative z-10">
+          <button
+            onClick={() => openTransactionModal({ type: 'Gelir' })}
+            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
+            title="Yeni Gelir / Tahsilat Kaydı"
+          >
+            <ArrowDownRight className="w-3.5 h-3.5" /> Gelir Ekle
+          </button>
+          <button
+            onClick={() => openTransactionModal({ type: 'Gider' })}
+            className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
+            title="Yeni Gider / Ödeme Kaydı"
+          >
+            <ArrowUpRight className="w-3.5 h-3.5" /> Gider Ekle
+          </button>
+          <button
+            onClick={() => openTransactionModal({ type: 'Mal Alımı' })}
+            className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
+            title="Tedarikçiden Vadeli Mal Alımı"
+          >
+            <ShoppingBag className="w-3.5 h-3.5" /> Mal Alımı
+          </button>
+          <button
+            onClick={() => openInstallmentModal()}
+            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
+          >
+            <Layers className="w-3.5 h-3.5" /> Taksit Planla
+          </button>
+          <button
+            onClick={onOpenTransfer}
+            className="px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition border border-slate-600 shadow-sm active:scale-95"
+          >
+            <ArrowRightLeft className="w-3.5 h-3.5 text-blue-400" /> Virman
+          </button>
+        </div>
+      </div>
+
+      {/* KPI Stat Cards Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Toplam Likit Varlık */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Toplam Likit Nakit & Banka
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <Wallet className="w-4 h-4" />
+            </div>
+          </div>
+          <h3 className="text-2xl font-bold font-mono-num text-slate-900 dark:text-white mt-2">
+            {formatCurrency(totalLiquidAssets)}
+          </h3>
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span>Bugünkü Net Giriş:</span>
+            <span
+              className={`font-mono-num font-semibold ${
+                todayIncome - todayExpense >= 0
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-rose-600 dark:text-rose-400'
+              }`}
+            >
+              {todayIncome - todayExpense > 0 ? '+' : ''}{formatCurrency(todayIncome - todayExpense)}
+            </span>
+          </div>
+        </div>
+
+        {/* Card 2: Seçilen Ayın Toplam Geliri */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+              {selectedMonthLabel} Toplam Gelir
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <ArrowDownRight className="w-4 h-4" />
+            </div>
+          </div>
+          <h3 className="text-2xl font-bold font-mono-num text-emerald-600 dark:text-emerald-400 mt-2">
+            +{formatCurrency(totalIncomeThisMonth)}
+          </h3>
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span>İşlem Adedi:</span>
+            <span className="font-mono-num font-semibold text-slate-700 dark:text-slate-300">
+              {currentMonthTxs.filter(t => t.type === 'Gelir').length} tahsilat
+            </span>
+          </div>
+        </div>
+
+        {/* Card 3: Seçilen Ayın Toplam Gideri */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wider">
+              {selectedMonthLabel} Toplam Gider
+            </span>
+            <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+              <ArrowUpRight className="w-4 h-4" />
+            </div>
+          </div>
+          <h3 className="text-2xl font-bold font-mono-num text-rose-600 dark:text-rose-400 mt-2">
+            -{formatCurrency(totalExpenseThisMonth)}
+          </h3>
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span>İşlem Adedi:</span>
+            <span className="font-mono-num font-semibold text-slate-700 dark:text-slate-300">
+              {currentMonthTxs.filter(t => t.type === 'Gider' || t.type === 'Mal Alımı').length} ödeme
+            </span>
+          </div>
+        </div>
+
+        {/* Card 4: Net Likit Varlık */}
+        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div className="flex items-center justify-between">
+            <span
+              className={`text-xs font-semibold uppercase tracking-wider ${
+                netCashFlowThisMonth >= 0
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-rose-600 dark:text-rose-400'
+              }`}
+            >
+              Net Nakit Akışı ({selectedMonthLabel})
+            </span>
+            <div
+              className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                netCashFlowThisMonth >= 0
+                  ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400'
+              }`}
+            >
+              {netCashFlowThisMonth >= 0 ? (
+                <TrendingUp className="w-4 h-4" />
+              ) : (
+                <TrendingDown className="w-4 h-4" />
+              )}
+            </div>
+          </div>
+          <h3
+            className={`text-2xl font-bold font-mono-num mt-2 ${
+              netCashFlowThisMonth >= 0
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : 'text-rose-600 dark:text-rose-400'
+            }`}
+          >
+            {netCashFlowThisMonth > 0 ? '+' : ''}{formatCurrency(netCashFlowThisMonth)}
+          </h3>
+          <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+            <span>Aylık Net Durum:</span>
+            <span
+              className={`font-semibold ${
+                netCashFlowThisMonth >= 0
+                  ? 'text-emerald-600 dark:text-emerald-400'
+                  : 'text-rose-600 dark:text-rose-400'
+              }`}
+            >
+              {netCashFlowThisMonth >= 0 ? '+ Pozitif Durum (Artı)' : '- Negatif Durum (Açık)'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Receivables vs Payables overview */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                Müşterilerden Toplam Alacak
+              </p>
+              <p className="text-lg font-bold font-mono-num text-emerald-600 dark:text-emerald-400">
+                {formatCurrency(totalReceivables)}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setActiveTab('currents')}
+            className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline"
+          >
+            Carileri İncele
+          </button>
+        </div>
+
+        <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+              <Building2 className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                Tedarikçilere Toplam Borç
+              </p>
+              <p className="text-lg font-bold font-mono-num text-rose-600 dark:text-rose-400">
+                {formatCurrency(totalPayables)}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setActiveTab('currents')}
+            className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 underline"
+          >
+            Borçları İncele
+          </button>
+        </div>
+      </div>
+
+      {/* Finansal Genel Bakış & Dönemsel Tablo */}
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-emerald-600" />
+              <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                Finansal Genel Bakış & Dönemsel Kârlılık Tablosu
+              </h3>
+            </div>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Seçilen periyoda göre Gelir, Gider, Satış Cirosu ve Net Kârlılık analizi (Bulunulan dönem en altta güncel satır olarak gösterilir)
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold">
+              <button
+                onClick={() => setPeriodFilterMode('weekly')}
+                className={`px-2.5 py-1 rounded-lg transition ${
+                  periodFilterMode === 'weekly'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                Haftalık
+              </button>
+              <button
+                onClick={() => setPeriodFilterMode('monthly')}
+                className={`px-2.5 py-1 rounded-lg transition ${
+                  periodFilterMode === 'monthly'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                Aylık
+              </button>
+              <button
+                onClick={() => setPeriodFilterMode('six_months')}
+                className={`px-2.5 py-1 rounded-lg transition ${
+                  periodFilterMode === 'six_months'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                6 Aylık
+              </button>
+              <button
+                onClick={() => setPeriodFilterMode('yearly')}
+                className={`px-2.5 py-1 rounded-lg transition ${
+                  periodFilterMode === 'yearly'
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                    : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                Yıllık
+              </button>
+            </div>
+            <button
+              onClick={handleExportPeriodicCSV}
+              className="p-1.5 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              title="Tabloyu CSV Olarak İndir"
+            >
+              <Download className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-semibold">
+              <tr>
+                <th className="py-3 px-4">Dönem Periyodu</th>
+                <th className="py-3 px-4 text-right">Toplam Gelir</th>
+                <th className="py-3 px-4 text-right">Toplam Gider</th>
+                <th className="py-3 px-4 text-right">Satış Cirosu</th>
+                <th className="py-3 px-4 text-right">Elde Edilen Net Kâr</th>
+                <th className="py-3 px-4 text-center">Kâr Marjı %</th>
+                <th className="py-3 px-4 text-center">Durum</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {periodicRows.map((row) => (
+                <tr
+                  key={row.key}
+                  className={`transition ${
+                    row.isCurrent
+                      ? 'bg-emerald-50/70 dark:bg-emerald-950/40 border-l-4 border-l-emerald-500 font-semibold text-slate-900 dark:text-white'
+                      : 'hover:bg-slate-50/60 dark:hover:bg-slate-800/40'
+                  }`}
+                >
+                  <td className="py-3 px-4 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <span className={row.isCurrent ? 'font-bold text-emerald-800 dark:text-emerald-300' : 'font-medium text-slate-800 dark:text-slate-200'}>
+                        {row.label}
+                      </span>
+                      {row.isCurrent && (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500 text-white shadow-xs">
+                          Bulunulan Ay (Güncel)
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="py-3 px-4 text-right font-mono-num font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                    +{formatCurrency(row.income)}
+                  </td>
+                  <td className="py-3 px-4 text-right font-mono-num font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap">
+                    -{formatCurrency(row.expense)}
+                  </td>
+                  <td className="py-3 px-4 text-right font-mono-num font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                    {formatCurrency(row.ciro)}
+                  </td>
+                  <td
+                    className={`py-3 px-4 text-right font-mono-num font-bold whitespace-nowrap ${
+                      row.netProfit >= 0
+                        ? 'text-emerald-600 dark:text-emerald-400'
+                        : 'text-rose-600 dark:text-rose-400'
+                    }`}
+                  >
+                    {row.netProfit > 0 ? '+' : ''}{formatCurrency(row.netProfit)}
+                  </td>
+                  <td className="py-3 px-4 text-center whitespace-nowrap">
+                    <span
+                      className={`font-mono-num font-bold px-2 py-0.5 rounded text-[11px] ${
+                        row.margin >= 20
+                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                          : row.margin >= 0
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                          : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                      }`}
+                    >
+                      %{row.margin.toFixed(1)}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-center whitespace-nowrap">
+                    {row.netProfit >= 0 ? (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full">
+                        <TrendingUp className="w-3 h-3 text-emerald-600" />
+                        Kâr (Artı)
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-950/70 border border-rose-200 dark:border-rose-800 px-2 py-0.5 rounded-full">
+                        <TrendingDown className="w-3 h-3 text-rose-600" />
+                        Açık (Eksi)
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Charts Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-7 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <MonthlyFlowChart transactions={transactions} upcomingDues={upcomingDues} />
+        </div>
+        <div className="lg:col-span-5 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <CategoryBreakdownChart transactions={currentMonthTxs} type="Gider" />
+        </div>
+      </div>
+
+      {/* Bottom 2-Column: Recent Transactions & Upcoming Dues */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Recent Transactions List */}
+        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                Son Finansal Hareketler
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                En son eklenen nakit, banka ve virman kayıtları
+              </p>
+            </div>
+            <button
+              onClick={() => setActiveTab('transactions')}
+              className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
+            >
+              Tümünü Gör ({transactions.length})
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                <tr>
+                  <th className="py-2.5 px-4 font-semibold">Tarih</th>
+                  <th className="py-2.5 px-4 font-semibold">Tür</th>
+                  <th className="py-2.5 px-4 font-semibold">Firma / Cari</th>
+                  <th className="py-2.5 px-4 font-semibold">Kategori</th>
+                  <th className="py-2.5 px-4 font-semibold text-right">Tutar</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {recentTransactions.map(tx => (
+                  <tr
+                    key={tx.id}
+                    className="hover:bg-slate-50/70 dark:hover:bg-slate-800/50 transition"
+                  >
+                    <td className="py-3 px-4 text-slate-500 dark:text-slate-400">
+                      {formatDate(tx.date)}
+                    </td>
+                    <td className="py-3 px-4">
+                      <span
+                        className={`font-semibold inline-flex items-center gap-1 ${
+                          tx.type === 'Gelir'
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : tx.type === 'Gider'
+                            ? 'text-rose-600 dark:text-rose-400'
+                            : tx.type === 'Mal Alımı'
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : 'text-blue-600 dark:text-blue-400'
+                        }`}
+                      >
+                        {tx.type === 'Gelir' && <ArrowDownRight className="w-3 h-3" />}
+                        {tx.type === 'Gider' && <ArrowUpRight className="w-3 h-3" />}
+                        {tx.type === 'Mal Alımı' && <ShoppingBag className="w-3 h-3" />}
+                        {tx.type === 'Transfer' && <ArrowRightLeft className="w-3 h-3" />}
+                        {tx.type}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 font-medium text-slate-800 dark:text-slate-200 truncate max-w-[140px]">
+                      {tx.cariName || tx.desc || '-'}
+                    </td>
+                    <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
+                      {tx.category}
+                    </td>
+                    <td
+                      className={`py-3 px-4 text-right font-mono-num font-bold ${
+                        tx.type === 'Gelir'
+                          ? 'text-emerald-600 dark:text-emerald-400'
+                          : tx.type === 'Mal Alımı'
+                          ? 'text-amber-600 dark:text-amber-400'
+                          : tx.type === 'Gider'
+                          ? 'text-rose-600 dark:text-rose-400'
+                          : 'text-blue-600 dark:text-blue-400'
+                      }`}
+                    >
+                      {tx.type === 'Gelir' ? '+' : tx.type === 'Gider' ? '-' : tx.type === 'Mal Alımı' ? '-' : ''}
+                      {formatCurrency(tx.amount)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Upcoming Dues Widget */}
+        <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-4 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-amber-500" />
+                <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                  Yaklaşan Vade & Ödeme Takvimi
+                </h3>
+              </div>
+              <button
+                onClick={() => setActiveTab('upcoming')}
+                className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
+              >
+                Takvim ({upcomingDues.length})
+              </button>
+            </div>
+            <div className="divide-y divide-slate-100 dark:divide-slate-800 mt-2">
+              {activeDues.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-400">
+                  Bekleyen planlı ödeme veya tahsilat bulunmuyor.
+                </div>
+              ) : (
+                activeDues.map(due => {
+                  const remaining = getDaysRemaining(due.dueDate);
+                  return (
+                    <div
+                      key={due.id}
+                      className="py-3 flex items-center justify-between gap-2 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 rounded-lg px-2 transition"
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`w-2 h-2 rounded-full shrink-0 ${
+                              due.type === 'Gelir' ? 'bg-emerald-500' : 'bg-rose-500'
+                            }`}
+                          />
+                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
+                            {due.title}
+                          </p>
+                          {due.installmentIndex && due.totalInstallments && (
+                            <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800 px-1.5 py-0.2 rounded shrink-0">
+                              {due.installmentIndex}/{due.totalInstallments}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5 ml-4">
+                          <span>{formatDate(due.dueDate)}</span>
+                          <span>·</span>
+                          <span
+                            className={`font-medium ${
+                              remaining.status === 'overdue'
+                                ? 'text-rose-500 font-bold'
+                                : remaining.status === 'today'
+                                ? 'text-amber-500 font-bold'
+                                : 'text-slate-500'
+                            }`}
+                          >
+                            {remaining.text}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span
+                          className={`text-xs font-mono-num font-bold ${
+                            due.type === 'Gelir'
+                              ? 'text-emerald-600 dark:text-emerald-400'
+                              : 'text-rose-600 dark:text-rose-400'
+                          }`}
+                        >
+                          {due.type === 'Gelir' ? '+' : '-'}
+                          {formatCurrency(due.amount)}
+                        </span>
+                        <button
+                          onClick={() => toggleUpcomingDue(due.id)}
+                          title="Ödendi / Alındı olarak işaretle"
+                          className="p-1 rounded text-slate-400 hover:text-emerald-600 transition"
+                        >
+                          <CheckCircle2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs">
+            <span className="text-slate-400">Vadesi gelen çek ve taksitler</span>
+            <button
+              onClick={() => setActiveTab('upcoming')}
+              className="text-emerald-600 dark:text-emerald-400 font-semibold hover:underline"
+            >
+              Yeni Vade Ekle +
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
