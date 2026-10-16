@@ -131,8 +131,37 @@ export const INITIAL_VADE_RATES: VadeRateEntry[] = [
 ];
 
 export const INITIAL_PRICE_LISTS: PriceListEntry[] = [
-  { id: 'pl-1', monthKey: '2026-10', title: 'Ekim 2026 Perakende Fiyat Listesi', categoryName: 'Tüm Kategoriler', itemsCount: 42, notes: 'Güncel bayi ve perakende satış fiyatları' },
-  { id: 'pl-2', monthKey: '2026-09', title: 'Eylül 2026 Beyaz Eşya Fiyat Listesi', categoryName: 'Beyaz Eşya', itemsCount: 28, notes: 'Bosch & Altus bayi tavsiye fiyatları' },
+  {
+    id: 'pl-1',
+    monthKey: '2026-10',
+    title: 'Ekim 2026 Perakende Fiyat Listesi',
+    categoryName: 'Tüm Kategoriler',
+    itemsCount: 7,
+    notes: 'Güncel bayi ve perakende satış fiyatları',
+    items: [
+      { id: 'pli-1', code: 'BSH-KGN86', name: 'Bosch No-Frost Kombi Buzdolabı', category: 'Beyaz Eşya', subCategory: 'Buzdolabı', brand: 'Bosch', costPrice: 38500, salePrice: 52000, notes: 'A++ Enerji Sınıfı' },
+      { id: 'pli-2', code: 'ALT-AL9100', name: 'Altus 9 KG 1000 Devir Çamaşır Makinesi', category: 'Beyaz Eşya', subCategory: 'Çamaşır Makinesi', brand: 'Altus', costPrice: 14200, salePrice: 19800, notes: 'İnverter Motor' },
+      { id: 'pli-3', code: 'HVR-HLE80', name: 'Hoover 10 KG Isı Pompalı Kurutma Makinesi', category: 'Beyaz Eşya', subCategory: 'Kurutma Makinesi', brand: 'Hoover', costPrice: 19500, salePrice: 27900, notes: 'Sensörlü Kurutma' },
+      { id: 'pli-4', code: 'UGR-UDD300', name: 'Uğur 3 Çekmeceli Derin Dondurucu', category: 'Beyaz Eşya', subCategory: 'Derin Dondurucu', brand: 'Uğur', costPrice: 11500, salePrice: 16500, notes: 'Hızlı Şoklama' },
+      { id: 'pli-5', code: 'BMB-MAG160', name: 'Bambi Magnasand Therapy Yatak (160x200)', category: 'Yatak & Baza', subCategory: 'Ortopedik Yatak', brand: 'Bambi', costPrice: 16500, salePrice: 24500, notes: 'Manyetik Kum Teknolojisi' },
+      { id: 'pli-6', code: 'MDS-ASR01', name: 'Medisa Asos Mekanizmalı Koltuk Takımı', category: 'Mobilya', subCategory: 'Koltuk Takımı', brand: 'Medisa', costPrice: 42000, salePrice: 65000, notes: 'Silinebilir Nubuk Kumaş' },
+      { id: 'pli-7', code: 'KEA-MLY06', name: 'Kea Masif Açılır Yemek Masası + 6 Sandalye', category: 'Masa & Sandalye', subCategory: 'Masa + 6 Sandalye Seti', brand: 'Kea', costPrice: 18500, salePrice: 28900, notes: 'Doğal Meşe Kaplama' },
+    ],
+  },
+  {
+    id: 'pl-2',
+    monthKey: '2026-09',
+    title: 'Eylül 2026 Beyaz Eşya Fiyat Listesi',
+    categoryName: 'Beyaz Eşya',
+    itemsCount: 4,
+    notes: 'Bosch & Altus bayi tavsiye fiyatları',
+    items: [
+      { id: 'pli-201', code: 'BSH-SMS46', name: 'Bosch Serie 4 6 Programlı Bulaşık Makinesi', category: 'Beyaz Eşya', subCategory: 'Bulaşık Makinesi', brand: 'Bosch', costPrice: 16800, salePrice: 23500 },
+      { id: 'pli-202', code: 'BSH-HBF113', name: 'Bosch Ankastre Fırın & Ocak Seti', category: 'Beyaz Eşya', subCategory: 'Ankastre Set', brand: 'Bosch', costPrice: 22000, salePrice: 31000 },
+      { id: 'pli-203', code: 'ALT-AL434', name: 'Altus 4 Programlı Bulaşık Makinesi', category: 'Beyaz Eşya', subCategory: 'Bulaşık Makinesi', brand: 'Altus', costPrice: 11200, salePrice: 15800 },
+      { id: 'pli-204', code: 'ALT-AL100', name: 'Altus Tezgah Altı Mini Buzdolabı', category: 'Beyaz Eşya', subCategory: 'Buzdolabı', brand: 'Altus', costPrice: 7800, salePrice: 11200 },
+    ],
+  },
 ];
 
 export const INITIAL_CARIS: Cari[] = [

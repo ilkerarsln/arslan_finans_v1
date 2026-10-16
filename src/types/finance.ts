@@ -287,14 +287,40 @@ export interface VadeRateEntry {
   notes?: string;
 }
 
+export interface PriceListItem {
+  id: string;
+  code?: string;
+  name: string;
+  category: string;
+  subCategory?: string;
+  brand?: string;
+  costPrice: number;
+  salePrice: number;
+  notes?: string;
+}
+
 export interface PriceListEntry {
   id: string;
   monthKey: string; // YYYY-MM
   title: string;
   categoryName?: string;
   itemsCount: number;
+  items?: PriceListItem[];
   fileUrl?: string;
   notes?: string;
+  updatedAt?: string;
+}
+
+export interface UnmatchedProductResolution {
+  rawName: string;
+  action: 'match' | 'create_new';
+  matchedProductId?: string;
+  newName?: string;
+  category?: string;
+  subCategory?: string;
+  brand?: string;
+  costPrice?: number;
+  salePrice?: number;
 }
 
 export type ActiveTab =

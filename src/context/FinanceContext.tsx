@@ -170,6 +170,7 @@ interface FinanceContextType {
   stockItems: StockItem[];
   purchases: StockPurchaseRecord[];
   addStockPurchase: (purchase: Omit<StockPurchaseRecord, 'id' | 'createdAt'>) => StockPurchaseRecord;
+  updateStockPurchase: (purchase: StockPurchaseRecord) => void;
   deleteStockPurchase: (id: string) => void;
   addStockItem: (item: Omit<StockItem, 'id'>) => StockItem;
   updateStockItem: (item: StockItem) => void;
@@ -182,6 +183,7 @@ interface FinanceContextType {
   addSaleRecord: (sale: Omit<SaleRecord, 'id' | 'createdAt'>) => SaleRecord;
   updateSaleRecord: (sale: SaleRecord) => void;
   deleteSaleRecord: (id: string) => void;
+  importSalesBulk: (sales: Array<Omit<SaleRecord, 'id' | 'createdAt'>>) => void;
   // Quick prefill for sale from stock
   saleModalPrefillProduct: StockItem | null;
   setSaleModalPrefillProduct: (item: StockItem | null) => void;
@@ -200,6 +202,7 @@ interface FinanceContextType {
   setVadeRate: (monthKey: string, rate: number, notes?: string) => void;
   getVadeRateForMonth: (monthKey: string) => number;
   addPriceList: (priceList: Omit<PriceListEntry, 'id'>) => void;
+  updatePriceList: (priceList: PriceListEntry) => void;
   deletePriceList: (id: string) => void;
   // Kasa / Banka Detay Seçimi
   selectedAccountForDetail: Account | null;
@@ -257,14 +260,28 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Quick sale prefill from stock
   const [saleModalPrefillProduct, setSaleModalPrefillProduct] = useState<StockItem | null>(null);
 
-  // Firebase Auth state
-  const [user, setUser] = useState<User | null>(null);
+  // Firebase Auth & Internal Staff Auth state
+  const [user, setUser] = useState<User | any>(() => {
+    try {
+      const saved = localStorage.getItem('arslan_active_staff_session');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [isAuthLoading, setIsAuthLoading] = useState<boolean>(true);
   const [isCloudSyncing, setIsCloudSyncing] = useState<boolean>(false);
   const isInitialCloudSyncDone = useRef<boolean>(false);
 
   // User Profile & RBAC state
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
+    try {
+      const saved = localStorage.getItem('arslan_active_staff_profile');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [staffAccounts, setStaffAccounts] = useState<StaffAccount[]>(DEFAULT_STAFF_ACCOUNTS);
   const [isRoleSimulated, setIsRoleSimulated] = useState<boolean>(false);
@@ -273,17 +290,24 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const isStaffUser = Boolean(
     user?.email?.toLowerCase().endsWith('@arslanfinans.internal') ||
     userProfile?.isStaff ||
-    userProfile?.username
+    userProfile?.username ||
+    user?.isStaff
   );
 
   const dataStoreUid = user ? (isStaffUser ? COMPANY_OWNER_ID : user.uid) : '';
 
   const isPrimaryAdmin =
     user?.email?.toLowerCase() === 'ilkerarslan78@gmail.com' ||
+    user?.email?.toLowerCase() === 'arslanmobilya78@gmail.com' ||
     userProfile?.username === 'admin' ||
+    userProfile?.username === 'ilkerarslan78' ||
+    userProfile?.username === 'ilkerarslan78@gmail' ||
+    userProfile?.username === 'ilkerarslan78@gmail.com' ||
+    userProfile?.username === 'arslanmobilya78@gmail.com' ||
+    userProfile?.role === 'Admin' ||
     (user?.email?.toLowerCase().startsWith('admin@') && user?.email?.toLowerCase().endsWith('@arslanfinans.internal'));
 
-  const realRole: UserRole = isPrimaryAdmin ? 'Admin' : (userProfile?.role || 'Standart');
+  const realRole: UserRole = (isPrimaryAdmin || userProfile?.role === 'Admin') ? 'Admin' : (userProfile?.role || 'Standart');
   const userRole: UserRole = isRoleSimulated ? 'Standart' : realRole;
   const isAdmin = userRole === 'Admin';
 
@@ -511,7 +535,22 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, currentUser => {
-      setUser(currentUser);
+      if (currentUser) {
+        setUser(currentUser);
+        localStorage.removeItem('arslan_active_staff_session');
+        localStorage.removeItem('arslan_active_staff_profile');
+      } else {
+        try {
+          const savedSession = localStorage.getItem('arslan_active_staff_session');
+          if (savedSession) {
+            setUser(JSON.parse(savedSession));
+          } else {
+            setUser(null);
+          }
+        } catch {
+          setUser(null);
+        }
+      }
       setIsAuthLoading(false);
     });
     return () => unsubscribeAuth();
@@ -542,6 +581,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
     const userId = user.uid;
     const targetFinanceId = dataStoreUid;
+
+    // Per Firebase skill guidelines: Only attach onSnapshot listeners if auth is ready and user is authenticated in Firebase Auth
+    if (!auth.currentUser) {
+      setIsCloudSyncing(false);
+      isInitialCloudSyncDone.current = true;
+      return;
+    }
+
     setIsCloudSyncing(true);
 
     const unsubProfile = subscribeToUserProfile(userId, async cloudProfile => {
@@ -634,6 +681,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setIsCloudSyncing(true);
       const res = await signInWithPopup(auth, googleProvider);
       if (res.user) {
+        localStorage.removeItem('arslan_active_staff_session');
+        localStorage.removeItem('arslan_active_staff_profile');
         showToast(`Bulut senkronizasyonu aktif! Hoş geldiniz, ${res.user.displayName || res.user.email}`, 'success');
       }
     } catch (error: any) {
@@ -646,11 +695,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const logout = async () => {
     try {
+      localStorage.removeItem('arslan_active_staff_session');
+      localStorage.removeItem('arslan_active_staff_profile');
       await firebaseSignOut(auth);
+      setUser(null);
       setUserProfile(null);
       setAllUsers([]);
       setIsRoleSimulated(false);
-      showToast('Oturum kapatıldı. Verileriniz Firebase bulut hesabınızda güvende.', 'info');
+      showToast('Oturum kapatıldı.', 'info');
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -711,7 +763,26 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const loginWithUsername = async (username: string, password: string): Promise<boolean> => {
     try {
       setIsCloudSyncing(true);
-      const { staff, role } = await loginStaffWithUsername(username, password);
+      const { staff, role, profile, authUid } = await loginStaffWithUsername(username, password);
+
+      const staffUser: any = {
+        uid: authUid,
+        email: profile.email,
+        displayName: profile.displayName,
+        photoURL: null,
+        isStaff: true,
+        username: staff.username,
+        role: role,
+      };
+
+      setUser(staffUser);
+      setUserProfile(profile);
+
+      try {
+        localStorage.setItem('arslan_active_staff_session', JSON.stringify(staffUser));
+        localStorage.setItem('arslan_active_staff_profile', JSON.stringify(profile));
+      } catch {}
+
       showToast(`Giriş başarılı! Hoş geldiniz, ${staff.displayName} (${role})`, 'success');
       return true;
     } catch (error: any) {
@@ -1678,6 +1749,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return newPurchase;
   };
 
+  const updateStockPurchase = (updated: StockPurchaseRecord) => {
+    setPurchases(prev => prev.map(p => (p.id === updated.id ? updated : p)));
+    showToast(`"${updated.documentNo}" nolu mal alımı güncellendi.`, 'success');
+  };
+
   const deleteStockPurchase = (id: string) => {
     if (!isAdmin) {
       showToast('Alım kaydı silme yetkisi yalnızca Yöneticilere (Admin) aittir.', 'error');
@@ -1868,6 +1944,28 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  const importSalesBulk = (newSalesList: Array<Omit<SaleRecord, 'id' | 'createdAt'>>) => {
+    const formatted: SaleRecord[] = newSalesList.map((s, idx) => ({
+      ...s,
+      id: `sale-import-${Date.now()}-${idx}`,
+      createdAt: new Date().toISOString(),
+    }));
+
+    formatted.forEach(s => {
+      if (s.productId) {
+        adjustStockQuantity(s.productId, -s.quantity);
+      }
+      if (s.saleType === 'Senetli Satış' && s.customerId) {
+        adjustCariBalance(s.customerId, s.totalSaleAmount);
+      } else if (s.accountId) {
+        adjustAccountBalance(s.accountId, s.totalSaleAmount);
+      }
+    });
+
+    setSales(prev => [...formatted, ...prev]);
+    showToast(`${formatted.length} adet satış kaydı başarıyla aktarıldı!`, 'success');
+  };
+
   // Definitions
   const addProductCategory = (cat: Omit<ProductCategory, 'id'>) => {
     const newCat: ProductCategory = {
@@ -1939,6 +2037,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
     setPriceLists(prev => [newEntry, ...prev]);
     showToast(`'${newEntry.title}' fiyat listesi eklendi`, 'success');
+  };
+
+  const updatePriceList = (updated: PriceListEntry) => {
+    setPriceLists(prev => prev.map(p => (p.id === updated.id ? updated : p)));
+    showToast(`'${updated.title}' fiyat listesi güncellendi`, 'success');
   };
 
   const deletePriceList = (id: string) => {
@@ -2021,6 +2124,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         stockItems,
         purchases,
         addStockPurchase,
+        updateStockPurchase,
         deleteStockPurchase,
         addStockItem,
         updateStockItem,
@@ -2032,6 +2136,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addSaleRecord,
         updateSaleRecord,
         deleteSaleRecord,
+        importSalesBulk,
         saleModalPrefillProduct,
         setSaleModalPrefillProduct,
         productCategories,
@@ -2048,6 +2153,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setVadeRate,
         getVadeRateForMonth,
         addPriceList,
+        updatePriceList,
         deletePriceList,
         selectedAccountForDetail,
         setSelectedAccountForDetail,

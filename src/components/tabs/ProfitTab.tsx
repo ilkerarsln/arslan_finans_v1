@@ -1,10 +1,11 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useFinance } from '../../context/FinanceContext';
 import {
   TrendingUp,
   Plus,
   Search,
   Download,
+  Upload,
   Calendar,
   User,
   ShoppingBag,
@@ -17,9 +18,14 @@ import {
   ArrowRight,
   X,
   Check,
+  Edit2,
+  FileSpreadsheet,
+  AlertTriangle,
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { SaleRecord, SaleType } from '../../types/finance';
+import { ProductMatchModal, UnmatchedResolution } from '../modals/ProductMatchModal';
+import * as XLSX from 'xlsx';
 
 export const ProfitTab: React.FC = () => {
   const {
@@ -29,13 +35,16 @@ export const ProfitTab: React.FC = () => {
     accounts,
     productCategories,
     addSaleRecord,
+    updateSaleRecord,
     deleteSaleRecord,
+    importSalesBulk,
     getVadeRateForMonth,
     setActiveTab,
     isAdmin,
     userProfile,
     saleModalPrefillProduct,
     setSaleModalPrefillProduct,
+    showToast,
   } = useFinance();
 
   const now = new Date();
@@ -49,11 +58,15 @@ export const ProfitTab: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState<string>('');
 
   const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
+  const [editingSaleId, setEditingSaleId] = useState<string | null>(null);
   const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
   const [documentNo, setDocumentNo] = useState(`FAT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
   const [customerName, setCustomerName] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [selectedProductId, setSelectedProductId] = useState('');
+  const [customProductName, setCustomProductName] = useState('');
+  const [customCategory, setCustomCategory] = useState('Beyaz Eşya');
+  const [customBrand, setCustomBrand] = useState('Bosch');
   const [quantity, setQuantity] = useState<number>(1);
   const [costPrice, setCostPrice] = useState<number>(0);
   const [salePrice, setSalePrice] = useState<number>(0);
@@ -64,6 +77,12 @@ export const ProfitTab: React.FC = () => {
   );
   const [selectedAccountId, setSelectedAccountId] = useState(accounts[0]?.id || 'acc-kasa');
   const [notes, setNotes] = useState('');
+
+  // Excel and product matching states
+  const excelSaleInputRef = useRef<HTMLInputElement>(null);
+  const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
+  const [unmatchedNamesForSale, setUnmatchedNamesForSale] = useState<string[]>([]);
+  const [pendingParsedSales, setPendingParsedSales] = useState<any[]>([]);
 
   // Handle prefill from StockTab if user clicked "Satış Yap" on a stock item
   useEffect(() => {
@@ -129,58 +148,304 @@ export const ProfitTab: React.FC = () => {
   const totalNetProfit = filteredSales.reduce((sum, s) => sum + s.netProfit, 0);
   const averageMargin = totalCiro > 0 ? (totalNetProfit / totalCiro) * 100 : 0;
 
-  const handleSaveSale = (e: React.FormEvent) => {
-    e.preventDefault();
-    const prod = stockItems.find(p => p.id === selectedProductId);
-    if (!prod && !selectedProductId) {
-      alert('Lütfen satış yapılan ürünü seçin.');
-      return;
-    }
-
-    const prodName = prod ? prod.name : 'Ürün Satışı';
-    const prodCat = prod ? prod.category : 'Mobilya & Beyaz Eşya';
-    const prodSub = prod ? prod.subCategory : undefined;
-    const prodBrand = prod ? prod.brand : undefined;
-    const prodSupplierId = prod ? prod.supplierId : undefined;
-    const prodSupplierName = prod ? prod.supplierName : undefined;
-
-    addSaleRecord({
-      date: saleDate,
-      documentNo: documentNo.trim() || undefined,
-      customerId: selectedCustomerId || undefined,
-      customerName: customerName.trim() || 'Perakende Müşteri',
-      productId: prod?.id,
-      productName: prodName,
-      category: prodCat,
-      subCategory: prodSub,
-      brand: prodBrand,
-      supplierId: prodSupplierId,
-      supplierName: prodSupplierName,
-      quantity: Number(quantity) || 1,
-      costPrice: Number(costPrice) || 0,
-      totalCost: modalTotalCost,
-      saleType,
-      installmentsCount: saleType === 'Senetli Satış' ? Number(installmentsCount) : undefined,
-      vadeRateMonthly: saleType === 'Senetli Satış' ? currentVadeRateMonthly : undefined,
-      vadeFarkiAmount: modalVadeFarki,
-      effectiveCost: modalEffectiveCost,
-      salePrice: Number(salePrice) || 0,
-      totalSaleAmount: modalTotalSale,
-      netProfit: modalNetProfit,
-      profitMargin: modalProfitMargin,
-      salesPerson: salesPerson.trim() || 'Personel',
-      accountId: selectedAccountId,
-      notes: notes.trim() || undefined,
-    });
-
-    setIsSaleModalOpen(false);
+  const handleOpenNewSale = () => {
+    setEditingSaleId(null);
+    setSaleDate(new Date().toISOString().split('T')[0]);
+    setDocumentNo(`FAT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
     setCustomerName('');
     setSelectedCustomerId('');
     setSelectedProductId('');
+    setCustomProductName('');
+    setCustomCategory('Beyaz Eşya');
+    setCustomBrand('Bosch');
     setQuantity(1);
     setCostPrice(0);
     setSalePrice(0);
+    setSaleType('Peşin');
+    setInstallmentsCount(12);
+    setSalesPerson(userProfile?.displayName || userProfile?.username || 'İlker Arslan');
+    setSelectedAccountId(accounts[0]?.id || 'acc-kasa');
     setNotes('');
+    setIsSaleModalOpen(true);
+  };
+
+  const handleOpenEditSale = (sale: SaleRecord) => {
+    setEditingSaleId(sale.id);
+    setSaleDate(sale.date);
+    setDocumentNo(sale.documentNo || '');
+    setCustomerName(sale.customerName);
+    setSelectedCustomerId(sale.customerId || '');
+    setSelectedProductId(sale.productId || '');
+    setCustomProductName(sale.productName);
+    setCustomCategory(sale.category);
+    setCustomBrand(sale.brand || 'Bosch');
+    setQuantity(sale.quantity);
+    setCostPrice(sale.costPrice);
+    setSalePrice(sale.salePrice);
+    setSaleType(sale.saleType);
+    setInstallmentsCount(sale.installmentsCount || 12);
+    setSalesPerson(sale.salesPerson);
+    setSelectedAccountId(sale.accountId || accounts[0]?.id || 'acc-kasa');
+    setNotes(sale.notes || '');
+    setIsSaleModalOpen(true);
+  };
+
+  const handleSaveSale = (e: React.FormEvent) => {
+    e.preventDefault();
+    const prod = stockItems.find(p => p.id === selectedProductId);
+    const finalProdName = prod ? prod.name : customProductName.trim() || 'Ürün Satışı';
+    const finalProdCat = prod ? prod.category : customCategory;
+    const finalProdSub = prod ? prod.subCategory : undefined;
+    const finalProdBrand = prod ? prod.brand : customBrand;
+    const prodSupplierId = prod ? prod.supplierId : undefined;
+    const prodSupplierName = prod ? prod.supplierName : undefined;
+
+    if (!finalProdName) {
+      showToast('Lütfen satışı yapılan ürünün adını belirleyin.', 'error');
+      return;
+    }
+
+    if (editingSaleId) {
+      const existing = sales.find(s => s.id === editingSaleId);
+      if (existing) {
+        updateSaleRecord({
+          ...existing,
+          date: saleDate,
+          documentNo: documentNo.trim() || undefined,
+          customerId: selectedCustomerId || undefined,
+          customerName: customerName.trim() || 'Perakende Müşteri',
+          productId: prod?.id || existing.productId,
+          productName: finalProdName,
+          category: finalProdCat,
+          subCategory: finalProdSub,
+          brand: finalProdBrand,
+          supplierId: prodSupplierId || existing.supplierId,
+          supplierName: prodSupplierName || existing.supplierName,
+          quantity: Number(quantity) || 1,
+          costPrice: Number(costPrice) || 0,
+          totalCost: modalTotalCost,
+          saleType,
+          installmentsCount: saleType === 'Senetli Satış' ? Number(installmentsCount) : undefined,
+          vadeRateMonthly: saleType === 'Senetli Satış' ? currentVadeRateMonthly : undefined,
+          vadeFarkiAmount: modalVadeFarki,
+          effectiveCost: modalEffectiveCost,
+          salePrice: Number(salePrice) || 0,
+          totalSaleAmount: modalTotalSale,
+          netProfit: modalNetProfit,
+          profitMargin: modalProfitMargin,
+          salesPerson: salesPerson.trim() || 'Personel',
+          accountId: selectedAccountId,
+          notes: notes.trim() || undefined,
+        });
+        showToast('Satış kaydı başarıyla güncellendi.', 'success');
+      }
+    } else {
+      addSaleRecord({
+        date: saleDate,
+        documentNo: documentNo.trim() || undefined,
+        customerId: selectedCustomerId || undefined,
+        customerName: customerName.trim() || 'Perakende Müşteri',
+        productId: prod?.id,
+        productName: finalProdName,
+        category: finalProdCat,
+        subCategory: finalProdSub,
+        brand: finalProdBrand,
+        supplierId: prodSupplierId,
+        supplierName: prodSupplierName,
+        quantity: Number(quantity) || 1,
+        costPrice: Number(costPrice) || 0,
+        totalCost: modalTotalCost,
+        saleType,
+        installmentsCount: saleType === 'Senetli Satış' ? Number(installmentsCount) : undefined,
+        vadeRateMonthly: saleType === 'Senetli Satış' ? currentVadeRateMonthly : undefined,
+        vadeFarkiAmount: modalVadeFarki,
+        effectiveCost: modalEffectiveCost,
+        salePrice: Number(salePrice) || 0,
+        totalSaleAmount: modalTotalSale,
+        netProfit: modalNetProfit,
+        profitMargin: modalProfitMargin,
+        salesPerson: salesPerson.trim() || 'Personel',
+        accountId: selectedAccountId,
+        notes: notes.trim() || undefined,
+      });
+    }
+
+    setIsSaleModalOpen(false);
+    setEditingSaleId(null);
+  };
+
+  const handleExcelSaleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = evt => {
+      try {
+        const data = evt.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet) as any[];
+        if (!rows || rows.length === 0) {
+          showToast('Excel dosyasında okunabilecek kayıt bulunamadı.', 'error');
+          return;
+        }
+
+        const unmatchedNamesSet = new Set<string>();
+        const parsedRows = rows.map((r, idx) => {
+          const rawProdName = String(
+            r['Ürün Adı'] || r['Urun Adi'] || r['Ürün'] || r['Name'] || r['Model'] || ''
+          ).trim();
+          const matchInStock = stockItems.find(
+            s => s.name.toLowerCase() === rawProdName.toLowerCase() ||
+                 (s.code && s.code.toLowerCase() === rawProdName.toLowerCase())
+          );
+
+          if (!matchInStock && rawProdName) {
+            unmatchedNamesSet.add(rawProdName);
+          }
+
+          let rawSaleType: SaleType = 'Peşin';
+          const typeStr = String(r['Satış Şekli'] || r['Satis Sekli'] || r['Ödeme Türü'] || r['Tür'] || '').toLowerCase();
+          if (typeStr.includes('senet') || typeStr.includes('vade')) {
+            rawSaleType = 'Senetli Satış';
+          } else if (typeStr.includes('kart') || typeStr.includes('pos') || typeStr.includes('kredi')) {
+            rawSaleType = 'Kredi Kartı';
+          }
+
+          const rawDate = r['Tarih'] ? String(r['Tarih']).trim() : new Date().toISOString().split('T')[0];
+          const rawQty = Number(r['Adet'] || r['Miktar'] || 1) || 1;
+          const rawCost = Number(r['Alış Maliyeti'] || r['Maliyet'] || r['Alis Fiyati'] || matchInStock?.purchasePrice || 0);
+          const rawSalePrice = Number(r['Satış Fiyatı'] || r['Satis Fiyati'] || r['Fiyat'] || matchInStock?.salePrice || 0);
+          const rawInstallments = Number(r['Taksit Sayısı'] || r['Taksit'] || 12) || 12;
+          const rawSalesPerson = String(r['Satış Personeli'] || r['Personel'] || userProfile?.displayName || 'İlker Arslan').trim();
+          const rawDoc = String(r['Belge No'] || r['Fatura No'] || `FAT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`).trim();
+          const rawCustomer = String(r['Müşteri Adı'] || r['Musteri'] || r['Cari'] || 'Perakende Müşteri').trim();
+          const rawNotes = r['Notlar'] ? String(r['Notlar']).trim() : undefined;
+
+          return {
+            id: `sale-parsed-${idx}`,
+            rawProdName,
+            matchInStock,
+            date: rawDate,
+            customerName: rawCustomer,
+            documentNo: rawDoc,
+            quantity: rawQty,
+            costPrice: rawCost,
+            salePrice: rawSalePrice,
+            saleType: rawSaleType,
+            installmentsCount: rawInstallments,
+            salesPerson: rawSalesPerson,
+            notes: rawNotes,
+          };
+        });
+
+        if (unmatchedNamesSet.size > 0) {
+          setUnmatchedNamesForSale(Array.from(unmatchedNamesSet));
+          setPendingParsedSales(parsedRows);
+          setIsMatchModalOpen(true);
+        } else {
+          const newSalesToImport: Array<Omit<SaleRecord, 'id' | 'createdAt'>> = parsedRows.map(row => {
+            const saleMonthKey = row.date.substring(0, 7);
+            const rate = getVadeRateForMonth(saleMonthKey);
+            const totalCost = +(row.quantity * row.costPrice).toFixed(2);
+            const totalSale = +(row.quantity * row.salePrice).toFixed(2);
+            const vadeFarki = row.saleType === 'Senetli Satış'
+              ? +(totalCost * ((rate * row.installmentsCount) / 100)).toFixed(2)
+              : 0;
+            const effectiveCost = +(totalCost + vadeFarki).toFixed(2);
+            const netProfit = +(totalSale - effectiveCost).toFixed(2);
+            const profitMargin = totalSale > 0 ? +((netProfit / totalSale) * 100).toFixed(1) : 0;
+
+            return {
+              date: row.date,
+              documentNo: row.documentNo,
+              customerName: row.customerName,
+              productId: row.matchInStock?.id,
+              productName: row.matchInStock?.name || row.rawProdName,
+              category: row.matchInStock?.category || 'Beyaz Eşya',
+              subCategory: row.matchInStock?.subCategory,
+              brand: row.matchInStock?.brand,
+              quantity: row.quantity,
+              costPrice: row.costPrice,
+              totalCost,
+              saleType: row.saleType,
+              installmentsCount: row.saleType === 'Senetli Satış' ? row.installmentsCount : undefined,
+              vadeRateMonthly: row.saleType === 'Senetli Satış' ? rate : undefined,
+              vadeFarkiAmount: vadeFarki,
+              effectiveCost,
+              salePrice: row.salePrice,
+              totalSaleAmount: totalSale,
+              netProfit,
+              profitMargin,
+              salesPerson: row.salesPerson,
+              accountId: accounts[0]?.id || 'acc-kasa',
+              notes: row.notes,
+            };
+          });
+
+          importSalesBulk(newSalesToImport);
+        }
+      } catch (err: any) {
+        showToast('Excel okuma hatası: ' + err.message, 'error');
+      } finally {
+        if (excelSaleInputRef.current) excelSaleInputRef.current.value = '';
+      }
+    };
+    reader.readAsBinaryString(file);
+  };
+
+  const handleProductMatchComplete = (resolutions: Record<string, UnmatchedResolution>) => {
+    const newSalesToImport: Array<Omit<SaleRecord, 'id' | 'createdAt'>> = pendingParsedSales.map(row => {
+      const res = resolutions[row.rawProdName];
+      const matchInStock = row.matchInStock || stockItems.find(s => s.id === res?.matchedProductId);
+
+      const finalName = res ? res.productName : (matchInStock ? matchInStock.name : row.rawProdName);
+      const finalCat = res ? res.category : (matchInStock ? matchInStock.category : 'Beyaz Eşya');
+      const finalSub = res?.subCategory || matchInStock?.subCategory;
+      const finalBrand = res?.brand || matchInStock?.brand || 'Genel';
+      const finalCost = (res && res.costPrice > 0) ? res.costPrice : (row.costPrice > 0 ? row.costPrice : (matchInStock?.purchasePrice || 0));
+      const finalSalePrice = (res && res.salePrice > 0) ? res.salePrice : (row.salePrice > 0 ? row.salePrice : (matchInStock?.salePrice || Math.round(finalCost * 1.35)));
+
+      const saleMonthKey = row.date.substring(0, 7);
+      const rate = getVadeRateForMonth(saleMonthKey);
+      const totalCost = +(row.quantity * finalCost).toFixed(2);
+      const totalSale = +(row.quantity * finalSalePrice).toFixed(2);
+      const vadeFarki = row.saleType === 'Senetli Satış'
+        ? +(totalCost * ((rate * row.installmentsCount) / 100)).toFixed(2)
+        : 0;
+      const effectiveCost = +(totalCost + vadeFarki).toFixed(2);
+      const netProfit = +(totalSale - effectiveCost).toFixed(2);
+      const profitMargin = totalSale > 0 ? +((netProfit / totalSale) * 100).toFixed(1) : 0;
+
+      return {
+        date: row.date,
+        documentNo: row.documentNo,
+        customerName: row.customerName,
+        productId: matchInStock?.id || res?.matchedProductId,
+        productName: finalName,
+        category: finalCat,
+        subCategory: finalSub,
+        brand: finalBrand,
+        quantity: row.quantity,
+        costPrice: finalCost,
+        totalCost,
+        saleType: row.saleType,
+        installmentsCount: row.saleType === 'Senetli Satış' ? row.installmentsCount : undefined,
+        vadeRateMonthly: row.saleType === 'Senetli Satış' ? rate : undefined,
+        vadeFarkiAmount: vadeFarki,
+        effectiveCost,
+        salePrice: finalSalePrice,
+        totalSaleAmount: totalSale,
+        netProfit,
+        profitMargin,
+        salesPerson: row.salesPerson,
+        accountId: accounts[0]?.id || 'acc-kasa',
+        notes: row.notes,
+      };
+    });
+
+    importSalesBulk(newSalesToImport);
+    setPendingParsedSales([]);
+    setUnmatchedNamesForSale([]);
   };
 
   const handleExportCSV = () => {

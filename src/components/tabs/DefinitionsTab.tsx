@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useFinance } from '../../context/FinanceContext';
 import {
   SlidersHorizontal,
@@ -12,8 +12,16 @@ import {
   Trash2,
   TrendingUp,
   X,
+  Upload,
+  Download,
+  Eye,
+  Edit2,
+  RefreshCw,
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
+import { PriceListDetailModal } from '../modals/PriceListDetailModal';
+import { PriceListEntry, PriceListItem } from '../../types/finance';
+import * as XLSX from 'xlsx';
 
 export const DefinitionsTab: React.FC = () => {
   const {
@@ -64,6 +72,8 @@ export const DefinitionsTab: React.FC = () => {
   const [priceListCategory, setPriceListCategory] = useState('Tüm Kategoriler');
   const [priceListItemsCount, setPriceListItemsCount] = useState<number>(45);
   const [priceListNotes, setPriceListNotes] = useState('');
+  const [selectedPriceListForDetail, setSelectedPriceListForDetail] = useState<PriceListEntry | null>(null);
+  const excelPriceListInputRef = useRef<HTMLInputElement>(null);
 
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
   const [supplierName, setSupplierName] = useState('');
@@ -129,6 +139,58 @@ export const DefinitionsTab: React.FC = () => {
     });
     setPriceListTitle('');
     setPriceListNotes('');
+  };
+
+  const handleUploadNewPriceListExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = evt => {
+      try {
+        const data = evt.target?.result;
+        const workbook = XLSX.read(data, { type: 'binary' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet) as any[];
+        if (!rows || rows.length === 0) {
+          alert('Excel dosyasında okunabilecek kayıt bulunamadı.');
+          return;
+        }
+        const items: PriceListItem[] = [];
+        rows.forEach((r, idx) => {
+          const name = r['Ürün Adı'] || r['Urun Adi'] || r['Ürün'] || r['Name'] || r['Açıklama'];
+          if (name) {
+            items.push({
+              id: `pli-imp-${Date.now()}-${idx}`,
+              code: r['Ürün Kodu'] ? String(r['Ürün Kodu']).trim() : undefined,
+              name: String(name).trim(),
+              category: r['Kategori'] ? String(r['Kategori']).trim() : 'Beyaz Eşya',
+              subCategory: r['Alt Kategori'] ? String(r['Alt Kategori']).trim() : undefined,
+              brand: r['Marka'] ? String(r['Marka']).trim() : 'Genel',
+              costPrice: Number(r['Alış Fiyatı (TL)'] || r['Alış Fiyatı'] || r['Maliyet'] || r['Cost'] || 0),
+              salePrice: Number(r['Satış Fiyatı (TL)'] || r['Satış Fiyatı'] || r['Fiyat'] || r['Price'] || 0),
+              notes: r['Notlar'] ? String(r['Notlar']).trim() : undefined,
+            });
+          }
+        });
+        const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
+        const newEntry: PriceListEntry = {
+          id: `pl-${Date.now()}`,
+          monthKey: currentMonthKey,
+          title: fileNameWithoutExt || `${currentMonthKey} Excel Fiyat Listesi`,
+          categoryName: 'Tüm Kategoriler',
+          itemsCount: items.length,
+          items,
+          notes: `Excel'den içe aktarıldı (${items.length} kalem)`,
+        };
+        addPriceList(newEntry);
+        setSelectedPriceListForDetail(newEntry);
+      } catch (err: any) {
+        alert('Excel okuma hatası: ' + err.message);
+      } finally {
+        if (excelPriceListInputRef.current) excelPriceListInputRef.current.value = '';
+      }
+    };
+    reader.readAsBinaryString(file);
   };
 
   const handleAddSupplier = (e: React.FormEvent) => {
@@ -831,11 +893,35 @@ export const DefinitionsTab: React.FC = () => {
           </div>
 
           <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-                Tanımlı Aylık Fiyat Listeleri ({priceLists.length})
-              </h3>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                  Tanımlı Aylık Fiyat Listeleri ({priceLists.length})
+                </h3>
+                <p className="text-[11px] text-slate-400">
+                  Excel ile toplu fiyat listesi yükleyebilir veya listedeki ürünleri kalem kalem inceleyip düzenleyebilirsiniz.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  ref={excelPriceListInputRef}
+                  onChange={handleUploadNewPriceListExcel}
+                  accept=".xlsx, .xls, .csv"
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => excelPriceListInputRef.current?.click()}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm shrink-0"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Excel ile Fiyat Listesi Yükle</span>
+                </button>
+              </div>
             </div>
+
             <div className="space-y-3">
               {priceLists.map(pl => (
                 <div
@@ -854,7 +940,7 @@ export const DefinitionsTab: React.FC = () => {
                     <div className="flex items-center gap-2 text-xs text-slate-500">
                       <span>Kategori: <strong>{pl.categoryName || 'Tüm Kategoriler'}</strong></span>
                       <span>·</span>
-                      <span>{pl.itemsCount} ürün kalemi</span>
+                      <span>{pl.items?.length || pl.itemsCount} ürün kalemi</span>
                       {pl.notes && (
                         <>
                           <span>·</span>
@@ -863,15 +949,26 @@ export const DefinitionsTab: React.FC = () => {
                       )}
                     </div>
                   </div>
-                  {isAdmin && (
+
+                  <div className="flex items-center gap-2 self-end sm:self-center">
                     <button
-                      onClick={() => deletePriceList(pl.id)}
-                      className="p-1.5 text-slate-400 hover:text-rose-600 rounded transition self-end sm:self-center"
-                      title="Listeyi Kaldır"
+                      type="button"
+                      onClick={() => setSelectedPriceListForDetail(pl)}
+                      className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/70 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Eye className="w-3.5 h-3.5" />
+                      <span>Listeyi İncele & Düzenle</span>
                     </button>
-                  )}
+                    {isAdmin && (
+                      <button
+                        onClick={() => deletePriceList(pl.id)}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 rounded transition"
+                        title="Listeyi Kaldır"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -978,6 +1075,13 @@ export const DefinitionsTab: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Price List Detail & Excel Editing Modal */}
+      <PriceListDetailModal
+        isOpen={Boolean(selectedPriceListForDetail)}
+        onClose={() => setSelectedPriceListForDetail(null)}
+        priceList={selectedPriceListForDetail}
+      />
     </div>
   );
 };
