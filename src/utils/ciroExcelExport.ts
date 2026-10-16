@@ -5,6 +5,10 @@ import { CIRO_MONTHS } from '../data/initialCiroMatrix';
 export function exportCiroMatrixToExcel(data: ComputedMatrixResult): void {
   const workbook = XLSX.utils.book_new();
 
+  const comparisonHeader = data.isFoundationYear
+    ? 'Geçmiş Yıl (Kuruluş Yılı)'
+    : `${data.comparisonYear} Yılı Toplamı (TL)`;
+
   // Create Header Row
   const headerRow: string[] = [
     'Grup',
@@ -13,7 +17,7 @@ export function exportCiroMatrixToExcel(data: ComputedMatrixResult): void {
     ...CIRO_MONTHS.map(m => m.name),
     'Genel Toplam (TL)',
     'Aylık Ortalama (TL)',
-    `${data.comparisonYear} Yılı Toplamı (TL)`,
+    comparisonHeader,
     'Büyüme (TL)',
     'Büyüme Oranı (%)',
     'Tahmini Brüt Kâr (TL)',
@@ -41,9 +45,9 @@ export function exportCiroMatrixToExcel(data: ComputedMatrixResult): void {
       ...CIRO_MONTHS.map(m => Math.round(months[m.no] || 0)),
       Math.round(total),
       Math.round(avg),
-      Math.round(pastTotal),
-      Math.round(growthTl),
-      `${growthRate >= 0 ? '+' : ''}${growthRate.toFixed(1)}%`,
+      data.isFoundationYear ? '-' : Math.round(pastTotal),
+      data.isFoundationYear ? '-' : Math.round(growthTl),
+      data.isFoundationYear ? 'Kuruluş Yılı' : `${growthRate >= 0 ? '+' : ''}${growthRate.toFixed(1)}%`,
       Math.round(profit),
     ]);
   };
@@ -122,36 +126,36 @@ export function exportCiroMatrixToExcel(data: ComputedMatrixResult): void {
   // Blank line
   rows.push([]);
 
-  // 3. Genel Firma Toplamı
-  addDataRow(
+  // 3. GENEL FİRMA TOPLAMI
+  rows.push([
     'GENEL',
     'GENEL FİRMA TOPLAMI',
-    data.grandTotal.weightedMargin,
-    data.grandTotal.months,
-    data.grandTotal.yearTotal,
-    data.grandTotal.monthlyAverage,
-    data.grandTotal.pastYearTotal,
-    data.grandTotal.growthAmount,
-    data.grandTotal.growthRate,
-    data.grandTotal.totalEstimatedProfit
-  );
+    `${data.grandTotal.weightedMargin.toFixed(1)}%`,
+    ...CIRO_MONTHS.map(m => Math.round(data.grandTotal.months[m.no] || 0)),
+    Math.round(data.grandTotal.yearTotal),
+    Math.round(data.grandTotal.monthlyAverage),
+    data.isFoundationYear ? '-' : Math.round(data.grandTotal.pastYearTotal),
+    data.isFoundationYear ? '-' : Math.round(data.grandTotal.growthAmount),
+    data.isFoundationYear ? 'Kuruluş Yılı (İlk Yıl)' : `${data.grandTotal.growthRate >= 0 ? '+' : ''}${data.grandTotal.growthRate.toFixed(1)}%`,
+    Math.round(data.grandTotal.totalEstimatedProfit),
+  ]);
 
   const worksheet = XLSX.utils.aoa_to_sheet(rows);
 
   // Set column widths
   worksheet['!cols'] = [
-    { wch: 14 },
-    { wch: 22 },
-    { wch: 20 },
-    ...CIRO_MONTHS.map(() => ({ wch: 13 })),
-    { wch: 16 },
-    { wch: 16 },
-    { wch: 18 },
-    { wch: 14 },
-    { wch: 14 },
-    { wch: 18 },
+    { wch: 14 }, // Grup
+    { wch: 26 }, // Kategori / Marka
+    { wch: 18 }, // Ortalama Kârlılık (%)
+    ...CIRO_MONTHS.map(() => ({ wch: 13 })), // 12 Aylar
+    { wch: 18 }, // Genel Toplam (TL)
+    { wch: 16 }, // Aylık Ortalama (TL)
+    { wch: 20 }, // Önceki Yıl Toplamı (TL)
+    { wch: 16 }, // Büyüme (TL)
+    { wch: 16 }, // Büyüme Oranı (%)
+    { wch: 20 }, // Tahmini Brüt Kâr (TL)
   ];
 
   XLSX.utils.book_append_sheet(workbook, worksheet, `Ciro Matrisi ${data.year}`);
-  XLSX.writeFile(workbook, `Arslan_Mobilya_Ciro_Analiz_${data.year}.xlsx`);
+  XLSX.writeFile(workbook, `Arslan_Mobilya_Ciro_Matrisi_${data.year}.xlsx`);
 }

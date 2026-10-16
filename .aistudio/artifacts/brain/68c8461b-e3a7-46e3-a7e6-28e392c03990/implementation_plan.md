@@ -1,105 +1,119 @@
-# Ciro ve Finansal Analiz Matrisi Geliştirme ve Optimizasyon Planı
+# Ciro ve Finansal Analiz Modülü: Çoklu Yıl İlişkileri, Kuruluş Yılı (2024) Mantığı ve Toplam Doğrulama Planı
 
-Bu plan, **Arslan Mobilya ERP** sistemindeki **Raporlar** sekmesinde yer alan **Ciro ve Finansal Analiz modülünü** kullanıcının belirlediği tam sütun seti, dinamik formül motoru, alt toplam payları, Excel gibi doğrudan hücre düzenleme ve sayfa akışına uyumlu ferah tablo tasarımıyla tamamen güncellemek üzere hazırlanmıştır.
+Bu plan; **Arslan Mobilya ERP** sistemindeki **Ciro ve Finansal Analiz** modülünde, şirketin kuruluş yılı olan **2024** yılına ait büyüme oranlarının sıfırlanmasını/hatasız gösterilmesini, 2025 ve sonraki yıllarda bir önceki yılın gerçek verileriyle dinamik eşleştirilmesini ve alt/genel toplamların matematiksel tutarlılığını sağlamayı hedefler.
 
 ---
 
-## Kullanıcı Tercihleri ve Kararlar (Faz 1 Özeti)
+## Kullanıcı Tercihleri ve Kritik Kararlar
 
 > [!IMPORTANT]
-> **Doğrulanan Kullanıcı Tercihleri:**
-> 1. **Aylık Ortalama Hesaplama Kuralı:** Genel toplam, sabit 12 aya değil; **yalnızca cirosu girilen aktif ay sayısına** bölünerek hesaplanacaktır.
-> 2. **Hücre Düzenleme Deneyimi:** Excel spreadsheet mantığında olduğu gibi, matris üzerindeki herhangi bir ay hücresine veya kârlılık oranına **tıklanıp anında inline olarak yazılacak**, değer girildiği anda tüm alt toplamlar, büyüme ve brüt kârlar anında güncellenecektir.
-> 3. **Kaydırma Çubuğu ve Yükseklik:** Tablo içerisindeki dar dikey scrollbar (`max-h-[680px]` vb.) tamamen kaldırılacak, tablo `auto-height` ile sayfa genel akışına bırakılacak; satır ve sütun boşlukları görsel ferahlık için optimize edilecektir.
+> Kullanıcı "TOPLAMLAR DOĞRU HESAPLANSIN" talimatını vermiştir. Yapılan tüm matematiksel hesaplamalar ve çoklu yıl eşleştirmeleri şu kurallara bağlanmıştır:
+
+1. **Kuruluş Yılı (2024) Büyüme Sıfırlama Kuralı:**
+   - Arslan Mobilya 2024 yılında kurulduğundan 2023 verisi bulunmamaktadır.
+   - 2024 yılı seçildiğinde karşılaştırma sütunları ve büyüme metrikleri hatalı eksi değerler üretmeyecek; `Kuruluş Yılı (İlk Yıl)` olarak etiketlenip büyüme tutar ve oranları sıfırlanacaktır.
+2. **2025 ve Sonrası Dinamik Kıyaslama:**
+   - 2025 yılı incelenirken karşılaştırma sütunu dinamik olarak **2024 Yılı Toplamı (TL)** başlığını alacak ve 2024'ün gerçek ciro verilerini çekecektir.
+   - 2026 yılı incelenirken dinamik olarak **2025 Yılı Toplamı (TL)** verileriyle eşleşecektir (`Yıl - 1` dinamik kuralı).
+3. **Kusursuz Toplam Motoru ("TOPLAMLAR DOĞRU HESAPLANSIN"):**
+   - **Genel Toplam (TL):** Satırdaki 12 ayın toplamı (`Ocak + ... + Aralık`).
+   - **Aylık Ortalama (TL):** Cirosu girilen aktif ay sayısına göre (`Genel Toplam / Aktif Ay Sayısı`).
+   - **Büyüme (TL):** `Cari Yıl Genel Toplamı - Geçmiş Yıl Toplamı` (2024 için N/A).
+   - **Büyüme Oranı (%):** `(Büyüme / Geçmiş Yıl Toplamı) × 100` (Geçmiş yıl yoksa 0 / N/A).
+   - **Tahmini Brüt Kâr (TL):** `Genel Toplam × (Kârlılık Oranı / 100)`.
+   - **BEYAZ EŞYA ALT TOPLAM & MOBİLYA ALT TOPLAM:**
+     - 12 ayın her birinin grup toplamı.
+     - Grubun genel toplamı, aktif ay ortalaması, geçmiş yıl toplamı, büyüme TL ve %, tahmini brüt kârı ve **Genel Firma Cirosu İçindeki Payı (`Payı: %...`)**.
+   - **GENEL FİRMA TOPLAMI:**
+     - Tüm grupların ve markaların toplamı, ağırlıklı kârlılık ortalaması ve firma geneli büyüme metriği.
 
 ---
 
-## 1. Genel Bakış ve Kapsam
-
-- **Hedef Ekran:** `Raporlar & Analiz` -> `Ciro & Finansal Analiz Matrisi (Excel Uyumlu)` (`src/components/reports/CiroMatrixModule.tsx`).
-- **Amaç:** 
-  - Beyaz Eşya ve Mobilya ana grupları altındaki 12 ana kategori/markanın Ocak–Aralık 12 aylık cirolarını, kârlılık oranlarını, genel toplamlarını, aktif aylık ortalamalarını, 2025 baz yılı kıyasını (Büyüme TL ve Büyüme %), tahmini brüt kâr tutarlarını tek bir entegre matriste birleştirmek.
-  - "BEYAZ EŞYA ALT TOPLAM" ve "MOBİLYA ALT TOPLAM" satırlarında dinamik ciro, kâr ve **Genel Toplam içindeki Pay Yüzdesi (`Payı: %...`)** özetini sunmak.
-  - Tablonun en altında **GENEL FİRMA TOPLAMI** satırı ile tüm şirketin aylık ve yıllık ciro/kâr/büyüme performansını raporlamak.
-  - Excel içe aktarım sihirbazı (`Data Importer` / `CiroDataImporter`) ile tam entegrasyon sağlamak.
-
----
-
-## 2. Kullanıcı Deneyimi ve Arayüz Tasarımı (UI/UX)
-
-### A. Matris Sütun Mimarisi
-Tablo soldan sağa şu tam sütun setine sahip olacaktır:
-1. **Grup** (`BEYAZ EŞYA` / `MOBİLYA`)
-2. **Kategori / Marka** (`ALTUS`, `UĞUR`, `HOOVER`, `KEA`, `TV`, `BOSCH`, `MEDİSA`, `MOBİLYA`, `YATAK`, `BAMBİ`, `MASA`, `AKSESUAR`)
-3. **Ortalama Kârlılık (%)** (Tıklanıp doğrudan düzenlenebilen dinamik oran, örn: `%22`, `%32`)
-4. **Aylık Ciro Sütunları (12 Ay):** `Ocak`, `Şubat`, `Mart`, `Nisan`, `Mayıs`, `Haziran`, `Temmuz`, `Ağustos`, `Eylül`, `Ekim`, `Kasım`, `Aralık`
-5. **Genel Toplam (TL):** Ocak–Aralık satır toplamı
-6. **Aylık Ortalama (TL):** Genel Toplam / Aktif girilen ay sayısı
-7. **2025 Yılı Toplamı (TL):** 2025 baz yılı toplam cirosu
-8. **Büyüme (TL):** Genel Toplam - 2025 Toplamı (Pozitif ise yeşil `+`, negatif ise kırmızı `-`)
-9. **Büyüme Oranı (%):** (Büyüme TL / 2025 Toplamı) * 100
-10. **Tahmini Brüt Kâr (TL):** Genel Toplam * (Ortalama Kârlılık % / 100)
-
-### B. Kaydırma Çubuğu (Scrollbar) ve Boşluk Optimizasyonu
-- **Dar Dikey Scrollbar İptali:** Tablonun etrafındaki `max-h-[680px]` ve `overflow-y-auto` sınırlandırmaları kaldırılacak. Tablo dikeyde kesintisiz, akışkan (`h-auto`) olarak sayfa gövdesiyle birlikte uzayacak.
-- **Yatay Akış:** 22 sütunluk geniş finansal tablonun yatayda taşmaması için yalnızca dış kapsayıcıda akıcı yatay kaydırma (`overflow-x-auto`) bulunacak; sol sütunlar (`Grup`, `Kategori/Marka`, `Kârlılık %`) `sticky` ile sabit tutularak okunabilirlik korunacak.
-- **Görsel Ferahlık:** Hücre içi dolgular `py-3.5 px-3.5` seviyesine çıkartılacak, yazı tipleri netleştirilecek, sayılar `font-mono tabular-nums` ile dikey hizada parlayacak.
-
-### C. Excel Tarzı Doğrudan Hücre Düzenleme (Inline Editing)
-- Kullanıcı herhangi bir ay hücresine tıkladığında hücre anında bir `input` kutucuğuna dönüşür.
-- Değer yazılıp Enter tuşuna basıldığında veya dışarı tıklandığında (blur) değer anında kaydedilir ve Firestore / Context verisine işlenir.
-- Otomatik ERP satışlarından gelen cirolar (`liveSalesAmount`) ile manuel girişler şeffaf biçimde birleştirilir.
-
----
-
-## 3. Otomatik Hesaplama Motoru (Formüller)
+## 1. Mimari ve Veri Akış Şeması
 
 ```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                                OTOMATİK HESAPLAMA MOTORU                               │
-├────────────────────────────────────────────────────────────────────────────────────────┤
-│ 1. Satır Genel Toplamı (TL)  = ∑(Ocak .. Aralık Girilen Aylık Cirolar)                 │
-│ 2. Aktif Ay Sayısı           = Cirosu > 0 olan ay adedi (0 ise en az 1)                │
-│ 3. Aylık Ortalama (TL)       = Genel Toplam / Aktif Ay Sayısı                          │
-│ 4. Büyüme (TL)               = Genel Toplam - 2025 Yılı Toplamı                        │
-│ 5. Büyüme Oranı (%)          = (Büyüme TL / 2025 Yılı Toplamı) * 100                   │
-│ 6. Tahmini Brüt Kâr (TL)     = Genel Toplam * (Ortalama Kârlılık Oranı % / 100)        │
-│ 7. Grup Payı (%)             = (Grup Genel Toplamı / GENEL FİRMA TOPLAMI) * 100        │
-│ 8. Grup Ağırlıklı Kâr (%)    = (Grup Toplam Brüt Kârı / Grup Genel Toplamı) * 100      │
-└────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-- **Tetikleyiciler:** Kullanıcı herhangi bir ay cirosunu veya satır kârlılık yüzdesini değiştirdiği anda tüm satırlar, alt toplamlar ve genel firma toplamı sıfır gecikmeyle (anlık) yeniden hesaplanır.
-
----
-
-## 4. Teknik Mimari ve Değişiklik Yapılacak Bileşenler
-
-```
-src/
-├── types/finance.ts            --> Ciro matrisi tipleri (Aktif ay sayısı, 2025 baz yılı, büyüme)
-├── utils/ciroCalculations.ts   --> Aktif ay ortalaması, 2025 kıyas formülleri, dinamik grup payları
-├── utils/ciroExcelExport.ts    --> 2025 kıyas sütunları ve grup paylarıyla tam uyumlu Excel ihracı
-├── components/reports/
-│   └── CiroMatrixModule.tsx    --> Dikey scrollbar'sız, ferah, inline-editable ana matris arayüzü
-├── components/importer/
-│   └── CiroDataImporter.tsx    --> Excel ciro şablonu yükleme ve anlık matrise aktarma entegrasyonu
-└── context/FinanceContext.tsx  --> Inline düzenlemelerin anlık context ve localStorage'a yazılması
+┌────────────────────────────────────────────────────────────────────────┐
+│                      Ciro & Finansal Analiz Modülü                     │
+└────────────────────────────────────┬───────────────────────────────────┘
+                                     │
+                 Yıl Seçimi: [ 2024 | 2025 | 2026 | ... ]
+                                     │
+           ┌─────────────────────────┴────────────────────────┐
+           ▼                                                  ▼
+   [ 2024 Seçildiğinde ]                             [ 2025+ Seçildiğinde ]
+   Kuruluş Yılı Mantığı                             Dinamik Önceki Yıl Eşleştirme
+   • comparisonYear = 'Kuruluş Yılı'                • comparisonYear = (Yıl - 1)
+   • pastYearTotal = '-'                            • pastYearTotal = 2024 Gerçek Ciroları
+   • growthAmount = '-' / 0                         • growthAmount = Cari - Önceki Yıl
+   • growthRate = '-' / 0                           • growthRate = (Fark / Önceki) × 100
+   • KPI: "Kuruluş Yılı (İlk Dönem)"                 • KPI: "2024 Yılına Göre Büyüme"
+           │                                                  │
+           └─────────────────────────┬────────────────────────┘
+                                     ▼
+                ┌───────────────────────────────────────────┐
+                │   Hesaplama Motoru (ciroCalculations.ts)  │
+                │   • Satır Bazlı 12 Ay Toplamı             │
+                │   • Aktif Ay Sayısına Göre Ortalama       │
+                │   • Brüt Kâr = Ciro × Kâr Marjı           │
+                │   • Grup Alt Toplamları + Pay Yüzdesi %   │
+                │   • GENEL FİRMA TOPLAMI (Matris Özeti)    │
+                └─────────────────────┬─────────────────────┘
+                                      ▼
+                ┌───────────────────────────────────────────┐
+                │   Kullanıcı Arayüzü (CiroMatrixModule)    │
+                │   • 22 Sütunlu Geniş Matris Tablosu       │
+                │   • Dinamik Sütun Başlığı ("2024 Toplam") │
+                │   • Tıklanabilir Excel Tipi Inline Edit   │
+                │   • Auto-height (İç Dikey Scrollbar Yok)  │
+                └───────────────────────────────────────────┘
 ```
 
 ---
 
-## 5. Doğrulama ve Test Adımları
+## 2. Yapılacak Değişiklikler ve Dosya Eşleştirmesi
 
-1. **Hesaplama Doğrulaması:** 
-   - 3 ayı dolu bir satır için (örn: 300K, 300K, 300K = 900K) aylık ortalamanın 900K / 3 = 300K çıktığı doğrulanacak.
-   - 2025 toplamı ile farkın Büyüme TL ve Büyüme % sütunlarına tam yansıdığı kontrol edilecek.
-   - Brüt kâr tutarının `Genel Toplam x Kârlılık %` formülüyle hatasız çarptığı test edilecek.
-2. **Alt Toplam ve Pay Doğrulaması:**
-   - Beyaz Eşya ve Mobilya alt toplamlarının toplamları ve `Payı: %...` değerlerinin toplamının %100 verdiği doğrulanacak.
-   - GENEL FİRMA TOPLAMI satırının tüm şirketi eksiksiz özetlediği test edilecek.
-3. **UI ve Scrollbar Doğrulaması:**
-   - İç dikey kaydırma çubuğunun kaldırıldığı, sayfanın akıcı ve ferah şekilde dikeyde aktığı doğrulanacak.
-   - Hücrelere doğrudan tıklanarak inline düzenleme yapılabildiği doğrulanacak.
-4. **Kod Derleme Testi:**
-   - `compile_applet` ile TypeScript ve Vite üretim derlemesinin sıfır hatayla geçtiği teyit edilecek.
+### 1. `src/utils/ciroCalculations.ts`
+* `calculateCiroMatrix` fonksiyonuna **Kuruluş Yılı Kontrolü** (`isFoundationYear = currentYearNum <= 2024`):
+  * `comparisonYear` belirlenmesi: `currentYearNum <= 2024` ise `null` veya `''`; aksi takdirde `String(currentYearNum - 1)`.
+  * 2024 seçildiğinde:
+    * `isFoundationYear = true`
+    * `pastYearTotal = 0`
+    * `growthAmount = 0`
+    * `growthRate = 0`
+  * 2025 seçildiğinde:
+    * `comparisonYear = '2024'`
+    * 2024 yılındaki gerçek hücre ve manuel kayıtlar toplanarak her markanın `pastYearTotal` değerine yazılacak.
+    * Büyüme TL ve Büyüme % formülleri kusursuz hesaplanacak.
+  * Grup Alt Toplamları (`BEYAZ EŞYA ALT TOPLAM`, `MOBİLYA ALT TOPLAM`) ve `GENEL FİRMA TOPLAMI`:
+    * Her grup için 12 ayın toplamı, Genel Toplam, aktif ay ortalaması ve brüt kârlar tek tek toplanarak doğrulanacak.
+    * Matristeki hiçbir satırda NaN veya tanımsız değer oluşmayacak.
+
+### 2. `src/components/reports/CiroMatrixModule.tsx`
+* Sütun Başlığı:
+  * `{matrixResult.isFoundationYear ? 'Geçmiş Yıl' : `${matrixResult.comparisonYear} Yılı Toplamı (TL)`}`
+* Tablo Satırları (Markalar, Alt Toplamlar ve Genel Firma Toplamı):
+  * Eğer `matrixResult.isFoundationYear` ise:
+    * Kıyaslama sütununda `"-"` gösterilecek.
+    * Büyüme (TL) ve Büyüme Oranı (%) alanlarında `"Kuruluş Yılı"` veya `"-"` rozeti gösterilecek.
+  * 2025 ve sonrasında:
+    * Gerçek 2024 toplamı, büyüme TL ve yeşil/kırmızı büyüme oranı gösterilecek.
+* Üst KPI Kartları:
+  * 2024'te büyüme kartında "Kuruluş Yılı / İlk Dönem" bilgisi sunulacak, hatalı negatif büyüme kartı gösterilmeyecek.
+
+### 3. `src/utils/ciroExcelExport.ts`
+* Excel dışa aktarımında da 2024 için büyüme alanlarına `"Kuruluş Yılı"` yazılarak ve 2025 için 2024 kıyaslama verileri eklenerek rapor bütünlüğü sağlanacak.
+
+---
+
+## 3. Doğrulama ve Test Adımları
+1. **2024 Yılı Testi:**
+   - Yıl seçiciden 2024 seçilecek.
+   - Büyüme sütunlarında negatif sayı olmamalı, "Kuruluş Yılı" veya "-" çıkmalı.
+   - 12 ay toplamları ve alt toplamlar kontrol edilecek.
+2. **2025 Yılı Testi:**
+   - Yıl seçiciden 2025 seçilecek.
+   - Sütun başlığının "2024 Yılı Toplamı (TL)" olduğu ve 2024'ün gerçek cirolarıyla eşleştiği doğrulanacak.
+   - Büyüme TL ve Büyüme % hesapları test edilecek.
+3. **Toplamların Doğruluğu:**
+   - Alt toplamların (Beyaz Eşya + Mobilya) Genel Firma Toplamı ile kuruşu kuruşuna eşit olduğu doğrulanacak.
+   - `compile_applet` ve `lint_applet` ile sıfır hata onayı alınacak.

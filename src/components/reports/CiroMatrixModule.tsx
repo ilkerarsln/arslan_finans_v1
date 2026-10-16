@@ -40,7 +40,7 @@ export const CiroMatrixModule: React.FC = () => {
   } = useFinance();
 
   const now = new Date();
-  const currentYearStr = String(now.getFullYear());
+  const currentYearStr = '2025';
   const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
   const [filterGroup, setFilterGroup] = useState<'ALL' | 'BEYAZ EŞYA' | 'MOBİLYA'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -294,18 +294,24 @@ export const CiroMatrixModule: React.FC = () => {
           </div>
         </div>
 
-        {/* 2025 Year Comparison & Growth */}
+        {/* Year Comparison & Growth (Handles Kuruluş Yılı) */}
         <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 shadow-xs relative overflow-hidden">
           <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
-            <span className="font-semibold">{matrixResult.comparisonYear} Büyüme Farkı</span>
+            <span className="font-semibold">
+              {matrixResult.isFoundationYear ? 'Kuruluş Yılı (2024)' : `${matrixResult.comparisonYear} Büyüme Farkı`}
+            </span>
             <span
               className={`p-1 rounded-lg ${
-                matrixResult.grandTotal.growthAmount >= 0
+                matrixResult.isFoundationYear
+                  ? 'bg-indigo-500/10 text-indigo-400'
+                  : matrixResult.grandTotal.growthAmount >= 0
                   ? 'bg-emerald-500/10 text-emerald-400'
                   : 'bg-rose-500/10 text-rose-400'
               }`}
             >
-              {matrixResult.grandTotal.growthAmount >= 0 ? (
+              {matrixResult.isFoundationYear ? (
+                <Sparkles className="w-4 h-4" />
+              ) : matrixResult.grandTotal.growthAmount >= 0 ? (
                 <ArrowUpRight className="w-4 h-4" />
               ) : (
                 <ArrowDownRight className="w-4 h-4" />
@@ -314,22 +320,27 @@ export const CiroMatrixModule: React.FC = () => {
           </div>
           <div
             className={`text-xl font-bold font-mono tracking-tight ${
-              matrixResult.grandTotal.growthAmount >= 0 ? 'text-emerald-400' : 'text-rose-400'
+              matrixResult.isFoundationYear
+                ? 'text-indigo-400'
+                : matrixResult.grandTotal.growthAmount >= 0
+                ? 'text-emerald-400'
+                : 'text-rose-400'
             }`}
           >
-            {matrixResult.grandTotal.growthAmount >= 0 ? '+' : ''}
-            {formatCurrency(matrixResult.grandTotal.growthAmount)}
+            {matrixResult.isFoundationYear ? 'İlk Faaliyet Yılı' : `${matrixResult.grandTotal.growthAmount >= 0 ? '+' : ''}${formatCurrency(matrixResult.grandTotal.growthAmount)}`}
           </div>
           <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between">
-            <span>Büyüme Oranı:</span>
+            <span>{matrixResult.isFoundationYear ? 'Geçmiş Yıl Verisi:' : 'Büyüme Oranı:'}</span>
             <span
               className={`font-bold font-mono px-2 py-0.5 rounded text-[11px] ${
-                matrixResult.grandTotal.growthRate >= 0
+                matrixResult.isFoundationYear
+                  ? 'bg-slate-800 text-slate-300 border border-slate-700'
+                  : matrixResult.grandTotal.growthRate >= 0
                   ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                   : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
               }`}
             >
-              %{matrixResult.grandTotal.growthRate.toFixed(1)}
+              {matrixResult.isFoundationYear ? 'Kuruluş Yılı (N/A)' : `%${matrixResult.grandTotal.growthRate.toFixed(1)}`}
             </span>
           </div>
         </div>
@@ -446,9 +457,9 @@ export const CiroMatrixModule: React.FC = () => {
                 <th className="py-3.5 px-3.5 text-right font-semibold text-indigo-300 min-w-[125px] border-r border-slate-800/60">
                   Aylık Ortalama (TL)
                 </th>
-                {/* 7. 2025 Yılı Toplamı (TL) */}
+                {/* 7. Önceki Yıl Toplamı (TL) */}
                 <th className="py-3.5 px-3.5 text-right font-semibold text-slate-400 min-w-[125px] border-r border-slate-800/60">
-                  {matrixResult.comparisonYear} Yılı Toplamı (TL)
+                  {matrixResult.isFoundationYear ? 'Geçmiş Yıl (Kuruluş Yılı)' : `${matrixResult.comparisonYear} Yılı Toplamı (TL)`}
                 </th>
                 {/* 8. Büyüme (TL) */}
                 <th className="py-3.5 px-3.5 text-right font-semibold text-slate-300 min-w-[115px] border-r border-slate-800/60">
@@ -681,33 +692,38 @@ export const CiroMatrixModule: React.FC = () => {
           {formatCurrency(row.monthlyAverage)}
         </td>
 
-        {/* 7. 2025 Yılı Toplamı (TL) */}
-        <td className="py-3 px-3.5 text-right text-slate-400 border-r border-slate-800/60">
-          {formatCurrency(row.pastYearTotal)}
+        {/* 7. Önceki Yıl Toplamı (TL) */}
+        <td className="py-3 px-3.5 text-right text-slate-400 border-r border-slate-800/60 font-mono">
+          {matrixResult.isFoundationYear ? '-' : formatCurrency(row.pastYearTotal)}
         </td>
 
         {/* 8. Büyüme (TL) */}
         <td
-          className={`py-3 px-3.5 text-right font-semibold border-r border-slate-800/60 ${
-            isPositive ? 'text-emerald-400' : 'text-rose-400'
+          className={`py-3 px-3.5 text-right font-semibold border-r border-slate-800/60 font-mono ${
+            matrixResult.isFoundationYear ? 'text-slate-500' : isPositive ? 'text-emerald-400' : 'text-rose-400'
           }`}
         >
-          {isPositive ? '+' : ''}
-          {formatCurrency(row.growthAmount)}
+          {matrixResult.isFoundationYear ? '-' : `${isPositive ? '+' : ''}${formatCurrency(row.growthAmount)}`}
         </td>
 
         {/* 9. Büyüme Oranı (%) */}
-        <td className="py-3 px-3 text-center border-r border-slate-800/60">
-          <span
-            className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-              isPositive
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-            }`}
-          >
-            {isPositive ? '+' : ''}
-            {row.growthRate.toFixed(1)}%
-          </span>
+        <td className="py-3 px-3 text-center border-r border-slate-800/60 font-mono">
+          {matrixResult.isFoundationYear ? (
+            <span className="px-2 py-0.5 rounded text-[10px] font-sans font-medium bg-slate-800/80 text-slate-400 border border-slate-700/60">
+              Kuruluş Yılı
+            </span>
+          ) : (
+            <span
+              className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                isPositive
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+              }`}
+            >
+              {isPositive ? '+' : ''}
+              {row.growthRate.toFixed(1)}%
+            </span>
+          )}
         </td>
 
         {/* 10. Tahmini Brüt Kâr (TL) */}
@@ -765,27 +781,32 @@ export const CiroMatrixModule: React.FC = () => {
           {formatCurrency(subtotal.monthlyAverage)}
         </td>
 
-        {/* 7. 2025 Yılı Toplamı */}
-        <td className="py-3.5 px-3.5 text-right text-slate-300 border-r border-slate-800/60">
-          {formatCurrency(subtotal.pastYearTotal)}
+        {/* 7. Önceki Yıl Toplamı */}
+        <td className="py-3.5 px-3.5 text-right text-slate-300 border-r border-slate-800/60 font-mono">
+          {matrixResult.isFoundationYear ? '-' : formatCurrency(subtotal.pastYearTotal)}
         </td>
 
         {/* 8. Büyüme (TL) */}
-        <td className={`py-3.5 px-3.5 text-right border-r border-slate-800/60 ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
-          {isPositive ? '+' : ''}
-          {formatCurrency(subtotal.growthAmount)}
+        <td className={`py-3.5 px-3.5 text-right border-r border-slate-800/60 font-mono ${matrixResult.isFoundationYear ? 'text-slate-400' : isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+          {matrixResult.isFoundationYear ? '-' : `${isPositive ? '+' : ''}${formatCurrency(subtotal.growthAmount)}`}
         </td>
 
         {/* 9. Büyüme Oranı (%) */}
-        <td className="py-3.5 px-3 text-center border-r border-slate-800/60">
-          <span
-            className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-              isPositive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
-            }`}
-          >
-            {isPositive ? '+' : ''}
-            {subtotal.growthRate.toFixed(1)}%
-          </span>
+        <td className="py-3.5 px-3 text-center border-r border-slate-800/60 font-mono">
+          {matrixResult.isFoundationYear ? (
+            <span className="px-2 py-0.5 rounded text-[10px] font-sans font-medium bg-white/10 text-slate-300 border border-white/10">
+              Kuruluş Yılı
+            </span>
+          ) : (
+            <span
+              className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                isPositive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
+              }`}
+            >
+              {isPositive ? '+' : ''}
+              {subtotal.growthRate.toFixed(1)}%
+            </span>
+          )}
         </td>
 
         {/* 10. Tahmini Brüt Kâr */}
@@ -835,33 +856,38 @@ export const CiroMatrixModule: React.FC = () => {
           {formatCurrency(grand.monthlyAverage)}
         </td>
 
-        {/* 7. 2025 Toplamı */}
+        {/* 7. Önceki Yıl Toplamı */}
         <td className="py-4 px-3.5 text-right font-mono text-slate-300 border-r border-slate-800/60">
-          {formatCurrency(grand.pastYearTotal)}
+          {matrixResult.isFoundationYear ? '-' : formatCurrency(grand.pastYearTotal)}
         </td>
 
         {/* 8. Büyüme (TL) */}
         <td
           className={`py-4 px-3.5 text-right font-mono border-r border-slate-800/60 ${
-            isPositive ? 'text-emerald-400' : 'text-rose-400'
+            matrixResult.isFoundationYear ? 'text-slate-400' : isPositive ? 'text-emerald-400' : 'text-rose-400'
           }`}
         >
-          {isPositive ? '+' : ''}
-          {formatCurrency(grand.growthAmount)}
+          {matrixResult.isFoundationYear ? '-' : `${isPositive ? '+' : ''}${formatCurrency(grand.growthAmount)}`}
         </td>
 
         {/* 9. Büyüme Oranı (%) */}
         <td className="py-4 px-3 text-center border-r border-slate-800/60">
-          <span
-            className={`px-2.5 py-0.5 rounded text-[11px] font-bold ${
-              isPositive
-                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-            }`}
-          >
-            {isPositive ? '+' : ''}
-            {grand.growthRate.toFixed(1)}%
-          </span>
+          {matrixResult.isFoundationYear ? (
+            <span className="px-2.5 py-0.5 rounded text-[11px] font-sans font-medium bg-slate-800 text-indigo-300 border border-slate-700">
+              Kuruluş Yılı (İlk Yıl)
+            </span>
+          ) : (
+            <span
+              className={`px-2.5 py-0.5 rounded text-[11px] font-bold ${
+                isPositive
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                  : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+              }`}
+            >
+              {isPositive ? '+' : ''}
+              {grand.growthRate.toFixed(1)}%
+            </span>
+          )}
         </td>
 
         {/* 10. Tahmini Brüt Kâr */}

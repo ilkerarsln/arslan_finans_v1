@@ -20,7 +20,7 @@ export interface ComputedRowData {
   yearTotal: number;
   activeMonthsCount: number; // Cirosu girilen aktif ay sayısı
   monthlyAverage: number; // Genel Toplam / Aktif Ay Sayısı
-  pastYearTotal: number; // 2025 Yılı Toplamı (TL)
+  pastYearTotal: number; // Önceki Yıl Toplamı (TL)
   growthAmount: number; // yearTotal - pastYearTotal
   growthRate: number; // % growth
   estimatedProfit: number; // yearTotal * (profitMargin / 100)
@@ -42,7 +42,8 @@ export interface ComputedGroupSubtotal {
 
 export interface ComputedMatrixResult {
   year: string;
-  comparisonYear: string; // Defaults to '2025'
+  isFoundationYear: boolean; // True for 2024 (Arslan Mobilya kuruluş yılı)
+  comparisonYear: string; // Dynamically year - 1 (e.g. 2024 for 2025, 2025 for 2026)
   availableYears: string[];
   rows: ComputedRowData[];
   beyazEsyaRows: ComputedRowData[];
@@ -65,6 +66,12 @@ export interface ComputedMatrixResult {
 /**
  * Calculates complete multi-year Ciro Matrix with live sales integration,
  * manual adjustments, subtotals, margins, and comparative growth metrics.
+ *
+ * Rules:
+ * - 2024 is the foundation year: no prior year comparison (growth is 0 / N/A).
+ * - 2025 compares with 2024's actual turnover totals.
+ * - 2026 and later dynamically compare with (year - 1)'s actual turnover totals.
+ * - Subtotals and Grand Totals are accurately summed across all rows.
  */
 export function calculateCiroMatrix(
   selectedYear: string,
@@ -77,9 +84,10 @@ export function calculateCiroMatrix(
   const allYearsSet = new Set<string>(['2024', '2025', '2026', ...storeYears, ...salesYears]);
   const availableYears = Array.from(allYearsSet).sort();
 
-  const currentYearNum = parseInt(selectedYear, 10) || 2026;
-  // If viewing 2026 or later, compare against 2025 (as requested). If viewing 2025, compare against 2024.
-  const comparisonYear = currentYearNum === 2025 ? '2024' : '2025';
+  const currentYearNum = parseInt(selectedYear, 10) || 2025;
+  const isFoundationYear = currentYearNum <= 2024;
+  // If viewing 2025, compare with 2024. If viewing 2026, compare with 2025.
+  const comparisonYear = isFoundationYear ? '' : String(currentYearNum - 1);
 
   // Group sales by year, mapped row ID, and month (1..12)
   const salesMap: Record<string, Record<string, Record<number, SaleRecord[]>>> = {};
@@ -96,7 +104,7 @@ export function calculateCiroMatrix(
     salesMap[y][rowId][m].push(s);
   });
 
-  // Helper to compute a single row for any year
+  // Helper to compute a single row for any year from matrix store + sales
   const computeSingleRow = (rowDef: (typeof CIRO_ROW_DEFINITIONS)[0], yearStr: string): {
     months: Record<number, ComputedCellData>;
     yearTotal: number;
@@ -146,23 +154,28 @@ export function calculateCiroMatrix(
     return { months, yearTotal, activeMonthsCount, profitMargin };
   };
 
-  // Compute baseline year (2025) totals for growth comparison
+  // Compute prior year totals for growth comparison (if not foundation year)
   const comparisonYearRowTotals: Record<string, number> = {};
-  CIRO_ROW_DEFINITIONS.forEach(def => {
-    const { yearTotal } = computeSingleRow(def, comparisonYear);
-    comparisonYearRowTotals[def.id] = yearTotal;
-  });
+  if (!isFoundationYear && comparisonYear) {
+    CIRO_ROW_DEFINITIONS.forEach(def => {
+      const { yearTotal } = computeSingleRow(def, comparisonYear);
+      comparisonYearRowTotals[def.id] = yearTotal;
+    });
+  }
 
   // Compute selected year rows
   const computedRows: ComputedRowData[] = CIRO_ROW_DEFINITIONS.map(def => {
     const { months, yearTotal, activeMonthsCount, profitMargin } = computeSingleRow(def, selectedYear);
-    const pastYearTotal = comparisonYearRowTotals[def.id] || 0;
-    const growthAmount = yearTotal - pastYearTotal;
-    const growthRate = pastYearTotal > 0 ? (growthAmount / pastYearTotal) * 100 : 0;
-    // Formula rule: Aylık Ortalama = Genel Toplam / Aktif Ay Sayısı
+    const pastYearTotal = isFoundationYear ? 0 : (comparisonYearRowTotals[def.id] || 0);
+    const growthAmount = isFoundationYear ? 0 : (yearTotal - pastYearTotal);
+    const growthRate = (!isFoundationYear && pastYearTotal > 0)
+      ? +((growthAmount / pastYearTotal) * 100).toFixed(2)
+      : 0;
+
+    // Formula: Aylık Ortalama = Genel Toplam / Aktif Ay Sayısı
     const divisor = activeMonthsCount > 0 ? activeMonthsCount : 1;
     const monthlyAverage = yearTotal > 0 ? +(yearTotal / divisor).toFixed(2) : 0;
-    // Formula rule: Tahmini Brüt Kâr = Genel Toplam x Kârlılık Oranı
+    // Formula: Tahmini Brüt Kâr = Genel Toplam x Kârlılık Oranı
     const estimatedProfit = +(yearTotal * (profitMargin / 100)).toFixed(2);
 
     return {
@@ -184,7 +197,7 @@ export function calculateCiroMatrix(
   const beyazEsyaRows = computedRows.filter(r => r.group === 'BEYAZ EŞYA');
   const mobilyaRows = computedRows.filter(r => r.group === 'MOBİLYA');
 
-  // Compute Group Subtotals
+  // Compute Group Subtotals with exact mathematical accuracy
   const computeGroup = (groupRows: ComputedRowData[], groupName: 'BEYAZ EŞYA' | 'MOBİLYA'): ComputedGroupSubtotal => {
     const months: Record<number, number> = {};
     let activeMonthsCount = 0;
@@ -198,13 +211,15 @@ export function calculateCiroMatrix(
     }
 
     const yearTotal = groupRows.reduce((sum, r) => sum + r.yearTotal, 0);
-    const pastYearTotal = groupRows.reduce((sum, r) => sum + r.pastYearTotal, 0);
-    const growthAmount = yearTotal - pastYearTotal;
-    const growthRate = pastYearTotal > 0 ? (growthAmount / pastYearTotal) * 100 : 0;
+    const pastYearTotal = isFoundationYear ? 0 : groupRows.reduce((sum, r) => sum + r.pastYearTotal, 0);
+    const growthAmount = isFoundationYear ? 0 : (yearTotal - pastYearTotal);
+    const growthRate = (!isFoundationYear && pastYearTotal > 0)
+      ? +((growthAmount / pastYearTotal) * 100).toFixed(2)
+      : 0;
     const divisor = activeMonthsCount > 0 ? activeMonthsCount : 1;
     const monthlyAverage = yearTotal > 0 ? +(yearTotal / divisor).toFixed(2) : 0;
     const estimatedProfit = groupRows.reduce((sum, r) => sum + r.estimatedProfit, 0);
-    const weightedMargin = yearTotal > 0 ? (estimatedProfit / yearTotal) * 100 : 0;
+    const weightedMargin = yearTotal > 0 ? +((estimatedProfit / yearTotal) * 100).toFixed(2) : 0;
 
     return {
       group: groupName,
@@ -224,7 +239,7 @@ export function calculateCiroMatrix(
   const beyazEsyaSubtotal = computeGroup(beyazEsyaRows, 'BEYAZ EŞYA');
   const mobilyaSubtotal = computeGroup(mobilyaRows, 'MOBİLYA');
 
-  // Grand Total
+  // Grand Total: GENEL FİRMA TOPLAMI
   const grandMonths: Record<number, number> = {};
   let grandActiveMonthsCount = 0;
   for (let m = 1; m <= 12; m++) {
@@ -236,20 +251,23 @@ export function calculateCiroMatrix(
   }
 
   const grandYearTotal = beyazEsyaSubtotal.yearTotal + mobilyaSubtotal.yearTotal;
-  const grandPastYearTotal = beyazEsyaSubtotal.pastYearTotal + mobilyaSubtotal.pastYearTotal;
-  const grandGrowthAmount = grandYearTotal - grandPastYearTotal;
-  const grandGrowthRate = grandPastYearTotal > 0 ? (grandGrowthAmount / grandPastYearTotal) * 100 : 0;
+  const grandPastYearTotal = isFoundationYear ? 0 : (beyazEsyaSubtotal.pastYearTotal + mobilyaSubtotal.pastYearTotal);
+  const grandGrowthAmount = isFoundationYear ? 0 : (grandYearTotal - grandPastYearTotal);
+  const grandGrowthRate = (!isFoundationYear && grandPastYearTotal > 0)
+    ? +((grandGrowthAmount / grandPastYearTotal) * 100).toFixed(2)
+    : 0;
   const grandDivisor = grandActiveMonthsCount > 0 ? grandActiveMonthsCount : 1;
   const grandMonthlyAverage = grandYearTotal > 0 ? +(grandYearTotal / grandDivisor).toFixed(2) : 0;
   const totalEstimatedProfit = beyazEsyaSubtotal.estimatedProfit + mobilyaSubtotal.estimatedProfit;
-  const grandWeightedMargin = grandYearTotal > 0 ? (totalEstimatedProfit / grandYearTotal) * 100 : 0;
+  const grandWeightedMargin = grandYearTotal > 0 ? +((totalEstimatedProfit / grandYearTotal) * 100).toFixed(2) : 0;
 
-  // Set share percentages
-  beyazEsyaSubtotal.sharePercent = grandYearTotal > 0 ? (beyazEsyaSubtotal.yearTotal / grandYearTotal) * 100 : 0;
-  mobilyaSubtotal.sharePercent = grandYearTotal > 0 ? (mobilyaSubtotal.yearTotal / grandYearTotal) * 100 : 0;
+  // Set group share percentages (% of Grand Total)
+  beyazEsyaSubtotal.sharePercent = grandYearTotal > 0 ? +((beyazEsyaSubtotal.yearTotal / grandYearTotal) * 100).toFixed(2) : 0;
+  mobilyaSubtotal.sharePercent = grandYearTotal > 0 ? +((mobilyaSubtotal.yearTotal / grandYearTotal) * 100).toFixed(2) : 0;
 
   return {
     year: selectedYear,
+    isFoundationYear,
     comparisonYear,
     availableYears,
     rows: computedRows,
