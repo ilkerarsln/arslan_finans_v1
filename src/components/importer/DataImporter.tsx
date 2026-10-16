@@ -49,22 +49,21 @@ export const TEMPLATE_CONFIGS: Record<
   }
 > = {
   stok: {
-    title: 'Mal Alımı & Stok Şablonu',
-    description: 'Ürün stok kartları, alış maliyetleri, perakende satış fiyatları ve KDV oranları',
+    title: 'Mal Alımı / Stok Şablonu',
+    description: 'Mal alımı, tedarikçi faturaları ve stoğa yeni adet ekleme şablonu',
     icon: <Boxes className="w-5 h-5 text-sky-500" />,
     fields: [
       { key: 'stokKodu', label: 'Stok Kodu', required: false, type: 'string', description: 'Benzersiz ürün/barkod kodu', aliases: ['stokkodu', 'stok_kodu', 'kod', 'barkod', 'code', 'sku'] },
       { key: 'urunAdi', label: 'Ürün Adı', required: true, type: 'string', description: 'Ürünün tam ticari adı', aliases: ['urunadi', 'urun_adi', 'ürün adı', 'ürün', 'malzeme', 'ad', 'name', 'product'] },
       { key: 'kategori', label: 'Kategori', required: false, type: 'string', description: 'Ana kategori (Beyaz Eşya, Mobilya vb.)', defaultVal: 'Beyaz Eşya', aliases: ['kategori', 'category', 'grup', 'tur'] },
-      { key: 'alisFiyati', label: 'Alış Fiyatı (₺)', required: true, type: 'number', description: 'Birim mal alış maliyeti (KDV hariç veya dahil)', aliases: ['alisfiyati', 'alis_fiyati', 'alış fiyatı', 'maliyet', 'cost', 'purchase_price'] },
-      { key: 'satisFiyati', label: 'Satış Fiyatı (₺)', required: true, type: 'number', description: 'Tavsiye edilen perakende satış fiyatı', aliases: ['satisfiyati', 'satis_fiyati', 'satış fiyatı', 'fiyat', 'price', 'sale_price'] },
-      { key: 'mevcutStok', label: 'Mevcut Stok', required: false, type: 'number', description: 'Depodaki mevcut adet', defaultVal: 0, aliases: ['mevcutstok', 'mevcut_stok', 'stok', 'miktar', 'adet', 'quantity', 'qty'] },
-      { key: 'kdvOrani', label: 'KDV Oranı (%)', required: false, type: 'number', description: 'KDV yüzdesi (örn: 20 veya 10)', defaultVal: 20, aliases: ['kdvorani', 'kdv_orani', 'kdv oranı', 'kdv', 'vat', 'tax'] },
+      { key: 'alisFiyati', label: 'Alış Fiyatı (₺)', required: true, type: 'number', description: 'Birim liste mal alış fiyatı', aliases: ['alisfiyati', 'alis_fiyati', 'alış fiyatı', 'maliyet', 'cost', 'purchase_price', 'fiyat'] },
+      { key: 'iskontoOrani', label: 'İskonto Oranı (%)', required: false, type: 'number', description: 'Tedarikçi iskonto / indirim yüzdesi', defaultVal: 0, aliases: ['iskontoorani', 'iskonto_orani', 'iskonto oranı', 'iskonto', 'indirim', 'indirim_orani', 'discount'] },
+      { key: 'alimAdeti', label: 'Alım Adeti', required: true, type: 'number', description: 'Satın alınan ve mevcut stoğa eklenecek adet', defaultVal: 1, aliases: ['alimadeti', 'alim_adeti', 'alım adeti', 'alım miktarı', 'alim', 'alım', 'adet', 'miktar', 'gelen', 'alis_adeti', 'quantity', 'qty'] },
     ],
     sampleData: [
-      { stokKodu: 'BE-BOS-001', urunAdi: 'Bosch No-Frost Çift Kapılı Buzdolabı 508 Lt', kategori: 'Beyaz Eşya', alisFiyati: 24500, satisFiyati: 34900, mevcutStok: 12, kdvOrani: 20 },
-      { stokKodu: 'MOB-YTK-002', urunAdi: 'Bambi Yatak & Baza & Başlık Seti 160x200', kategori: 'Mobilya', alisFiyati: 14200, satisFiyati: 21500, mevcutStok: 8, kdvOrani: 10 },
-      { stokKodu: 'BE-ALT-003', urunAdi: 'Altus 9 KG 1200 Devir Çamaşır Makinesi', kategori: 'Beyaz Eşya', alisFiyati: 11800, satisFiyati: 16900, mevcutStok: 15, kdvOrani: 20 },
+      { stokKodu: 'BE-BOS-001', urunAdi: 'Bosch No-Frost Çift Kapılı Buzdolabı 508 Lt', kategori: 'Beyaz Eşya', alisFiyati: 24500, iskontoOrani: 10, alimAdeti: 5 },
+      { stokKodu: 'MOB-YTK-002', urunAdi: 'Bambi Yatak & Baza & Başlık Seti 160x200', kategori: 'Mobilya', alisFiyati: 14200, iskontoOrani: 5, alimAdeti: 8 },
+      { stokKodu: 'BE-ALT-003', urunAdi: 'Altus 9 KG 1200 Devir Çamaşır Makinesi', kategori: 'Beyaz Eşya', alisFiyati: 11800, iskontoOrani: 0, alimAdeti: 12 },
     ],
   },
   fiyatListesi: {
@@ -117,7 +116,9 @@ export const DataImporter: React.FC<{
 }> = ({ onClose, defaultTemplate = 'stok', onImportComplete }) => {
   const {
     showToast,
+    stockItems,
     addStockItem,
+    updateStockItem,
     addCari,
     addPriceList,
     priceLists,
@@ -172,7 +173,8 @@ export const DataImporter: React.FC<{
   const handleDownloadTemplate = (format: 'xlsx' | 'csv') => {
     try {
       const config = TEMPLATE_CONFIGS[selectedTemplate];
-      const ws = XLSX.utils.json_to_sheet(config.sampleData);
+      const headerKeys = config.fields.map(f => f.key);
+      const ws = XLSX.utils.json_to_sheet(config.sampleData, { header: headerKeys });
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Sablon');
 
@@ -354,6 +356,17 @@ export const DataImporter: React.FC<{
 
     const dataStoreUid = userProfile?.uid || user?.uid || 'guest-admin';
 
+    // Initialize working maps for stock matching and running quantities across imported rows
+    const workingStockMap = new Map<string, StockItem>();
+    const codeLookup = new Map<string, string>();
+    const nameLookup = new Map<string, string>();
+
+    stockItems.forEach(item => {
+      workingStockMap.set(item.id, { ...item });
+      if (item.code) codeLookup.set(item.code.trim().toLowerCase(), item.id);
+      nameLookup.set(normalize(item.name), item.id);
+    });
+
     try {
       // Chunk into batches of 400 (under Firestore 500 limit)
       const chunkSize = 400;
@@ -371,31 +384,92 @@ export const DataImporter: React.FC<{
             const timestamp = new Date().toISOString();
 
             if (selectedTemplate === 'stok') {
-              const newId = `stk-imp-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
-              const stockData: StockItem = {
-                id: newId,
-                code: row.data.stokKodu || undefined,
-                name: row.data.urunAdi,
-                category: row.data.kategori || 'Beyaz Eşya',
-                quantity: Number(row.data.mevcutStok) || 0,
-                unit: 'Adet',
-                purchasePrice: Number(row.data.alisFiyati) || 0,
-                totalValue: +( (Number(row.data.mevcutStok) || 0) * (Number(row.data.alisFiyati) || 0) ).toFixed(2),
-                salePrice: Number(row.data.satisFiyati) || 0,
-                kdvRate: Number(row.data.kdvOrani) || 20,
-                lastPurchaseDate: timestamp.split('T')[0],
-                notes: `Toplu Excel İçe Aktarımı: ${fileName}`,
-              };
+              const rawCode = row.data.stokKodu ? String(row.data.stokKodu).trim() : '';
+              const rawName = String(row.data.urunAdi || '').trim();
+              const alimAdeti = Math.max(0, Number(row.data.alimAdeti) || 0);
+              const alisFiyati = Math.max(0, Number(row.data.alisFiyati) || 0);
+              const iskontoOrani = Math.max(0, Number(row.data.iskontoOrani) || 0);
 
-              // Firestore write if authenticated
-              if (auth.currentUser && dataStoreUid) {
-                const docRef = doc(db, 'users', dataStoreUid, 'stocks', newId);
-                batch.set(docRef, stockData);
+              // İskonto düşülmüş net birim alış maliyeti
+              const effectiveCost = iskontoOrani > 0
+                ? +(alisFiyati * (1 - iskontoOrani / 100)).toFixed(2)
+                : alisFiyati;
+
+              // 1. Sistemde mevcut ürün var mı kontrol et (stok koduna veya ürün adına göre)
+              let matchedId: string | undefined;
+              if (rawCode && codeLookup.has(rawCode.toLowerCase())) {
+                matchedId = codeLookup.get(rawCode.toLowerCase());
+              } else if (rawName && nameLookup.has(normalize(rawName))) {
+                matchedId = nameLookup.get(normalize(rawName));
               }
 
-              // FinanceContext sync
-              addStockItem(stockData);
-              successCount++;
+              if (matchedId && workingStockMap.has(matchedId)) {
+                // === MEVCUT ÜRÜN BULUNDU: ALIM ADETİNİ MEVCUT STOĞUN ÜZERİNE EKLE (ARTTIR) ===
+                const existing = workingStockMap.get(matchedId)!;
+                const prevQty = Number(existing.quantity) || 0;
+                const newQuantity = prevQty + alimAdeti;
+                const finalCost = effectiveCost > 0 ? effectiveCost : existing.purchasePrice;
+                const totalValue = +(newQuantity * finalCost).toFixed(2);
+
+                const updatedStock: StockItem = {
+                  ...existing,
+                  quantity: newQuantity,
+                  purchasePrice: finalCost,
+                  totalValue,
+                  lastPurchaseDate: timestamp.split('T')[0],
+                  category: row.data.kategori || existing.category,
+                  code: rawCode || existing.code,
+                  notes: `Mal Alımı Eklendi (+${alimAdeti} Adet, Dosya: ${fileName}). ${existing.notes || ''}`.trim(),
+                };
+
+                // Çalışma haritasını güncelle
+                workingStockMap.set(matchedId, updatedStock);
+
+                // Firestore batch update (merge: true)
+                if (auth.currentUser && dataStoreUid) {
+                  const docRef = doc(db, 'users', dataStoreUid, 'stocks', matchedId);
+                  batch.set(docRef, updatedStock, { merge: true });
+                }
+
+                // FinanceContext state güncellemesi
+                updateStockItem(updatedStock);
+                successCount++;
+              } else {
+                // === YENİ ÜRÜN: YENİ STOK KARTI AÇ VE ALIM ADETİNİ BAŞLANGIÇ STOĞU YAP ===
+                const newId = `stk-imp-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+                const finalCost = effectiveCost > 0 ? effectiveCost : alisFiyati;
+                const defaultSalePrice = +(finalCost * 1.35).toFixed(2);
+
+                const newStockData: StockItem = {
+                  id: newId,
+                  code: rawCode || undefined,
+                  name: rawName,
+                  category: row.data.kategori || 'Beyaz Eşya',
+                  quantity: alimAdeti,
+                  unit: 'Adet',
+                  purchasePrice: finalCost,
+                  totalValue: +(alimAdeti * finalCost).toFixed(2),
+                  salePrice: defaultSalePrice,
+                  kdvRate: 20,
+                  lastPurchaseDate: timestamp.split('T')[0],
+                  notes: `Toplu Mal Alımı İçe Aktarımı (+${alimAdeti} Adet, Dosya: ${fileName})`,
+                };
+
+                // Çalışma haritasına ve indekslere ekle
+                workingStockMap.set(newId, newStockData);
+                if (rawCode) codeLookup.set(rawCode.toLowerCase(), newId);
+                if (rawName) nameLookup.set(normalize(rawName), newId);
+
+                // Firestore write if authenticated
+                if (auth.currentUser && dataStoreUid) {
+                  const docRef = doc(db, 'users', dataStoreUid, 'stocks', newId);
+                  batch.set(docRef, newStockData);
+                }
+
+                // FinanceContext sync
+                addStockItem(newStockData);
+                successCount++;
+              }
             } else if (selectedTemplate === 'cari') {
               const newId = `cari-imp-${Date.now()}-${Math.floor(Math.random() * 100000)}`;
               const rawType = (row.data.bakiyeTuru || 'Müşteri').toLowerCase();
