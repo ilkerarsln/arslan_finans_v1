@@ -25,6 +25,10 @@ import {
   StaffAccount,
   DeletionRequest,
   AuditLogEntry,
+  StockItem,
+  PriceListEntry,
+  StockPurchaseRecord,
+  SaleRecord,
 } from '../types/finance';
 
 export function sanitizeData<T extends Record<string, any>>(obj: T): Record<string, any> {
@@ -45,6 +49,10 @@ export function subscribeToUserData(
     onCaris: (caris: Cari[]) => void;
     onUpcomingDues: (dues: UpcomingDue[]) => void;
     onCategories: (categories: CategoryItem[]) => void;
+    onStocks?: (stocks: StockItem[]) => void;
+    onPriceLists?: (priceLists: PriceListEntry[]) => void;
+    onPurchases?: (purchases: StockPurchaseRecord[]) => void;
+    onSales?: (sales: SaleRecord[]) => void;
     onDeletionRequests?: (requests: DeletionRequest[]) => void;
     onAuditLogs?: (logs: AuditLogEntry[]) => void;
   }
@@ -147,7 +155,47 @@ export function subscribeToUserData(
     handleFirestoreError(error, OperationType.GET, catPath);
   }
 
-  // 6. Deletion Requests
+  // 6. Stocks
+  if (callbacks.onStocks) {
+    const stockPath = `users/${userId}/stocks`;
+    try {
+      const unsubStock = onSnapshot(
+        collection(db, 'users', userId, 'stocks'),
+        snapshot => {
+          const items = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as StockItem);
+          callbacks.onStocks!(items);
+        },
+        error => {
+          handleFirestoreError(error, OperationType.GET, stockPath);
+        }
+      );
+      unsubs.push(unsubStock);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, stockPath);
+    }
+  }
+
+  // 7. Price Lists
+  if (callbacks.onPriceLists) {
+    const plPath = `users/${userId}/priceLists`;
+    try {
+      const unsubPL = onSnapshot(
+        collection(db, 'users', userId, 'priceLists'),
+        snapshot => {
+          const items = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as PriceListEntry);
+          callbacks.onPriceLists!(items);
+        },
+        error => {
+          handleFirestoreError(error, OperationType.GET, plPath);
+        }
+      );
+      unsubs.push(unsubPL);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.GET, plPath);
+    }
+  }
+
+  // 8. Deletion Requests
   if (callbacks.onDeletionRequests) {
     const reqPath = `users/${userId}/deletionRequests`;
     try {
@@ -168,7 +216,7 @@ export function subscribeToUserData(
     }
   }
 
-  // 7. Audit Logs
+  // 9. Audit Logs
   if (callbacks.onAuditLogs) {
     const logPath = `users/${userId}/auditLogs`;
     try {
@@ -200,38 +248,43 @@ export async function fetchUserDataFromFirestore(userId: string): Promise<{
   caris: Cari[];
   upcomingDues: UpcomingDue[];
   categories: CategoryItem[];
+  stocks: StockItem[];
+  priceLists: PriceListEntry[];
   deletionRequests: DeletionRequest[];
   auditLogs: AuditLogEntry[];
 }> {
   try {
-    const [accSnap, txSnap, cariSnap, duesSnap, catSnap, reqSnap, logSnap] = await Promise.all([
-      getDocs(collection(db, 'users', userId, 'accounts')),
-      getDocs(collection(db, 'users', userId, 'transactions')),
-      getDocs(collection(db, 'users', userId, 'caris')),
-      getDocs(collection(db, 'users', userId, 'upcomingDues')),
-      getDocs(collection(db, 'users', userId, 'categories')),
+    const [accSnap, txSnap, cariSnap, duesSnap, catSnap, stockSnap, plSnap, reqSnap, logSnap] = await Promise.all([
+      getDocs(collection(db, 'users', userId, 'accounts')).catch(() => ({ docs: [] } as any)),
+      getDocs(collection(db, 'users', userId, 'transactions')).catch(() => ({ docs: [] } as any)),
+      getDocs(collection(db, 'users', userId, 'caris')).catch(() => ({ docs: [] } as any)),
+      getDocs(collection(db, 'users', userId, 'upcomingDues')).catch(() => ({ docs: [] } as any)),
+      getDocs(collection(db, 'users', userId, 'categories')).catch(() => ({ docs: [] } as any)),
+      getDocs(collection(db, 'users', userId, 'stocks')).catch(() => ({ docs: [] } as any)),
+      getDocs(collection(db, 'users', userId, 'priceLists')).catch(() => ({ docs: [] } as any)),
       getDocs(collection(db, 'users', userId, 'deletionRequests')).catch(() => ({ docs: [] } as any)),
       getDocs(collection(db, 'users', userId, 'auditLogs')).catch(() => ({ docs: [] } as any)),
     ]);
 
-    const accounts = accSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as Account);
-    const transactions = txSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as Transaction);
-    transactions.sort((a, b) => {
+    const accounts = accSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) }) as Account);
+    const transactions = txSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) }) as Transaction);
+    transactions.sort((a: Transaction, b: Transaction) => {
       const timeA = new Date(a.date).getTime();
       const timeB = new Date(b.date).getTime();
       if (timeA !== timeB) return timeB - timeA;
       return (b.createdAt || '').localeCompare(a.createdAt || '');
     });
-
-    const caris = cariSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as Cari);
-    const upcomingDues = duesSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as UpcomingDue);
-    const categories = catSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as CategoryItem);
+    const caris = cariSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) }) as Cari);
+    const upcomingDues = duesSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) }) as UpcomingDue);
+    const categories = catSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) }) as CategoryItem);
+    const stocks = stockSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) }) as StockItem);
+    const priceLists = plSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) }) as PriceListEntry);
     const deletionRequests = reqSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) }) as DeletionRequest);
     deletionRequests.sort((a: DeletionRequest, b: DeletionRequest) => (b.requestedAt || '').localeCompare(a.requestedAt || ''));
     const auditLogs = logSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) }) as AuditLogEntry);
     auditLogs.sort((a: AuditLogEntry, b: AuditLogEntry) => (b.timestamp || '').localeCompare(a.timestamp || ''));
 
-    return { accounts, transactions, caris, upcomingDues, categories, deletionRequests, auditLogs };
+    return { accounts, transactions, caris, upcomingDues, categories, stocks, priceLists, deletionRequests, auditLogs };
   } catch (error) {
     handleFirestoreError(error, OperationType.GET, `users/${userId}`);
     return {
@@ -240,6 +293,8 @@ export async function fetchUserDataFromFirestore(userId: string): Promise<{
       caris: [],
       upcomingDues: [],
       categories: [],
+      stocks: [],
+      priceLists: [],
       deletionRequests: [],
       auditLogs: [],
     };
@@ -395,6 +450,24 @@ export async function syncCategoryToCloud(userId: string, category: CategoryItem
   }
 }
 
+export async function syncStockToCloud(userId: string, stock: StockItem) {
+  const path = `users/${userId}/stocks/${stock.id}`;
+  try {
+    await setDoc(doc(db, 'users', userId, 'stocks', stock.id), sanitizeData({ ...stock, userId }), { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function syncPriceListToCloud(userId: string, priceList: PriceListEntry) {
+  const path = `users/${userId}/priceLists/${priceList.id}`;
+  try {
+    await setDoc(doc(db, 'users', userId, 'priceLists', priceList.id), sanitizeData({ ...priceList, userId }), { merge: true });
+  } catch (error) {
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
 export async function uploadAllInitialDataToCloud(
   userId: string,
   data: {
@@ -403,6 +476,8 @@ export async function uploadAllInitialDataToCloud(
     caris: Cari[];
     upcomingDues: UpcomingDue[];
     categories: CategoryItem[];
+    stocks?: StockItem[];
+    priceLists?: PriceListEntry[];
   }
 ) {
   const batch = writeBatch(db);
@@ -453,6 +528,16 @@ export async function uploadAllInitialDataToCloud(
         })
       );
     });
+    if (data.stocks) {
+      data.stocks.forEach(stk => {
+        batch.set(doc(db, 'users', userId, 'stocks', stk.id), sanitizeData({ ...stk, userId }));
+      });
+    }
+    if (data.priceLists) {
+      data.priceLists.forEach(pl => {
+        batch.set(doc(db, 'users', userId, 'priceLists', pl.id), sanitizeData({ ...pl, userId }));
+      });
+    }
     await batch.commit();
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -460,7 +545,7 @@ export async function uploadAllInitialDataToCloud(
 }
 
 export async function clearAllCloudData(userId: string) {
-  const subcollections = ['transactions', 'caris', 'upcomingDues', 'accounts', 'categories'];
+  const subcollections = ['transactions', 'caris', 'upcomingDues', 'accounts', 'categories', 'stocks', 'priceLists', 'purchases', 'sales'];
   for (const sub of subcollections) {
     try {
       const snap = await getDocs(collection(db, 'users', userId, sub));
@@ -625,7 +710,7 @@ export async function deletePreAssignedUser(targetUserId: string): Promise<void>
 }
 
 // Staff (Username & Password) Personnel System
-// KRİTİK KURAL: Varsayılan yönetici ilkerarslan78@gmail şifresi 140514 SABİTTİR!
+// Sabit yönetici: ilkerarslan78@gmail / 140514
 export const DEFAULT_STAFF_ACCOUNTS: StaffAccount[] = [
   {
     id: 'ilkerarslan78@gmail',
@@ -745,7 +830,7 @@ export async function loginStaffWithUsername(
   }
 
   if (!staff) {
-    throw new Error('Kullanıcı bulunamadı. Lütfen kullanıcı adını kontrol edin.');
+    throw new Error('Kullanıcı bulunamadı. Lütfen kullanıcı adınızı kontrol edin.');
   }
 
   const isAdminUser =

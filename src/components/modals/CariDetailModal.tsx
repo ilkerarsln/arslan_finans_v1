@@ -61,7 +61,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
     .reduce((sum, t) => sum + t.amount, 0);
 
   const totalExpenseToCari = cariTransactions
-    .filter(t => t.type === 'Gider' || t.type === 'Mal Alış')
+    .filter(t => t.type === 'Gider' || t.type === 'Mal Alımı')
     .reduce((sum, t) => sum + t.amount, 0);
 
   const handleCollect = () => {
@@ -82,7 +82,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
       type: 'Gider',
       cariId: cari.id,
       cariName: cari.name,
-      category: 'Mal / Stok Alışı',
+      category: 'Mal / Stok Alımı',
       desc: `${cari.name} ödemesi`,
       amount: cari.balance < 0 ? Math.abs(cari.balance) : undefined,
     });
@@ -115,14 +115,13 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5 text-slate-800 dark:text-slate-100 max-h-[92vh] overflow-y-auto">
-        {/* Header */}
         <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xs uppercase font-bold text-slate-400 tracking-wider">
                 {cari.type}
               </span>
-              <span className="text-slate-300 dark:text-slate-700">•</span>
+              <span className="text-slate-300 dark:text-slate-700">·</span>
               <span className="text-xs text-slate-500">{cari.city || 'Belirtilmedi'}</span>
             </div>
             <h3 className="text-xl font-bold text-slate-900 dark:text-white mt-1">
@@ -139,7 +138,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
             {isAdmin ? (
               <button
                 onClick={() => {
-                  if (window.confirm(`"${cari.name}" cari kartını silmek istediğinize emin misiniz?`)) {
+                  if (window.confirm(`"${cari.name}" cari kartı silmek istediğinize emin misiniz?`)) {
                     deleteCari(cari.id);
                     onClose();
                   }
@@ -154,7 +153,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
               <button
                 onClick={() => {
                   const reason = window.prompt(
-                    `"${cari.name}" cari kartını silmek için Yönetici (Admin) onayına gerekçe iletiniz:`,
+                    `"${cari.name}" cari kartı silmek için Yönetici (Admin) onayına gerekçe iletiniz:`,
                     'Cari kapatıldı / mükerrer kayıt'
                   );
                   if (reason !== null && reason.trim()) {
@@ -185,7 +184,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
               Güncel Bakiye Durumu
             </span>
             <div
-              className={`text-xl font-bold font-mono-num mt-0.5 ${
+              className={`text-xl font-bold font-mono mt-0.5 ${
                 cari.balance > 0
                   ? 'text-emerald-600 dark:text-emerald-400'
                   : cari.balance < 0
@@ -200,7 +199,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
                 ? 'Alacağımız Var'
                 : cari.balance < 0
                 ? 'Borcumuz Var'
-                : 'Bakiye Kapalı (0.00)'}
+                : 'Bakiye Kapalı (₺0.00)'}
             </span>
           </div>
 
@@ -208,7 +207,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
             <span className="text-[11px] font-semibold text-slate-400 uppercase">
               Toplam Tahsilat / Ödeme
             </span>
-            <div className="text-xs space-y-1 mt-1 font-mono-num">
+            <div className="text-xs space-y-1 mt-1 font-mono">
               <div className="text-emerald-600 dark:text-emerald-400 font-semibold">
                 Alınan: +{formatCurrency(totalIncomeFromCari)}
               </div>
@@ -303,61 +302,6 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
           </div>
         </div>
 
-        {cari.notes && (
-          <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-lg text-xs text-slate-600 dark:text-slate-400">
-            <span className="font-semibold text-slate-700 dark:text-slate-300">Not: </span>
-            {cari.notes}
-          </div>
-        )}
-
-        {/* Active Upcoming Dues */}
-        {cariUpcomingDues.length > 0 && (
-          <div className="space-y-2 p-3 bg-indigo-50/60 dark:bg-indigo-950/40 rounded-xl border border-indigo-200/60 dark:border-indigo-900/50">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-indigo-600" />
-                Planlanan Vade & Taksit Takvimi ({cariUpcomingDues.length})
-              </span>
-              <span className="text-[11px] text-indigo-700 dark:text-indigo-300 font-mono-num font-semibold">
-                Toplam: ₺{cariUpcomingDues.reduce((s, d) => s + d.amount, 0).toLocaleString('tr-TR')}
-              </span>
-            </div>
-            <div className="flex gap-2 overflow-x-auto pb-1 text-xs">
-              {cariUpcomingDues.map(due => (
-                <div
-                  key={due.id}
-                  className="min-w-[170px] p-2 bg-white dark:bg-slate-900 rounded-lg border border-indigo-100 dark:border-indigo-900/60 shrink-0"
-                >
-                  <div className="flex items-center justify-between gap-1 text-[11px]">
-                    <span className="font-semibold text-slate-800 dark:text-slate-200 truncate max-w-[100px]">
-                      {due.title}
-                    </span>
-                    <span
-                      className={`font-mono-num font-bold ${
-                        due.type === 'Gelir' ? 'text-emerald-600' : 'text-rose-600'
-                      }`}
-                    >
-                      {formatCurrency(due.amount)}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between text-[10px] text-slate-400 mt-1">
-                    <span>{formatDate(due.dueDate)}</span>
-                    <span
-                      className={`px-1.5 py-0.2 rounded font-medium ${
-                        due.isCompleted
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : 'bg-amber-100 text-amber-700'
-                      }`}
-                    >
-                      {due.isCompleted ? 'Ödendi' : 'Bekliyor'}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* Statement Table */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
@@ -373,6 +317,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
               <span>Ekstreyi Excel İndir</span>
             </button>
           </div>
+
           <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
             {cariTransactions.length === 0 ? (
               <div className="p-6 text-center text-xs text-slate-400">
@@ -441,7 +386,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
                           {tx.documentNo || '-'}
                         </td>
                         <td
-                          className={`py-2.5 px-3 text-right font-mono-num font-bold whitespace-nowrap ${
+                          className={`py-2.5 px-3 text-right font-mono font-bold whitespace-nowrap ${
                             isSupplierPosOffset
                               ? 'text-teal-600 dark:text-teal-400'
                               : tx.type === 'Gelir'

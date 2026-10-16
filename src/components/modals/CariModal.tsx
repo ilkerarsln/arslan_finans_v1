@@ -54,7 +54,6 @@ export const CariModal: React.FC<CariModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const numBalance = parseFloat(balance) || 0;
-
     if (editingCari) {
       updateCari({
         ...editingCari,
@@ -137,14 +136,14 @@ export const CariModal: React.FC<CariModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Firma / Unvan Adı
+              Firma / Unvan Adı *
             </label>
             <input
               type="text"
               required
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="Örn: Bosch A.Ş. veya Ahmet Yılmaz"
+              placeholder="ör: Bosch A.Ş. veya Ahmet Yılmaz"
               className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
@@ -176,33 +175,6 @@ export const CariModal: React.FC<CariModalProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Vergi Dairesi
-              </label>
-              <input
-                type="text"
-                value={taxOffice}
-                onChange={e => setTaxOffice(e.target.value)}
-                placeholder="Karabük V.D."
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Vergi / TCKN No
-              </label>
-              <input
-                type="text"
-                value={taxNumber}
-                onChange={e => setTaxNumber(e.target.value)}
-                placeholder="10 veya 11 Haneli No"
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-          </div>
-
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
               Devir / Başlangıç Bakiyesi (₺)
@@ -213,10 +185,10 @@ export const CariModal: React.FC<CariModalProps> = ({
               value={balance}
               onChange={e => setBalance(e.target.value)}
               placeholder="0.00"
-              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono-num focus:ring-2 focus:ring-emerald-500"
+              className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono focus:ring-2 focus:ring-emerald-500"
             />
             <p className="text-[11px] text-slate-400 mt-1">
-              * Pozitif değer alacağımızı (+), negatif değer firmaya borcumuzu (-) ifade eder.
+              * Pozitif değer alacağı (+), negatif değer firmaya borcumuzu (-) ifade eder.
             </p>
           </div>
 

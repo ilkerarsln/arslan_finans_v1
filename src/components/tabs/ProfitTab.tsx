@@ -1,11 +1,10 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useFinance } from '../../context/FinanceContext';
 import {
   TrendingUp,
   Plus,
   Search,
   Download,
-  Upload,
   Calendar,
   User,
   ShoppingBag,
@@ -20,12 +19,9 @@ import {
   Check,
   Edit2,
   FileSpreadsheet,
-  Sparkles,
 } from 'lucide-react';
-import { formatCurrency, formatDate } from '../../utils/formatters';
+import { formatCurrency, formatDate, roundUpTo10TL } from '../../utils/formatters';
 import { SaleRecord, SaleType } from '../../types/finance';
-import { ProductMatchModal, UnmatchedResolution } from '../modals/ProductMatchModal';
-import * as XLSX from 'xlsx';
 
 export const ProfitTab: React.FC = () => {
   const {
@@ -37,14 +33,12 @@ export const ProfitTab: React.FC = () => {
     addSaleRecord,
     updateSaleRecord,
     deleteSaleRecord,
-    importSalesBulk,
     getVadeRateForMonth,
     setActiveTab,
     isAdmin,
     userProfile,
     saleModalPrefillProduct,
     setSaleModalPrefillProduct,
-    openSmartSales,
     openDataImporter,
     showToast,
   } = useFinance();
@@ -80,18 +74,12 @@ export const ProfitTab: React.FC = () => {
   const [selectedAccountId, setSelectedAccountId] = useState(accounts[0]?.id || 'acc-kasa');
   const [notes, setNotes] = useState('');
 
-  // Excel and product matching states
-  const excelSaleInputRef = useRef<HTMLInputElement>(null);
-  const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
-  const [unmatchedNamesForSale, setUnmatchedNamesForSale] = useState<string[]>([]);
-  const [pendingParsedSales, setPendingParsedSales] = useState<any[]>([]);
-
-  // Handle prefill from StockTab if user clicked "Satış Yap" on a stock item
+  // Prefill from StockTab
   useEffect(() => {
     if (saleModalPrefillProduct) {
       setSelectedProductId(saleModalPrefillProduct.id);
       setCostPrice(saleModalPrefillProduct.purchasePrice);
-      setSalePrice(saleModalPrefillProduct.salePrice || Math.round(saleModalPrefillProduct.purchasePrice * 1.35));
+      setSalePrice(saleModalPrefillProduct.salePrice || roundUpTo10TL(saleModalPrefillProduct.purchasePrice * 1.35));
       setQuantity(1);
       setIsSaleModalOpen(true);
       setSaleModalPrefillProduct(null);
@@ -103,7 +91,7 @@ export const ProfitTab: React.FC = () => {
     const prod = stockItems.find(p => p.id === productId);
     if (prod) {
       setCostPrice(prod.purchasePrice);
-      setSalePrice(prod.salePrice || Math.round(prod.purchasePrice * 1.35));
+      setSalePrice(prod.salePrice || roundUpTo10TL(prod.purchasePrice * 1.35));
     }
   };
 
@@ -201,8 +189,8 @@ export const ProfitTab: React.FC = () => {
     e.preventDefault();
     const prod = stockItems.find(p => p.id === selectedProductId);
     const finalProdName = prod ? prod.name : customProductName.trim() || 'Ürün Satışı';
-    const finalProdCat = prod ? prod.category : customCategory;
-    const finalProdSub = prod ? prod.subCategory : undefined;
+    const finalProdCat = (prod ? (prod.anaKategori || prod.category) : customCategory) || 'MOBİLYA';
+    const finalProdSub = prod ? (prod.altKategori || prod.subCategory) : undefined;
     const finalProdBrand = prod ? prod.brand : customBrand;
     const prodSupplierId = prod ? prod.supplierId : undefined;
     const prodSupplierName = prod ? prod.supplierName : undefined;
@@ -244,7 +232,7 @@ export const ProfitTab: React.FC = () => {
           accountId: selectedAccountId,
           notes: notes.trim() || undefined,
         });
-        showToast('Satış kaydı başarıyla güncellendi.', 'success');
+        showToast('Satış kaydı güncellendi.', 'success');
       }
     } else {
       addSaleRecord({
@@ -281,232 +269,6 @@ export const ProfitTab: React.FC = () => {
     setEditingSaleId(null);
   };
 
-  const handleExcelSaleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = evt => {
-      try {
-        const data = evt.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(sheet) as any[];
-
-        if (!rows || rows.length === 0) {
-          showToast('Excel dosyasında okunabilecek kayıt bulunamadı.', 'error');
-          return;
-        }
-
-        const unmatchedNamesSet = new Set<string>();
-        const parsedRows = rows.map((r, idx) => {
-          const rawProdName = String(
-            r['Ürün Adı'] || r['Urun Adi'] || r['Ürün'] || r['Name'] || r['Model'] || ''
-          ).trim();
-
-          const matchInStock = stockItems.find(
-            s => s.name.toLowerCase() === rawProdName.toLowerCase() ||
-                 (s.code && s.code.toLowerCase() === rawProdName.toLowerCase())
-          );
-
-          if (!matchInStock && rawProdName) {
-            unmatchedNamesSet.add(rawProdName);
-          }
-
-          let rawSaleType: SaleType = 'Peşin';
-          const typeStr = String(r['Satış Şekli'] || r['Satis Sekli'] || r['Ödeme Türü'] || r['Tür'] || '').toLowerCase();
-          if (typeStr.includes('senet') || typeStr.includes('vade')) {
-            rawSaleType = 'Senetli Satış';
-          } else if (typeStr.includes('kart') || typeStr.includes('pos') || typeStr.includes('kredi')) {
-            rawSaleType = 'Kredi Kartı';
-          }
-
-          const rawDate = r['Tarih'] ? String(r['Tarih']).trim() : new Date().toISOString().split('T')[0];
-          const rawQty = Number(r['Adet'] || r['Miktar'] || 1) || 1;
-          const rawCost = Number(r['Alış Maliyeti'] || r['Maliyet'] || r['Alis Fiyati'] || matchInStock?.purchasePrice || 0);
-          const rawSalePrice = Number(r['Satış Fiyatı'] || r['Satis Fiyati'] || r['Fiyat'] || matchInStock?.salePrice || 0);
-          const rawInstallments = Number(r['Taksit Sayısı'] || r['Taksit'] || 12) || 12;
-          const rawSalesPerson = String(r['Satış Personeli'] || r['Personel'] || userProfile?.displayName || 'İlker Arslan').trim();
-          const rawDoc = String(r['Belge No'] || r['Fatura No'] || `FAT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`).trim();
-          const rawCustomer = String(r['Müşteri Adı'] || r['Musteri'] || r['Cari'] || 'Perakende Müşteri').trim();
-          const rawNotes = r['Notlar'] ? String(r['Notlar']).trim() : undefined;
-
-          return {
-            id: `sale-parsed-${idx}`,
-            rawProdName,
-            matchInStock,
-            date: rawDate,
-            customerName: rawCustomer,
-            documentNo: rawDoc,
-            quantity: rawQty,
-            costPrice: rawCost,
-            salePrice: rawSalePrice,
-            saleType: rawSaleType,
-            installmentsCount: rawInstallments,
-            salesPerson: rawSalesPerson,
-            notes: rawNotes,
-          };
-        });
-
-        if (unmatchedNamesSet.size > 0) {
-          setUnmatchedNamesForSale(Array.from(unmatchedNamesSet));
-          setPendingParsedSales(parsedRows);
-          setIsMatchModalOpen(true);
-        } else {
-          const newSalesToImport: Array<Omit<SaleRecord, 'id' | 'createdAt'>> = parsedRows.map(row => {
-            const saleMonthKey = row.date.substring(0, 7);
-            const rate = getVadeRateForMonth(saleMonthKey);
-            const totalCost = +(row.quantity * row.costPrice).toFixed(2);
-            const totalSale = +(row.quantity * row.salePrice).toFixed(2);
-            const vadeFarki = row.saleType === 'Senetli Satış'
-              ? +(totalCost * ((rate * row.installmentsCount) / 100)).toFixed(2)
-              : 0;
-            const effectiveCost = +(totalCost + vadeFarki).toFixed(2);
-            const netProfit = +(totalSale - effectiveCost).toFixed(2);
-            const profitMargin = totalSale > 0 ? +((netProfit / totalSale) * 100).toFixed(1) : 0;
-
-            return {
-              date: row.date,
-              documentNo: row.documentNo,
-              customerName: row.customerName,
-              productId: row.matchInStock?.id,
-              productName: row.matchInStock?.name || row.rawProdName,
-              category: row.matchInStock?.category || 'Beyaz Eşya',
-              subCategory: row.matchInStock?.subCategory,
-              brand: row.matchInStock?.brand,
-              quantity: row.quantity,
-              costPrice: row.costPrice,
-              totalCost,
-              saleType: row.saleType,
-              installmentsCount: row.saleType === 'Senetli Satış' ? row.installmentsCount : undefined,
-              vadeRateMonthly: row.saleType === 'Senetli Satış' ? rate : undefined,
-              vadeFarkiAmount: vadeFarki,
-              effectiveCost,
-              salePrice: row.salePrice,
-              totalSaleAmount: totalSale,
-              netProfit,
-              profitMargin,
-              salesPerson: row.salesPerson,
-              accountId: accounts[0]?.id || 'acc-kasa',
-              notes: row.notes,
-            };
-          });
-          importSalesBulk(newSalesToImport);
-        }
-      } catch (err: any) {
-        showToast('Excel okuma hatası: ' + err.message, 'error');
-      } finally {
-        if (excelSaleInputRef.current) excelSaleInputRef.current.value = '';
-      }
-    };
-    reader.readAsBinaryString(file);
-  };
-
-  const handleProductMatchComplete = (resolutions: Record<string, UnmatchedResolution>) => {
-    const newSalesToImport: Array<Omit<SaleRecord, 'id' | 'createdAt'>> = pendingParsedSales.map(row => {
-      const res = resolutions[row.rawProdName];
-      const matchInStock = row.matchInStock || stockItems.find(s => s.id === res?.matchedProductId);
-      const finalName = res ? res.productName : (matchInStock ? matchInStock.name : row.rawProdName);
-      const finalCat = res ? res.category : (matchInStock ? matchInStock.category : 'Beyaz Eşya');
-      const finalSub = res?.subCategory || matchInStock?.subCategory;
-      const finalBrand = res?.brand || matchInStock?.brand || 'Genel';
-      const finalCost = (res && res.costPrice > 0) ? res.costPrice : (row.costPrice > 0 ? row.costPrice : (matchInStock?.purchasePrice || 0));
-      const finalSalePrice = (res && res.salePrice > 0) ? res.salePrice : (row.salePrice > 0 ? row.salePrice : (matchInStock?.salePrice || Math.round(finalCost * 1.35)));
-
-      const saleMonthKey = row.date.substring(0, 7);
-      const rate = getVadeRateForMonth(saleMonthKey);
-      const totalCost = +(row.quantity * finalCost).toFixed(2);
-      const totalSale = +(row.quantity * finalSalePrice).toFixed(2);
-      const vadeFarki = row.saleType === 'Senetli Satış'
-        ? +(totalCost * ((rate * row.installmentsCount) / 100)).toFixed(2)
-        : 0;
-      const effectiveCost = +(totalCost + vadeFarki).toFixed(2);
-      const netProfit = +(totalSale - effectiveCost).toFixed(2);
-      const profitMargin = totalSale > 0 ? +((netProfit / totalSale) * 100).toFixed(1) : 0;
-
-      return {
-        date: row.date,
-        documentNo: row.documentNo,
-        customerName: row.customerName,
-        productId: matchInStock?.id || res?.matchedProductId,
-        productName: finalName,
-        category: finalCat,
-        subCategory: finalSub,
-        brand: finalBrand,
-        quantity: row.quantity,
-        costPrice: finalCost,
-        totalCost,
-        saleType: row.saleType,
-        installmentsCount: row.saleType === 'Senetli Satış' ? row.installmentsCount : undefined,
-        vadeRateMonthly: row.saleType === 'Senetli Satış' ? rate : undefined,
-        vadeFarkiAmount: vadeFarki,
-        effectiveCost,
-        salePrice: finalSalePrice,
-        totalSaleAmount: totalSale,
-        netProfit,
-        profitMargin,
-        salesPerson: row.salesPerson,
-        accountId: accounts[0]?.id || 'acc-kasa',
-        notes: row.notes,
-      };
-    });
-
-    importSalesBulk(newSalesToImport);
-    setPendingParsedSales([]);
-    setUnmatchedNamesForSale([]);
-  };
-
-  const handleExportCSV = () => {
-    if (filteredSales.length === 0) {
-      alert('Dışa aktarılacak satış kaydı bulunamadı.');
-      return;
-    }
-
-    const headers = [
-      'Tarih',
-      'Belge No',
-      'Müşteri Adı',
-      'Ürün Adı',
-      'Kategori',
-      'Marka',
-      'Adet',
-      'Alış Maliyeti (TL)',
-      'Satış Şekli',
-      'Taksit / Vade',
-      'Vade Farkı Maliyeti (TL)',
-      'Toplam Satış Cirosu (TL)',
-      'Net Kâr (TL)',
-      'Kâr Marjı (%)',
-      'Satış Personeli',
-    ];
-
-    const rows = filteredSales.map(s => [
-      s.date,
-      `"${s.documentNo || '-'}"`,
-      `"${s.customerName}"`,
-      `"${s.productName}"`,
-      `"${s.category}"`,
-      `"${s.brand || '-'}"`,
-      s.quantity,
-      s.totalCost,
-      s.saleType,
-      s.installmentsCount ? `${s.installmentsCount} Taksit` : '-',
-      s.vadeFarkiAmount || 0,
-      s.totalSaleAmount,
-      s.netProfit,
-      s.profitMargin.toFixed(1),
-      `"${s.salesPerson}"`,
-    ]);
-
-    const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `arslan_mobilya_kar_takip_${selectedYear}_${selectedMonth}.csv`;
-    link.click();
-  };
-
   return (
     <div className="space-y-6">
       {/* Top Banner */}
@@ -519,41 +281,24 @@ export const ProfitTab: React.FC = () => {
             <h2 className="text-xl font-bold tracking-tight">Kâr Takip & Satış Yönetimi</h2>
           </div>
           <p className="text-xs text-slate-400 max-w-xl leading-relaxed">
-            Peşin, kredi kartı ve senetli satışların ürün bazlı maliyet ve kârlılık takibi. Senetli satışlarda Tanımlamalar sekmesindeki aylık vade farkı oranı taksit sayısına göre otomatik hesaplanır.
+            Peşin, kredi kartı ve senetli satışlarda anlık kârlılık takibi. Senetli satışlarda vade farkı maliyeti taksit sayısına göre otomatik hesaplanır.
           </p>
         </div>
-
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          <input
-            type="file"
-            ref={excelSaleInputRef}
-            onChange={handleExcelSaleUpload}
-            accept=".xlsx, .xls, .csv"
-            className="hidden"
-          />
           <button
-            onClick={openSmartSales}
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white text-xs font-bold transition shadow-lg shadow-emerald-500/20 active:scale-95"
-            title="Sistemde olmayan eksik ürünleri tespit et, eşleştir veya anında fiyat gir"
-          >
-            <Sparkles className="w-4 h-4 text-amber-300 animate-spin-slow" />
-            <span>Akıllı Satış & Eşleştirme</span>
-          </button>
-          <button
-            onClick={() => excelSaleInputRef.current?.click()}
+            onClick={() => openDataImporter('stok')}
             className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition active:scale-95"
-            title="Excel dosyasından toplu satış yükle (Eksik ürünler otomatik eşleştirilir)"
+            title="Yalın Excel Mal Alımı ve Fiyat Listesi Eşleştirme"
           >
-            <Upload className="w-4 h-4 text-emerald-400" />
-            <span>Excel Satış Yükle</span>
+            <FileSpreadsheet className="w-4 h-4 text-sky-400" />
+            <span>Yalın Mal Alımı</span>
           </button>
           <button
             onClick={() => setActiveTab('stock')}
             className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition active:scale-95"
-            title="Tedarikçi Mal Alış & Stok Ekranına Git"
           >
             <Boxes className="w-4 h-4 text-sky-400" />
-            <span>Mal Alışı Yap</span>
+            <span>Depo & Stoklar</span>
             <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
           </button>
           <button
@@ -573,59 +318,55 @@ export const ProfitTab: React.FC = () => {
             <span>Toplam Satış Cirosu</span>
             <DollarSign className="w-4 h-4 text-emerald-500" />
           </div>
-          <div className="text-2xl font-bold font-mono-num text-slate-900 dark:text-white mt-2">
+          <div className="text-2xl font-bold font-mono text-slate-900 dark:text-white mt-2">
             {formatCurrency(totalCiro)}
           </div>
           <span className="text-[11px] text-slate-400 mt-1 block">
             {filteredSales.length} adet tamamlanan satış
           </span>
         </div>
-
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
             <span>Ürün Alış Maliyeti</span>
             <Boxes className="w-4 h-4 text-blue-500" />
           </div>
-          <div className="text-2xl font-bold font-mono-num text-slate-700 dark:text-slate-300 mt-2">
+          <div className="text-2xl font-bold font-mono text-slate-700 dark:text-slate-300 mt-2">
             {formatCurrency(totalCost)}
           </div>
           <span className="text-[11px] text-slate-400 mt-1 block">
             Satılan ürünlerin depo maliyeti
           </span>
         </div>
-
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
             <span>Vade Farkı Maliyeti</span>
             <Calculator className="w-4 h-4 text-amber-500" />
           </div>
-          <div className="text-2xl font-bold font-mono-num text-amber-600 dark:text-amber-400 mt-2">
+          <div className="text-2xl font-bold font-mono text-amber-600 dark:text-amber-400 mt-2">
             +{formatCurrency(totalVadeFarki)}
           </div>
           <span className="text-[11px] text-slate-400 mt-1 block">
             Senetli satış vade maliyet yükü
           </span>
         </div>
-
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-500/30 dark:border-emerald-500/20 bg-emerald-50/20 dark:bg-emerald-950/20 shadow-xs">
           <div className="flex items-center justify-between text-xs font-semibold text-emerald-700 dark:text-emerald-400">
             <span>Elde Edilen Net Kâr</span>
             <TrendingUp className="w-4 h-4 text-emerald-600" />
           </div>
-          <div className="text-2xl font-bold font-mono-num text-emerald-600 dark:text-emerald-400 mt-2">
+          <div className="text-2xl font-bold font-mono text-emerald-600 dark:text-emerald-400 mt-2">
             {formatCurrency(totalNetProfit)}
           </div>
           <span className="text-[11px] text-emerald-700/80 dark:text-emerald-400/80 mt-1 block font-medium">
             Ciro - (Maliyet + Vade Farkı)
           </span>
         </div>
-
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
             <span>Ortalama Kâr Marjı</span>
             <Percent className="w-4 h-4 text-purple-500" />
           </div>
-          <div className="text-2xl font-bold font-mono-num text-purple-600 dark:text-purple-400 mt-2">
+          <div className="text-2xl font-bold font-mono text-purple-600 dark:text-purple-400 mt-2">
             %{averageMargin.toFixed(1)}
           </div>
           <span className="text-[11px] text-slate-400 mt-1 block">
@@ -647,7 +388,6 @@ export const ProfitTab: React.FC = () => {
               className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
-
           <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs">
             <Calendar className="w-3.5 h-3.5 text-slate-400" />
             <select
@@ -670,7 +410,6 @@ export const ProfitTab: React.FC = () => {
               <option value="12">Aralık</option>
             </select>
           </div>
-
           <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs">
             <select
               value={selectedYear}
@@ -683,7 +422,6 @@ export const ProfitTab: React.FC = () => {
               <option value="2024">2024</option>
             </select>
           </div>
-
           <select
             value={selectedSaleType}
             onChange={e => setSelectedSaleType(e.target.value)}
@@ -694,7 +432,6 @@ export const ProfitTab: React.FC = () => {
             <option value="Kredi Kartı">Kredi Kartı</option>
             <option value="Senetli Satış">Senetli Satış (Vadeli)</option>
           </select>
-
           <select
             value={selectedCategory}
             onChange={e => setSelectedCategory(e.target.value)}
@@ -708,14 +445,6 @@ export const ProfitTab: React.FC = () => {
             ))}
           </select>
         </div>
-
-        <button
-          onClick={handleExportCSV}
-          className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 transition shadow-xs shrink-0"
-        >
-          <Download className="w-3.5 h-3.5 text-emerald-600" />
-          <span>Excel CSV İndir</span>
-        </button>
       </div>
 
       {/* Sales Table */}
@@ -725,11 +454,7 @@ export const ProfitTab: React.FC = () => {
             <TrendingUp className="w-4 h-4 text-emerald-600" />
             Satış ve Kârlılık Tablosu ({filteredSales.length})
           </h3>
-          <span className="text-xs text-slate-400">
-            {selectedYear} {selectedMonth !== 'ALL' ? `/${selectedMonth}` : ''} dönemi
-          </span>
         </div>
-
         {filteredSales.length === 0 ? (
           <div className="p-12 text-center space-y-3">
             <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
@@ -737,9 +462,6 @@ export const ProfitTab: React.FC = () => {
             </div>
             <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
               Seçilen kriterlere uygun satış kaydı bulunamadı
-            </p>
-            <p className="text-xs text-slate-400">
-              Filtreleri değiştirebilir veya yeni bir satış kaydı ekleyebilirsiniz.
             </p>
           </div>
         ) : (
@@ -793,7 +515,7 @@ export const ProfitTab: React.FC = () => {
                         )}
                       </div>
                     </td>
-                    <td className="py-3 px-3.5 text-center font-bold font-mono-num text-slate-800 dark:text-slate-200">
+                    <td className="py-3 px-3.5 text-center font-bold font-mono text-slate-800 dark:text-slate-200">
                       {sale.quantity}
                     </td>
                     <td className="py-3 px-3.5 whitespace-nowrap">
@@ -814,10 +536,10 @@ export const ProfitTab: React.FC = () => {
                         </span>
                       )}
                     </td>
-                    <td className="py-3 px-3.5 text-right font-mono-num text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                    <td className="py-3 px-3.5 text-right font-mono text-slate-600 dark:text-slate-400 whitespace-nowrap">
                       {formatCurrency(sale.totalCost)}
                     </td>
-                    <td className="py-3 px-3.5 text-right font-mono-num whitespace-nowrap">
+                    <td className="py-3 px-3.5 text-right font-mono whitespace-nowrap">
                       {sale.vadeFarkiAmount ? (
                         <span className="text-amber-600 dark:text-amber-400 font-medium">
                           +{formatCurrency(sale.vadeFarkiAmount)}
@@ -826,15 +548,15 @@ export const ProfitTab: React.FC = () => {
                         <span className="text-slate-400">-</span>
                       )}
                     </td>
-                    <td className="py-3 px-3.5 text-right font-mono-num font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                    <td className="py-3 px-3.5 text-right font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
                       {formatCurrency(sale.totalSaleAmount)}
                     </td>
-                    <td className="py-3 px-3.5 text-right font-mono-num font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                    <td className="py-3 px-3.5 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                       +{formatCurrency(sale.netProfit)}
                     </td>
                     <td className="py-3 px-3.5 text-center whitespace-nowrap">
                       <span
-                        className={`font-mono-num font-bold px-1.5 py-0.5 rounded text-[11px] ${
+                        className={`font-mono font-bold px-1.5 py-0.5 rounded text-[11px] ${
                           sale.profitMargin >= 25
                             ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300'
                             : sale.profitMargin >= 15
@@ -973,74 +695,22 @@ export const ProfitTab: React.FC = () => {
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                    Satılan Ürün (Stoktan Seç veya Yeni Belirt) *
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedProductId('');
-                      setCustomProductName('');
-                      setCostPrice(0);
-                      setSalePrice(0);
-                    }}
-                    className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline"
-                  >
-                    Özel / Eksik Ürün Gir
-                  </button>
-                </div>
-                {selectedProductId !== '' ? (
-                  <select
-                    required
-                    value={selectedProductId}
-                    onChange={e => {
-                      if (e.target.value === 'custom') {
-                        setSelectedProductId('');
-                      } else {
-                        handleSelectProduct(e.target.value);
-                      }
-                    }}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-                  >
-                    <option value="">Ürün seçin (Stoktaki mevcut ürünler)...</option>
-                    {stockItems.map(stk => (
-                      <option key={stk.id} value={stk.id}>
-                        {stk.name} [{stk.brand || stk.category}] — Mevcut Stok: {stk.quantity} {stk.unit} — Maliyet: ₺{stk.purchasePrice.toLocaleString('tr-TR')}
-                      </option>
-                    ))}
-                    <option value="custom">★ Listede Olmayan Ürün (Manuel Tanımla)</option>
-                  </select>
-                ) : (
-                  <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-700">
-                    <input
-                      type="text"
-                      required
-                      placeholder="Ürün adı ve modelini yazın..."
-                      value={customProductName}
-                      onChange={e => setCustomProductName(e.target.value)}
-                      className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-                    />
-                    <div className="grid grid-cols-2 gap-2">
-                      <select
-                        value={customCategory}
-                        onChange={e => setCustomCategory(e.target.value)}
-                        className="px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
-                      >
-                        {productCategories.map(c => (
-                          <option key={c.id} value={c.name}>{c.name}</option>
-                        ))}
-                      </select>
-                      <input
-                        type="text"
-                        placeholder="Marka (Bosch, Bambi vb.)"
-                        value={customBrand}
-                        onChange={e => setCustomBrand(e.target.value)}
-                        className="px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
-                      />
-                    </div>
-                  </div>
-                )}
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Satılan Ürün (Stoktan Seç) *
+                </label>
+                <select
+                  required
+                  value={selectedProductId}
+                  onChange={e => handleSelectProduct(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                >
+                  <option value="">Ürün seçin (Stoktaki mevcut ürünler)...</option>
+                  {stockItems.map(stk => (
+                    <option key={stk.id} value={stk.id}>
+                      {stk.name} [{stk.brand || stk.category}] · Mevcut: {stk.quantity} {stk.unit} · Maliyet: ₺{stk.purchasePrice.toLocaleString('tr-TR')} · Satış: ₺{stk.salePrice.toLocaleString('tr-TR')}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -1054,7 +724,7 @@ export const ProfitTab: React.FC = () => {
                     required
                     value={quantity}
                     onChange={e => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono-num font-bold focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono font-bold focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
                 <div>
@@ -1067,12 +737,12 @@ export const ProfitTab: React.FC = () => {
                     required
                     value={costPrice}
                     onChange={e => setCostPrice(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono-num focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">
-                    Birim Satış (₺)
+                    Birim Satış (10 TL Katı)
                   </label>
                   <input
                     type="number"
@@ -1080,7 +750,7 @@ export const ProfitTab: React.FC = () => {
                     required
                     value={salePrice}
                     onChange={e => setSalePrice(parseFloat(e.target.value) || 0)}
-                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-emerald-400 dark:border-emerald-600 rounded-xl text-xs outline-none font-mono-num font-bold text-emerald-600 dark:text-emerald-400 focus:ring-2 focus:ring-emerald-500"
+                    className="w-full px-3 py-2 bg-white dark:bg-slate-800 border border-emerald-400 dark:border-emerald-600 rounded-xl text-xs outline-none font-mono font-bold text-emerald-600 dark:text-emerald-400 focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
               </div>
@@ -1106,9 +776,6 @@ export const ProfitTab: React.FC = () => {
                           : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
                       }`}
                     >
-                      {type === 'Peşin' && <DollarSign className="w-3.5 h-3.5" />}
-                      {type === 'Kredi Kartı' && <CreditCard className="w-3.5 h-3.5" />}
-                      {type === 'Senetli Satış' && <Calculator className="w-3.5 h-3.5" />}
                       <span>{type}</span>
                     </button>
                   ))}
@@ -1141,25 +808,10 @@ export const ProfitTab: React.FC = () => {
                         </button>
                       ))}
                     </div>
-                    <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs space-y-1">
-                      <div className="flex justify-between text-slate-700 dark:text-slate-300">
-                        <span>Aylık Vade Farkı:</span>
-                        <span className="font-mono font-bold">%{currentVadeRateMonthly} x {installmentsCount} Ay = %{(currentVadeRateMonthly * installmentsCount).toFixed(1)}</span>
-                      </div>
-                      <div className="flex justify-between text-amber-700 dark:text-amber-400 font-semibold">
-                        <span>Hesaplanan Vade Farkı Maliyeti:</span>
-                        <span className="font-mono font-bold">+{formatCurrency(modalVadeFarki)}</span>
-                      </div>
-                      <div className="flex justify-between text-slate-900 dark:text-white font-bold pt-1 border-t border-amber-500/20">
-                        <span>Efektif Toplam Maliyet:</span>
-                        <span className="font-mono">{formatCurrency(modalEffectiveCost)}</span>
-                      </div>
-                    </div>
                   </div>
                 )}
               </div>
 
-              {/* Satış Personeli & Tahsilat Hesabı */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -1170,7 +822,6 @@ export const ProfitTab: React.FC = () => {
                     required
                     value={salesPerson}
                     onChange={e => setSalesPerson(e.target.value)}
-                    placeholder="Personel Adı Soyadı..."
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                   />
                 </div>
@@ -1192,17 +843,17 @@ export const ProfitTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* Kârlılık Önizleme */}
+              {/* Kâr Önizleme */}
               <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-between text-xs font-medium">
                 <div>
                   <span className="text-slate-500 dark:text-slate-400 block text-[11px]">Toplam Satış Cirosu:</span>
-                  <span className="text-sm font-bold font-mono-num text-slate-900 dark:text-white">
+                  <span className="text-sm font-bold font-mono text-slate-900 dark:text-white">
                     {formatCurrency(modalTotalSale)}
                   </span>
                 </div>
                 <div className="text-right">
                   <span className="text-slate-500 dark:text-slate-400 block text-[11px]">Net Kâr (%{modalProfitMargin}):</span>
-                  <span className="text-base font-bold font-mono-num text-emerald-600 dark:text-emerald-400">
+                  <span className="text-base font-bold font-mono text-emerald-600 dark:text-emerald-400">
                     +{formatCurrency(modalNetProfit)}
                   </span>
                 </div>
@@ -1212,7 +863,7 @@ export const ProfitTab: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsSaleModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl"
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 rounded-xl"
                 >
                   İptal
                 </button>
@@ -1228,15 +879,6 @@ export const ProfitTab: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* PRODUCT MATCHING MODAL FOR SALES EXCEL */}
-      <ProductMatchModal
-        isOpen={isMatchModalOpen}
-        onClose={() => setIsMatchModalOpen(false)}
-        unmatchedNames={unmatchedNamesForSale}
-        sourceType="sale"
-        onComplete={handleProductMatchComplete}
-      />
     </div>
   );
 };

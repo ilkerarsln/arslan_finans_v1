@@ -98,7 +98,7 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
       if (found) {
         if (tx.type === 'Gelir') {
           found.realizedIncome += tx.amount;
-        } else if (tx.type === 'Gider' || tx.type === 'Mal Alış') {
+        } else if (tx.type === 'Gider' || tx.type === 'Mal Alımı') {
           found.realizedExpense += tx.amount;
         }
       }
@@ -152,7 +152,7 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
             Aylık Gelir ve Gider Dağılımı
           </h4>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Geçmiş aylar • İçinde bulunduğumuz ay • Gelecek aylar (planlanan)
+            Geçmiş aylar · İçinde bulunduğumuz ay · Gelecek aylar (planlanan)
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -225,7 +225,7 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
                   x={paddingLeft - 8}
                   y={y + 3}
                   textAnchor="end"
-                  className="text-[9px] fill-slate-400 font-mono-num font-medium"
+                  className="text-[9px] fill-slate-400 font-mono font-medium"
                 >
                   {val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}
                 </text>
@@ -283,7 +283,6 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
                       : 'fill-emerald-500 hover:fill-emerald-400'
                   } transition-all duration-200`}
                 />
-
                 <rect
                   x={centerX + 1.5}
                   y={paddingTop + chartHeight - expH}
@@ -307,13 +306,12 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
                       : m.isFuture
                       ? 'fill-slate-400 dark:fill-slate-500 font-medium'
                       : isHovered
-                      ? 'fill-slate-900 dark:fill-white font-semibold'
+                      ? 'fill-slate-900 dark:white font-semibold'
                       : 'fill-slate-500 dark:fill-slate-400'
                   }`}
                 >
                   {m.monthName}
                 </text>
-
                 {m.isCurrentMonth && (
                   <text
                     x={centerX}
@@ -353,7 +351,7 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
                   : '(Geçmiş Ay)'}
               </span>
               <span
-                className={`font-mono-num font-bold ${
+                className={`font-mono font-bold ${
                   months[hoveredIndex].net >= 0 ? 'text-emerald-400' : 'text-rose-400'
                 }`}
               >
@@ -365,7 +363,7 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
                 <span className="text-emerald-400 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Gelir:
                 </span>
-                <span className="font-mono-num font-medium">
+                <span className="font-mono font-medium">
                   {formatCurrency(months[hoveredIndex].income)}
                 </span>
               </div>
@@ -373,7 +371,7 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
                 <span className="text-rose-400 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span> Gider:
                 </span>
-                <span className="font-mono-num font-medium">
+                <span className="font-mono font-medium">
                   {formatCurrency(months[hoveredIndex].expense)}
                 </span>
               </div>

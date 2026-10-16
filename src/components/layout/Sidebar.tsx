@@ -22,7 +22,6 @@ import {
   RefreshCw,
   Search,
   FileSpreadsheet,
-  Sparkles,
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -45,10 +44,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     userProfile,
     stockItems,
     sales,
+    priceLists,
     isCloudSyncing,
     openCommandPalette,
     openDataImporter,
-    openSmartSales,
   } = useFinance();
 
   const navItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: number | string }[] = [
@@ -65,7 +64,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     },
     {
       id: 'stock',
-      label: 'Mal Alış & Stok',
+      label: 'Mal Alımı & Stok',
       icon: <Boxes className="w-4 h-4 text-sky-400" />,
       badge: stockItems.length > 0 ? stockItems.length : undefined,
     },
@@ -88,8 +87,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     },
     {
       id: 'definitions',
-      label: 'Tanımlamalar',
+      label: 'Tanımlamalar & Fiyat Listesi',
       icon: <SlidersHorizontal className="w-4 h-4 text-amber-400" />,
+      badge: priceLists.length > 0 ? priceLists.length : undefined,
     },
     {
       id: 'reports',
@@ -259,10 +259,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             );
           })}
 
-          {/* Quick ERP Tools Strip */}
+          {/* Yalın Mal Alımı Hızlı Sihirbaz Butonu */}
           <div className="pt-2 mt-2 border-t border-slate-800/80 space-y-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3">
-              Veri & Eşleştirme Sihirbazları
+              Veri & Alım Sihirbazı
             </span>
             <button
               onClick={() => {
@@ -272,30 +272,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-sky-400 hover:text-white hover:bg-sky-950/40 border border-sky-500/20 transition group"
             >
               <FileSpreadsheet className="w-4 h-4 text-sky-400 group-hover:scale-110 transition-transform" />
-              <span className="truncate">Data Importer (Excel/CSV)</span>
-            </button>
-
-            <button
-              onClick={() => {
-                openSmartSales();
-                onClose();
-              }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-amber-300 hover:text-white hover:bg-emerald-950/40 border border-emerald-500/30 transition group"
-            >
-              <Sparkles className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
-              <span className="truncate">Akıllı Satış Eşleştirme</span>
+              <span className="truncate">Yalın Mal Alımı (Data Importer)</span>
             </button>
           </div>
         </nav>
 
         {/* Sidebar Footer */}
         <div className="p-3 border-t border-slate-800/80 text-xs text-slate-500 flex flex-col gap-2">
-          {/* OFİS - MOBİL Bulut Entegrasyon Göstergesi (Sol altta kullanıcı profilinin hemen üzerinde) */}
+          {/* OFİS - MOBİL Bulut Entegrasyon Göstergesi */}
           <div className="bg-gradient-to-r from-emerald-950/70 via-slate-900 to-slate-900 border border-emerald-500/30 rounded-xl p-2.5 shadow-inner">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-1.5">
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
                 <span className="font-bold text-white text-[11px] tracking-wider">
@@ -317,10 +305,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 <Smartphone className="w-3 h-3 text-emerald-400" />
                 <span>Cep Telefonu</span>
               </span>
-            </div>
-            <div className="text-[9px] text-slate-400 mt-1.5 flex items-center justify-between pt-1 border-t border-slate-800/80">
-              <span>Bulut Entegrasyonu:</span>
-              <span className="text-emerald-300 font-medium font-mono">Aktif • 7/24</span>
             </div>
           </div>
 
@@ -346,11 +330,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               )}
             </div>
           )}
-
-          <div className="flex items-center justify-between text-[10px] px-1 text-slate-500">
-            <span>Sürüm 2.5 Pro</span>
-            <span className="font-mono text-emerald-400 font-semibold">Arslan ERP</span>
-          </div>
         </div>
       </aside>
     </>

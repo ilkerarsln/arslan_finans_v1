@@ -1,10 +1,11 @@
-export type TransactionType = 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alış';
+export type TransactionType = 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alımı';
+
 export type TransactionStatus = 'Tamamlandı' | 'Beklemede' | 'İptal';
 
 export interface Transaction {
   id: string;
   date: string; // YYYY-MM-DD
-  dueDate?: string; // Mal alım ödeme / vade tarihi
+  dueDate?: string; // Mal alımı ödeme / vade tarihi
   type: TransactionType;
   category: string;
   cariId?: string;
@@ -13,6 +14,7 @@ export interface Transaction {
   supplierCariName?: string;
   isPosOffset?: boolean;
   desc: string;
+  description?: string;
   amount: number;
   accountId: string;
   targetAccountId?: string; // Virman için hedef hesap
@@ -85,6 +87,7 @@ export interface UpcomingDue {
   installmentIndex?: number;
   totalInstallments?: number;
   installmentGroupId?: string;
+  description?: string;
 }
 
 export interface InstallmentPlanRequest {
@@ -121,6 +124,7 @@ export interface UserPermissions {
 
 export interface UserProfile {
   uid: string;
+  id?: string;
   email: string;
   displayName: string;
   photoURL?: string;
@@ -162,8 +166,8 @@ export interface DeletionRequest {
 
 export interface AuditLogEntry {
   id: string;
-  action: 'Ekleme' | 'Güncelleme' | 'Silme Talebi' | 'Silme Onayı' | 'Silme Reddi' | 'Kalıcı Silme';
-  entityType: 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alış' | 'Cari' | 'Hesap' | 'Personel' | 'Sistem' | 'Satış' | 'Stok';
+  action: 'Ekleme' | 'Giriş' | 'Güncelleme' | 'Silme Talebi' | 'Silme Onayı' | 'Silme Reddi' | 'Kalıcı Silme';
+  entityType: 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alımı' | 'Cari' | 'Hesap' | 'Personel' | 'Sistem' | 'Satış' | 'Stok' | 'Fiyat Listesi';
   entityId: string;
   description: string;
   performedBy: string;
@@ -194,12 +198,13 @@ export interface SaleRecord {
   costPrice: number; // Birim alış maliyeti
   totalCost: number; // quantity * costPrice
   saleType: SaleType;
-  installmentsCount?: number; // Senetli satış taksit sayısı (ör: 6, 12, 18, 24)
-  vadeRateMonthly?: number; // Tanımlardan alınan aylık vade farkı oranı (% ör: 3.5)
+  installmentsCount?: number; // Senetli satış taksit sayısı (örn: 6, 12, 18, 24)
+  vadeRateMonthly?: number; // Tanımlardan alınan aylık vade farkı oranı (% örn: 3.5)
   vadeFarkiAmount?: number; // Senetli satış için hesaplanan toplam vade farkı maliyeti
   effectiveCost: number; // Ürün Maliyeti + Vade Farkı Maliyeti
   salePrice: number; // Birim satış fiyatı
   totalSaleAmount: number; // Toplam Satış Cirosu
+  totalAmount?: number; // Toplam Ciro alias
   netProfit: number; // Toplam Ciro - Efektif Maliyet
   profitMargin: number; // Net Kâr / Satış Cirosu (%)
   salesPerson: string; // İşlemi gerçekleştiren Satış Personeli
@@ -209,21 +214,34 @@ export interface SaleRecord {
   createdBy?: string;
 }
 
-// Mal Alış & Stok Yönetimi
+export interface CategoryHierarchyItem {
+  id: string;
+  anaKategori: string; // MOBİLYA, BEYAZ EŞYA
+  altKategori: string; // BAMBİ, ALTUS, KEA, UĞUR vb.
+  urunGrubu: string; // BAMBİ BASLIK, ALTUS ANKASTRE DAVLUMBAZLAR vb.
+}
+
+// Mal Alımı & Stok Yönetimi
 export interface StockItem {
   id: string;
-  code?: string;
-  name: string;
-  category: string; // e.g. Beyaz Eşya, Mobilya
-  subCategory?: string; // e.g. Buzdolabı, Çamaşır Makinesi
-  brand?: string; // e.g. Bosch, Altus, Bambi
+  code?: string; // stokKodu
+  name: string; // urunAdi
+  anaKategori: string; // e.g. MOBİLYA, BEYAZ EŞYA
+  altKategori: string; // e.g. BAMBİ, ALTUS, MEDİSA
+  urunGrubu: string; // e.g. BAMBİ YATAK, ALTUS FIRIN
+  brand?: string; // İsteğe bağlı bağımsız Marka (Bosch, Altus, Bambi vb.)
+  category?: string; // alias for anaKategori
+  subCategory?: string; // alias for altKategori
   supplierId?: string;
   supplierName?: string;
   quantity: number;
   unit: string;
-  purchasePrice: number; // Son Alış Maliyeti
+  purchasePrice: number; // Son Alış Maliyeti (netMaliyet)
   totalValue: number; // quantity * purchasePrice
-  salePrice: number; // Perakende Satış Fiyatı
+  salePrice: number; // Perakende Satış Fiyatı (10 TL katına yukarı yuvarlanmış)
+  iskontoOrani?: number; // Uygulanan İskonto Oranı (%)
+  karMarjiOrani?: number; // Hedef Kâr Marjı (%)
+  vadeDays?: number; // Vade Süresi (Gün, örn: 30, 60 gün)
   minStockLevel?: number;
   lastPurchaseDate?: string;
   notes?: string;
@@ -232,14 +250,16 @@ export interface StockItem {
 
 export interface PurchaseItemDetail {
   productId?: string;
+  stokKodu?: string;
   name: string;
-  category: string;
+  category?: string;
   subCategory?: string;
   brand?: string;
   quantity: number;
-  unitPrice: number;
+  unitPrice: number; // Net Alış Maliyeti
   totalPrice: number;
-  salePrice?: number;
+  salePrice?: number; // 10 TL katına yukarı yuvarlanmış satış fiyatı
+  bazFiyat?: number;
 }
 
 export interface StockPurchaseRecord {
@@ -251,8 +271,13 @@ export interface StockPurchaseRecord {
   items: PurchaseItemDetail[];
   totalAmount: number;
   paymentType: 'Vadeli (Cari Borca Ekle)' | 'Peşin Kasa/Banka';
+  vadeTuru?: 'pesin' | '30gun' | '60gun' | 'ozel';
   dueDate?: string; // Vade tarihi
   accountId?: string;
+  iskontoOrani?: number;
+  karMarjiOrani?: number;
+  priceListId?: string;
+  priceListTitle?: string;
   notes?: string;
   createdAt: string;
   createdBy?: string;
@@ -283,19 +308,29 @@ export interface ProductBrand {
 export interface VadeRateEntry {
   id: string;
   monthKey: string; // YYYY-MM
-  rateMonthly: number; // Aylık Vade Farkı Oranı (%) ör: 3.5
+  rateMonthly: number; // Aylık Vade Farkı Oranı (%) örn: 3.5
   notes?: string;
 }
 
+// 1. Fiyat Listesi Türleri (Toptan ve Perakende)
+export type PriceListType = 'Toptan' | 'Perakende';
+
 export interface PriceListItem {
   id: string;
-  code?: string;
-  name: string;
-  category: string;
+  stokKodu: string; // stokKodu
+  code?: string; // alias
+  urunAdi: string; // urunAdi
+  name?: string; // alias
+  anaKategori?: string;
+  altKategori?: string;
+  urunGrubu?: string;
+  category?: string;
   subCategory?: string;
   brand?: string;
-  costPrice: number;
-  salePrice: number;
+  toptanFiyat?: number; // Toptan Fiyat Listesi için
+  perakendeFiyat?: number; // Perakende Fiyat Listesi için
+  costPrice?: number; // backwards compatibility
+  salePrice?: number; // backwards compatibility
   notes?: string;
 }
 
@@ -303,24 +338,60 @@ export interface PriceListEntry {
   id: string;
   monthKey: string; // YYYY-MM
   title: string;
+  listType: PriceListType; // 'Toptan' veya 'Perakende'
+  supplierId?: string;
+  supplierName?: string;
   categoryName?: string;
   itemsCount: number;
-  items?: PriceListItem[];
+  items: PriceListItem[];
   fileUrl?: string;
   notes?: string;
   updatedAt?: string;
 }
 
-export interface UnmatchedProductResolution {
-  rawName: string;
-  action: 'match' | 'create_new';
-  matchedProductId?: string;
-  newName?: string;
+// 2, 3, 4. Yalın Dosya Yapısı & Ön İzleme Modelleri
+export type MalAlimiVadeSecimi = 'pesin' | '30gun' | '60gun' | 'ozel';
+export type ImportVadeOption = MalAlimiVadeSecimi;
+
+export interface LeanMalAlimiConfig {
+  priceListId: string;
+  supplierId?: string;
+  supplierName?: string;
+  donemMonthKey: string;
+  genelIskontoOrani: number;
+  karMarjiOrani: number;
+  vadeOption: ImportVadeOption;
+  customDueDate?: string;
+  accountId?: string;
+  documentNo?: string;
+  notes?: string;
+}
+
+export interface LeanMalAlimiRow {
+  stokKodu: string;
+  alisAdeti: number;
+}
+
+export interface LeanImportPreviewItem {
+  id: string;
+  stokKodu: string;
+  urunAdi: string;
+  gelenAdet: number;
+  bazFiyat: number; // Seçilen Fiyat Listesinden toptan veya perakende fiyat
+  netMaliyet: number; // bazFiyat * (1 - genelIskonto / 100)
+  hesaplananSatisFiyati: number; // Math.ceil((netMaliyet * (1 + karMarji / 100)) / 10) * 10
+  toplamMaliyet: number; // gelenAdet * netMaliyet
+  toplamSatis: number; // gelenAdet * hesaplananSatisFiyati
+  isMatched: boolean;
+  hasManualPrice?: boolean;
+  matchedStockId?: string;
+  anaKategori?: string;
+  altKategori?: string;
+  urunGrubu?: string;
+  brand?: string;
   category?: string;
   subCategory?: string;
-  brand?: string;
-  costPrice?: number;
-  salePrice?: number;
+  notes?: string;
 }
 
 export type ActiveTab =

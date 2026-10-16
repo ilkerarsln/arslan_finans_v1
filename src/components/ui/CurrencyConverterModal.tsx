@@ -43,7 +43,6 @@ export const CurrencyConverterModal: React.FC = () => {
         className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-slate-800 dark:text-slate-100"
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
@@ -66,7 +65,6 @@ export const CurrencyConverterModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Live Rates Badge */}
         <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-xs">
           <div className="flex items-center gap-3 font-mono font-medium">
             <div className="flex items-center gap-1">
@@ -89,7 +87,6 @@ export const CurrencyConverterModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Input */}
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -112,7 +109,7 @@ export const CurrencyConverterModal: React.FC = () => {
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
                 placeholder="Tutar girin..."
-                className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-mono-num font-bold outline-none focus:ring-2 focus:ring-emerald-500"
+                className="flex-1 px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-mono font-bold outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
           </div>
@@ -150,19 +147,19 @@ export const CurrencyConverterModal: React.FC = () => {
             </span>
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-slate-600 dark:text-slate-300">Türk Lirası (₺):</span>
-              <span className="text-lg font-bold font-mono-num text-emerald-600 dark:text-emerald-400">
+              <span className="text-lg font-bold font-mono text-emerald-600 dark:text-emerald-400">
                 ₺{valInTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-slate-600 dark:text-slate-300">Amerikan Doları ($):</span>
-              <span className="text-base font-bold font-mono-num text-slate-900 dark:text-white">
+              <span className="text-base font-bold font-mono text-slate-900 dark:text-white">
                 ${valInUSD.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-slate-600 dark:text-slate-300">Euro (€):</span>
-              <span className="text-base font-bold font-mono-num text-slate-900 dark:text-white">
+              <span className="text-base font-bold font-mono text-slate-900 dark:text-white">
                 €{valInEUR.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>

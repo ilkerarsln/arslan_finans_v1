@@ -14,6 +14,7 @@ import {
   Moon,
   Coins,
   Search,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { ActiveTab } from '../../types/finance';
 import { useLiveCurrency } from '../../services/currencyService';
@@ -29,11 +30,11 @@ const TAB_TITLES: Record<ActiveTab, { title: string; subtitle: string }> = {
   },
   profit: {
     title: 'Kâr Takip (Satışlar & Kârlılık)',
-    subtitle: 'Peşin, kredi kartı ve senetli satış takibi, vade farkı maliyetleri ve personel performansı',
+    subtitle: 'Peşin, kredi kartı ve senetli satış takibi, vade farkı maliyetleri ve kârlılık',
   },
   stock: {
-    title: 'Mal Alış & Stok Yönetimi',
-    subtitle: 'Tedarikçi borçlandırması, ürün stok girişleri ve toplu Excel alım entegrasyonu',
+    title: 'Mal Alımı & Stok Yönetimi',
+    subtitle: 'Tedarikçi borçlandırması, yalın 2 sütunlu Excel alım entegrasyonu ve stok takibi',
   },
   transactions: {
     title: 'Gelir ve Gider Hareketleri (Kasa)',
@@ -49,7 +50,7 @@ const TAB_TITLES: Record<ActiveTab, { title: string; subtitle: string }> = {
   },
   definitions: {
     title: 'Tanımlamalar & Fiyat Listeleri',
-    subtitle: 'Beyaz eşya & mobilya kategorileri, alt kategoriler, markalar, vade oranları ve fiyat listeleri',
+    subtitle: 'Toptan ve Perakende fiyat listeleri, kategoriler, markalar ve vade oranları',
   },
   upcoming: {
     title: 'Vade & Ödeme Takvimi',
@@ -73,6 +74,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const {
     activeTab,
     openTransactionModal,
+    openDataImporter,
     upcomingDues,
     setActiveTab,
     user,
@@ -195,7 +197,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         >
           <Bell className="w-4 h-4" />
           {pendingDuesCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900 animate-pulse" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900" />
           )}
         </button>
 
@@ -203,14 +205,10 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         {user ? (
           <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl px-2 py-1 text-xs text-emerald-800 dark:text-emerald-300">
             <div className="flex items-center gap-1.5">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
               <Smartphone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 hidden sm:inline" />
               {isCloudSyncing && <RefreshCw className="w-3 h-3 animate-spin text-emerald-600" />}
             </div>
-
             {isRoleSimulated ? (
               <button
                 onClick={toggleRoleSimulation}
@@ -235,7 +233,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
                 <UserCheck className="w-3 h-3 text-blue-500" /> Standart
               </span>
             )}
-
             <button
               onClick={logout}
               title="Oturumu Kapat"
@@ -253,13 +250,23 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           </button>
         )}
 
-        {/* Primary Action Button */}
+        {/* Primary Action Button: Data Importer */}
+        <button
+          onClick={() => openDataImporter('stok')}
+          className="bg-sky-600 hover:bg-sky-500 text-white px-3 py-1.5 md:py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm active:scale-95 shrink-0"
+          title="Yalın Excel Mal Alımı ve Fiyat Listesi Eşleştirme"
+        >
+          <FileSpreadsheet className="w-4 h-4" />
+          <span className="hidden sm:inline">Yalın Mal Alımı</span>
+        </button>
+
+        {/* Yeni İşlem Ekle */}
         <button
           onClick={() => openTransactionModal()}
           className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 md:py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm active:scale-95 shrink-0"
         >
           <Plus className="w-4 h-4" />
-          <span>Yeni İşlem</span>
+          <span className="hidden sm:inline">Yeni İşlem</span>
         </button>
       </div>
     </header>

@@ -40,6 +40,7 @@ export const CommandPalette: React.FC = () => {
     openTransactionModal,
     openInstallmentModal,
     openCurrencyConverter,
+    openDataImporter,
     setActiveTab,
     exportDataToExcel,
     toggleDarkMode,
@@ -80,6 +81,17 @@ export const CommandPalette: React.FC = () => {
   const allItems: PaletteItem[] = useMemo(() => {
     const actions: PaletteItem[] = [
       {
+        id: 'act-import-mal',
+        category: 'Hızlı Eylemler',
+        title: 'Yalın Mal Alımı Yap (Data Importer)',
+        subtitle: '2 kolonlu Excel (stokKodu, alisAdeti) ile hızlı alım ve cari borçlandırma',
+        icon: <FileSpreadsheet className="w-4 h-4 text-sky-500" />,
+        action: () => {
+          closeCommandPalette();
+          openDataImporter('stok');
+        },
+      },
+      {
         id: 'act-income',
         category: 'Hızlı Eylemler',
         title: 'Yeni Gelir / Tahsilat Ekle',
@@ -104,12 +116,12 @@ export const CommandPalette: React.FC = () => {
       {
         id: 'act-purchase',
         category: 'Hızlı Eylemler',
-        title: 'Yeni Mal Alışı (Stok & Tedarikçi Borcu)',
+        title: 'Manuel Mal Alımı (Stok & Tedarikçi Borcu)',
         subtitle: 'Kasadan düşmeden vadeli tedarikçi borçlandırması',
         icon: <ShoppingBag className="w-4 h-4 text-amber-500" />,
         action: () => {
           closeCommandPalette();
-          openTransactionModal({ type: 'Mal Alış' });
+          openTransactionModal({ type: 'Mal Alımı' });
         },
       },
       {
@@ -204,7 +216,7 @@ export const CommandPalette: React.FC = () => {
       {
         id: 'nav-stock',
         category: 'Modüllere Git',
-        title: 'Mal Alış & Stok Yönetimi',
+        title: 'Mal Alımı & Stok Yönetimi',
         icon: <Boxes className="w-4 h-4 text-sky-400" />,
         action: () => {
           setActiveTab('stock');
@@ -264,7 +276,7 @@ export const CommandPalette: React.FC = () => {
       {
         id: 'nav-definitions',
         category: 'Modüllere Git',
-        title: 'Tanımlamalar (Kategori, Marka, Vade Oranları)',
+        title: 'Tanımlamalar (Kategori, Marka, Fiyat Listeleri)',
         icon: <SlidersHorizontal className="w-4 h-4 text-amber-400" />,
         action: () => {
           setActiveTab('definitions');
@@ -297,7 +309,7 @@ export const CommandPalette: React.FC = () => {
       id: `cari-${c.id}`,
       category: 'Cari Hesaplar',
       title: c.name,
-      subtitle: `${c.type} • ${c.city || 'Şehir yok'} • Bakiye: ${formatCurrency(c.balance)}`,
+      subtitle: `${c.type} · ${c.city || 'Şehir yok'} · Bakiye: ${formatCurrency(c.balance)}`,
       icon: <Users className="w-4 h-4 text-blue-500" />,
       action: () => {
         setActiveTab('currents');
@@ -309,7 +321,7 @@ export const CommandPalette: React.FC = () => {
       id: `stock-${s.id}`,
       category: 'Stok Ürünleri',
       title: s.name,
-      subtitle: `${s.category} • ${s.brand || 'Genel'} • Stok: ${s.quantity} Adet • Satış: ${formatCurrency(s.salePrice)}`,
+      subtitle: `${s.category} · ${s.brand || 'Genel'} · Stok: ${s.quantity} Adet · Satış: ${formatCurrency(s.salePrice)}`,
       icon: <Boxes className="w-4 h-4 text-sky-500" />,
       action: () => {
         setActiveTab('stock');
@@ -321,7 +333,7 @@ export const CommandPalette: React.FC = () => {
       id: `acc-${a.id}`,
       category: 'Bankalar & Kasalar',
       title: a.name,
-      subtitle: `${a.type} • Bakiye: ${formatCurrency(a.balance, a.currency)}`,
+      subtitle: `${a.type} · Bakiye: ${formatCurrency(a.balance, a.currency)}`,
       icon: <Building2 className="w-4 h-4 text-emerald-500" />,
       action: () => {
         setActiveTab('accounts');
@@ -339,6 +351,7 @@ export const CommandPalette: React.FC = () => {
     openTransactionModal,
     openInstallmentModal,
     openCurrencyConverter,
+    openDataImporter,
     setActiveTab,
     exportDataToExcel,
     toggleDarkMode,
@@ -385,7 +398,6 @@ export const CommandPalette: React.FC = () => {
         className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden text-slate-800 dark:text-slate-100 flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        {/* Search Input Bar */}
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 dark:border-slate-800">
           <Search className="w-5 h-5 text-slate-400 shrink-0" />
           <input
@@ -397,7 +409,7 @@ export const CommandPalette: React.FC = () => {
               setSelectedIndex(0);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Bir işlem, modül, cari veya ürün arayın... (Örn: Gelir, Bosch, Ahmet, Virman)"
+            placeholder="Bir işlem, modül, cari veya ürün arayın... (Örn: Mal Alımı, Bosch, Ahmet, Virman)"
             className="w-full bg-transparent text-sm font-medium placeholder-slate-400 outline-none text-slate-900 dark:text-white"
           />
           <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 rounded">
@@ -405,7 +417,6 @@ export const CommandPalette: React.FC = () => {
           </kbd>
         </div>
 
-        {/* Results List */}
         <div className="max-h-[380px] overflow-y-auto p-2 space-y-1">
           {filteredItems.length === 0 ? (
             <div className="py-8 text-center text-xs text-slate-400">
@@ -460,7 +471,6 @@ export const CommandPalette: React.FC = () => {
           )}
         </div>
 
-        {/* Footer shortcuts */}
         <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-850 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
           <div className="flex items-center gap-3">
             <span>↑↓ ile gezin</span>

@@ -75,7 +75,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
               >
                 {accounts.map(acc => (
                   <option key={acc.id} value={acc.id} disabled={acc.id === toAccountId}>
-                    {acc.name} — Bakiye: {formatCurrency(acc.balance, acc.currency)}
+                    {acc.name} - Bakiye: {formatCurrency(acc.balance, acc.currency)}
                   </option>
                 ))}
               </select>
@@ -99,7 +99,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
               >
                 {accounts.map(acc => (
                   <option key={acc.id} value={acc.id} disabled={acc.id === fromAccountId}>
-                    {acc.name} — Bakiye: {formatCurrency(acc.balance, acc.currency)}
+                    {acc.name} - Bakiye: {formatCurrency(acc.balance, acc.currency)}
                   </option>
                 ))}
               </select>
@@ -119,7 +119,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
                 placeholder="0.00"
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold font-mono-num outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold font-mono outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
             <div>

@@ -36,7 +36,6 @@ export const LoginScreen: React.FC = () => {
       setErrorMessage('Lütfen şifrenizi girin.');
       return;
     }
-
     try {
       setIsSubmitting(true);
       await loginWithUsername(cleanUsername, password);
@@ -55,9 +54,6 @@ export const LoginScreen: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-center items-center px-4 relative overflow-hidden selection:bg-emerald-500/30 selection:text-emerald-200">
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/3 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
-
       <div className="w-full max-w-md relative z-10">
         {/* Logo and Brand */}
         <div className="text-center mb-6">
@@ -84,7 +80,7 @@ export const LoginScreen: React.FC = () => {
                 Admin & Personel
               </span>
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-700/60 text-slate-300 font-mono font-bold">
-                V2.5
+                V2.5 Pro
               </span>
             </div>
           </div>
@@ -142,7 +138,6 @@ export const LoginScreen: React.FC = () => {
 
           {authMode === 'staff' && (
             <form onSubmit={handleStaffLogin} className="space-y-4" autoComplete="off">
-              {/* Quick Admin Helper Badge */}
               <div
                 onClick={handleSetDemoAdmin}
                 className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 hover:border-emerald-500/50 cursor-pointer transition flex items-center justify-between text-xs"
@@ -176,36 +171,27 @@ export const LoginScreen: React.FC = () => {
                   </div>
                   <input
                     type="text"
-                    name="arslan_auth_username_field"
-                    id="arslan_auth_username_field"
-                    autoComplete="off"
                     value={username}
                     onChange={e => setUsername(e.target.value)}
                     placeholder="ilkerarslan78@gmail"
                     className="w-full pl-9 pr-3 py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all font-mono"
                     disabled={isSubmitting || isCloudSyncing}
                     autoCapitalize="none"
-                    autoCorrect="off"
                     spellCheck="false"
                   />
                 </div>
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-xs font-medium text-slate-300">
-                    Şifre
-                  </label>
-                </div>
+                <label className="block text-xs font-medium text-slate-300 mb-1.5">
+                  Şifre
+                </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                     <Lock className="w-4 h-4" />
                   </div>
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    name="arslan_auth_password_field"
-                    id="arslan_auth_password_field"
-                    autoComplete="current-password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     placeholder="140514"
@@ -242,7 +228,7 @@ export const LoginScreen: React.FC = () => {
           {authMode === 'google' && (
             <div className="space-y-4">
               <p className="text-slate-300 text-xs leading-relaxed">
-                Şirket yöneticisi veya yetkilendirilmiş personel Google hesabınızla şifresiz, tek tıkla güvenle oturum açın.
+                Şirket yöneticisi veya yetkilendirilmiş personel Google hesabınızla şifresiz, tek tıkla oturum açabilir.
               </p>
               <button
                 type="button"

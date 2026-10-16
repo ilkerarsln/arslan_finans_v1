@@ -55,7 +55,7 @@ export const InstallmentModal: React.FC = () => {
       setCariId(installmentModalPrefill?.cariId || '');
       setCategory(
         installmentModalPrefill?.category ||
-          (installmentModalPrefill?.type === 'Gelir' ? 'Taksitli Satış' : 'Taksitli Mal Alış')
+          (installmentModalPrefill?.type === 'Gelir' ? 'Taksitli Satış' : 'Taksitli Mal Alımı')
       );
       setAccountId(installmentModalPrefill?.accountId || accounts[0]?.id || '');
       setDocumentNo(installmentModalPrefill?.documentNo || '');
@@ -101,7 +101,6 @@ export const InstallmentModal: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (parsedTotal <= 0 || !firstDueDate || activeCount <= 0) return;
-
     createInstallmentPlan({
       type,
       totalAmount: parsedTotal,
@@ -109,7 +108,7 @@ export const InstallmentModal: React.FC = () => {
       firstDueDate,
       cariId: cariId || undefined,
       cariName: cariName.trim() || undefined,
-      category: category || (type === 'Gelir' ? 'Taksitli Satış' : 'Taksitli Mal Alış'),
+      category: category || (type === 'Gelir' ? 'Taksitli Satış' : 'Taksitli Mal Alımı'),
       accountId: accountId || accounts[0]?.id,
       documentNo: documentNo.trim() || undefined,
       notes: notes.trim() || undefined,
@@ -120,7 +119,6 @@ export const InstallmentModal: React.FC = () => {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-3xl w-full p-5 sm:p-7 shadow-2xl space-y-5 text-slate-800 dark:text-slate-100 max-h-[94vh] overflow-y-auto">
-        {/* Header */}
         <div className="flex items-start justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
@@ -191,7 +189,7 @@ export const InstallmentModal: React.FC = () => {
                       : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                   }`}
                 >
-                  {selectedCari.type} • Bakiye: {formatCurrency(selectedCari.balance)}
+                  {selectedCari.type} · Bakiye: {formatCurrency(selectedCari.balance)}
                 </span>
               )}
             </div>
@@ -202,7 +200,7 @@ export const InstallmentModal: React.FC = () => {
                 list="installment-cari-list"
                 value={cariName}
                 onChange={e => handleCariSelect(e.target.value)}
-                placeholder="Örn: Bosch, Bambi, Ahmet Yılmaz..."
+                placeholder="ör: Bosch, Bambi, Ahmet Yılmaz..."
                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-white"
               />
               <datalist id="installment-cari-list">
@@ -219,7 +217,7 @@ export const InstallmentModal: React.FC = () => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Toplam Tutar (₺)
+                  Toplam Tutar (₺) *
                 </label>
                 {parsedTotal > 0 && activeCount > 0 && (
                   <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
@@ -235,9 +233,10 @@ export const InstallmentModal: React.FC = () => {
                 value={totalAmount}
                 onChange={e => setTotalAmount(e.target.value)}
                 placeholder="0,00"
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-bold font-mono-num outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-white"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-bold font-mono outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-white"
               />
             </div>
+
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
@@ -247,7 +246,7 @@ export const InstallmentModal: React.FC = () => {
                   <button type="button" onClick={() => setQuickDate(0)} className="text-emerald-600 hover:underline">
                     Bugün
                   </button>
-                  <span>•</span>
+                  <span>·</span>
                   <button type="button" onClick={() => setQuickDate(30)} className="text-emerald-600 hover:underline">
                     +30 Gün
                   </button>
@@ -293,7 +292,7 @@ export const InstallmentModal: React.FC = () => {
                   value={customInstallments}
                   onChange={e => setCustomInstallments(e.target.value)}
                   placeholder="Özel"
-                  className="w-16 px-2.5 py-1 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-mono-num outline-none focus:ring-2 focus:ring-emerald-500"
+                  className="w-16 px-2.5 py-1 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-mono outline-none focus:ring-2 focus:ring-emerald-500"
                 />
                 <span className="text-[11px] text-slate-400">Taksit</span>
               </div>
@@ -333,7 +332,7 @@ export const InstallmentModal: React.FC = () => {
                         <td className="py-2 px-3 text-slate-600 dark:text-slate-300 font-mono">
                           {formatDate(item.dueDate)}
                         </td>
-                        <td className="py-2 px-3 text-right font-mono-num font-bold text-emerald-600 dark:text-emerald-400">
+                        <td className="py-2 px-3 text-right font-mono font-bold text-emerald-600 dark:text-emerald-400">
                           {formatCurrency(item.amount)}
                         </td>
                       </tr>

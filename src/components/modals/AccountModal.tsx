@@ -66,6 +66,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
         : type === 'Şirket Kredi Kartı'
         ? 'CreditCard'
         : 'Building2';
+
     const derivedDay = cutOffDay
       ? parseInt(cutOffDay, 10)
       : cutOffDate
@@ -152,7 +153,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
               required
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="Örn: Garanti Ticari Hesap, Merkez Kasa"
+              placeholder="ör: Garanti Ticari Hesap, Merkez Kasa"
               className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
@@ -166,7 +167,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
                 type="text"
                 value={bankName}
                 onChange={e => setBankName(e.target.value)}
-                placeholder="Örn: Garanti BBVA, Yapı Kredi"
+                placeholder="ör: Garanti BBVA, Yapı Kredi"
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
@@ -199,10 +200,9 @@ export const AccountModal: React.FC<AccountModalProps> = ({
                 value={balance}
                 onChange={e => setBalance(e.target.value)}
                 placeholder="0.00"
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono-num font-bold focus:ring-2 focus:ring-emerald-500"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono font-bold focus:ring-2 focus:ring-emerald-500"
               />
             </div>
-
             {type === 'Şirket Kredi Kartı' ? (
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -214,7 +214,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
                   value={creditLimit}
                   onChange={e => setCreditLimit(e.target.value)}
                   placeholder="50000"
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono-num focus:ring-2 focus:ring-emerald-500"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono focus:ring-2 focus:ring-emerald-500"
                 />
               </div>
             ) : (
@@ -234,43 +234,6 @@ export const AccountModal: React.FC<AccountModalProps> = ({
               </div>
             )}
           </div>
-
-          {type === 'Şirket Kredi Kartı' && (
-            <div className="p-3 bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-800/80 rounded-xl space-y-2">
-              <label className="block text-xs font-semibold text-slate-800 dark:text-slate-200">
-                Hesap Kesim Tarihi
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-[11px] text-slate-500 mb-0.5">Tarih</label>
-                  <input
-                    type="date"
-                    value={cutOffDate}
-                    onChange={e => {
-                      setCutOffDate(e.target.value);
-                      if (e.target.value) {
-                        const day = parseInt(e.target.value.split('-')[2], 10);
-                        if (!isNaN(day)) setCutOffDay(day.toString());
-                      }
-                    }}
-                    className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[11px] text-slate-500 mb-0.5">Ayın Kesim Günü</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="31"
-                    placeholder="15"
-                    value={cutOffDay}
-                    onChange={e => setCutOffDay(e.target.value)}
-                    className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono-num"
-                  />
-                </div>
-              </div>
-            </div>
-          )}
 
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
             <button

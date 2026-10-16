@@ -5,21 +5,20 @@ import {
   Plus,
   Search,
   Download,
-  Upload,
   Calendar,
-  Building,
   FileText,
   Trash2,
   Edit2,
-  Check,
-  X,
   FileSpreadsheet,
   TrendingUp,
+  X,
+  Check,
+  Building2,
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { StockItem, StockPurchaseRecord, PurchaseItemDetail } from '../../types/finance';
-import { ProductMatchModal, UnmatchedResolution } from '../modals/ProductMatchModal';
 import * as XLSX from 'xlsx';
+import { getUniqueAnaKategoriler, getUniqueAltKategoriler } from '../../data/initialCategories';
 
 export const StockTab: React.FC = () => {
   const {
@@ -35,16 +34,13 @@ export const StockTab: React.FC = () => {
     updateStockItem,
     deleteStockItem,
     adjustStockQuantity,
-    importStockItemsBulk,
     setSaleModalPrefillProduct,
     setActiveTab,
     isAdmin,
     openDataImporter,
-    showToast,
+    categoryHierarchy,
+    openProductEditModal,
   } = useFinance();
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const purchaseExcelRef = useRef<HTMLInputElement>(null);
 
   const now = new Date();
   const currentYearStr = String(now.getFullYear());
@@ -53,7 +49,8 @@ export const StockTab: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<'inventory' | 'purchases'>('inventory');
   const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
   const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthStr);
-  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [selectedAnaKategori, setSelectedAnaKategori] = useState<string>('ALL');
+  const [selectedAltKategori, setSelectedAltKategori] = useState<string>('ALL');
   const [selectedBrand, setSelectedBrand] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState<string>('');
 
@@ -95,32 +92,45 @@ export const StockTab: React.FC = () => {
   const [stockItemSalePrice, setStockItemSalePrice] = useState(0);
   const [stockItemNotes, setStockItemNotes] = useState('');
 
-  // Missing product matching state for purchases
-  const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
-  const [unmatchedNamesForPurchase, setUnmatchedNamesForPurchase] = useState<string[]>([]);
-  const [pendingParsedPurchases, setPendingParsedPurchases] = useState<any[]>([]);
-
   const suppliers = useMemo(() => {
     return caris.filter(c => c.type === 'Tedarikçi');
   }, [caris]);
 
+  const anaCategories = useMemo(() => {
+    return getUniqueAnaKategoriler(categoryHierarchy);
+  }, [categoryHierarchy]);
+
+  const altCategories = useMemo(() => {
+    return getUniqueAltKategoriler(categoryHierarchy, selectedAnaKategori !== 'ALL' ? selectedAnaKategori : undefined);
+  }, [categoryHierarchy, selectedAnaKategori]);
+
   const filteredStock = useMemo(() => {
     return stockItems.filter(item => {
-      if (selectedCategory !== 'ALL' && item.category !== selectedCategory) return false;
-      if (selectedBrand !== 'ALL' && item.brand !== selectedBrand) return false;
+      if (selectedAnaKategori !== 'ALL') {
+        const itemAna = item.anaKategori || item.category || '';
+        if (itemAna.toUpperCase() !== selectedAnaKategori.toUpperCase()) return false;
+      }
+      if (selectedAltKategori !== 'ALL') {
+        const itemAlt = item.altKategori || item.subCategory || '';
+        if (itemAlt.toUpperCase() !== selectedAltKategori.toUpperCase()) return false;
+      }
+      if (selectedBrand !== 'ALL' && (item.brand || '').toUpperCase() !== selectedBrand.toUpperCase()) return false;
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase();
         const matchesName = item.name.toLowerCase().includes(q);
         const matchesCode = (item.code || '').toLowerCase().includes(q);
         const matchesBrand = (item.brand || '').toLowerCase().includes(q);
+        const matchesAna = (item.anaKategori || '').toLowerCase().includes(q);
+        const matchesAlt = (item.altKategori || '').toLowerCase().includes(q);
+        const matchesGrup = (item.urunGrubu || '').toLowerCase().includes(q);
         const matchesSupplier = (item.supplierName || '').toLowerCase().includes(q);
-        if (!matchesName && !matchesCode && !matchesBrand && !matchesSupplier) {
+        if (!matchesName && !matchesCode && !matchesBrand && !matchesAna && !matchesAlt && !matchesGrup && !matchesSupplier) {
           return false;
         }
       }
       return true;
     });
-  }, [stockItems, selectedCategory, selectedBrand, searchTerm]);
+  }, [stockItems, selectedAnaKategori, selectedAltKategori, selectedBrand, searchTerm]);
 
   const filteredPurchases = useMemo(() => {
     return purchases.filter(p => {
@@ -157,7 +167,8 @@ export const StockTab: React.FC = () => {
       if (field === 'quantity' || field === 'unitPrice') {
         current.totalPrice = +(current.quantity * current.unitPrice).toFixed(2);
         if (field === 'unitPrice' && (!current.salePrice || current.salePrice === 0)) {
-          current.salePrice = +(current.unitPrice * 1.35).toFixed(2);
+          // 10 TL katına yuvarlama
+          current.salePrice = Math.ceil((current.unitPrice * 1.35) / 10) * 10;
         }
       }
       updated[index] = current;
@@ -190,14 +201,13 @@ export const StockTab: React.FC = () => {
     e.preventDefault();
     const sup = suppliers.find(s => s.id === selectedSupplierId);
     if (!sup) {
-      alert('Lütfen mal alışı yapılan tedarikçiyi seçin.');
+      alert('Lütfen mal alımı yapılan tedarikçiyi seçin.');
       return;
     }
     if (purchaseItems.some(i => !i.name.trim() || i.quantity <= 0 || i.unitPrice <= 0)) {
       alert('Lütfen tüm ürün kalemlerinin adını, adedini ve birim alış fiyatını eksiksiz girin.');
       return;
     }
-
     addStockPurchase({
       date: purchaseDate,
       documentNo: purchaseDocNo.trim() || `İRS-${Date.now()}`,
@@ -210,7 +220,6 @@ export const StockTab: React.FC = () => {
       accountId: paymentType === 'Peşin Kasa/Banka' ? purchaseAccountId : undefined,
       notes: purchaseNotes.trim() || undefined,
     });
-
     setIsPurchaseModalOpen(false);
     setSelectedSupplierId('');
     setPurchaseItems([
@@ -231,12 +240,14 @@ export const StockTab: React.FC = () => {
   const handleSaveStockItem = (e: React.FormEvent) => {
     e.preventDefault();
     const sup = suppliers.find(s => s.id === stockItemSupplierId);
-
     if (editingStockItem) {
       updateStockItem({
         ...editingStockItem,
         code: stockItemCode.trim() || undefined,
         name: stockItemName.trim(),
+        anaKategori: editingStockItem.anaKategori || stockItemCategory || 'MOBİLYA',
+        altKategori: editingStockItem.altKategori || stockItemSubCategory || 'GENEL',
+        urunGrubu: editingStockItem.urunGrubu || 'GENEL ÜRÜN',
         category: stockItemCategory,
         subCategory: stockItemSubCategory || undefined,
         brand: stockItemBrand || undefined,
@@ -252,6 +263,9 @@ export const StockTab: React.FC = () => {
       addStockItem({
         code: stockItemCode.trim() || undefined,
         name: stockItemName.trim(),
+        anaKategori: stockItemCategory || 'MOBİLYA',
+        altKategori: stockItemSubCategory || 'GENEL',
+        urunGrubu: 'GENEL ÜRÜN',
         category: stockItemCategory,
         subCategory: stockItemSubCategory || undefined,
         brand: stockItemBrand || undefined,
@@ -270,133 +284,12 @@ export const StockTab: React.FC = () => {
   };
 
   const handleOpenEditStock = (item: StockItem) => {
-    setEditingStockItem(item);
-    setStockItemName(item.name);
-    setStockItemCode(item.code || '');
-    setStockItemCategory(item.category);
-    setStockItemSubCategory(item.subCategory || 'Buzdolabı');
-    setStockItemBrand(item.brand || 'Bosch');
-    setStockItemSupplierId(item.supplierId || '');
-    setStockItemQuantity(item.quantity);
-    setStockItemPurchasePrice(item.purchasePrice);
-    setStockItemSalePrice(item.salePrice);
-    setStockItemNotes(item.notes || '');
-    setIsStockItemModalOpen(true);
+    openProductEditModal(item);
   };
 
   const handleSellDirectly = (item: StockItem) => {
     setSaleModalPrefillProduct(item);
     setActiveTab('profit');
-  };
-
-  // Excel upload for Stock and Purchases with Missing Product Matching
-  const handleExcelFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = evt => {
-      try {
-        const data = evt.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const sheet = workbook.Sheets[sheetName];
-        const rows = XLSX.utils.sheet_to_json(sheet) as any[];
-
-        if (!rows || rows.length === 0) {
-          alert('Excel dosyasında okunabilecek kayıt bulunamadı.');
-          return;
-        }
-
-        const unmatchedNamesSet = new Set<string>();
-        const parsedRows: any[] = [];
-
-        rows.forEach(row => {
-          const name = row['Ürün Adı'] || row['Urun Adi'] || row['Ürün'] || row['Name'] || row['Açıklama'];
-          if (name) {
-            const rawName = String(name).trim();
-            const matched = stockItems.find(
-              s => s.name.toLowerCase() === rawName.toLowerCase() ||
-                   (s.code && s.code.toLowerCase() === rawName.toLowerCase())
-            );
-
-            if (!matched) {
-              unmatchedNamesSet.add(rawName);
-            }
-
-            parsedRows.push({
-              rawName,
-              matched,
-              category: row['Kategori'] || row['Category'] || 'Beyaz Eşya',
-              subCategory: row['Alt Kategori'] ? String(row['Alt Kategori']).trim() : undefined,
-              brand: row['Marka'] || row['Brand'] || 'Genel',
-              quantity: Number(row['Adet'] || row['Miktar'] || row['Stok'] || row['Quantity'] || 1),
-              unit: row['Birim'] ? String(row['Birim']).trim() : 'Adet',
-              purchasePrice: Number(row['Alış Fiyatı'] || row['Maliyet'] || row['Alis Fiyati'] || row['Cost'] || 0),
-              salePrice: Number(row['Satış Fiyatı'] || row['Satis Fiyati'] || row['Price'] || 0),
-              supplierName: row['Tedarikçi'] ? String(row['Tedarikçi']).trim() : undefined,
-              notes: 'Excel toplu yükleme',
-            });
-          }
-        });
-
-        if (unmatchedNamesSet.size > 0) {
-          setUnmatchedNamesForPurchase(Array.from(unmatchedNamesSet));
-          setPendingParsedPurchases(parsedRows);
-          setIsMatchModalOpen(true);
-        } else {
-          const newStockItems: Array<Omit<StockItem, 'id'>> = parsedRows.map(r => ({
-            name: r.rawName,
-            category: r.category,
-            subCategory: r.subCategory,
-            brand: r.brand,
-            quantity: r.quantity,
-            unit: r.unit,
-            purchasePrice: r.purchasePrice,
-            totalValue: +(r.quantity * r.purchasePrice).toFixed(2),
-            salePrice: r.salePrice || Math.round(r.purchasePrice * 1.35),
-            supplierName: r.supplierName,
-            notes: r.notes,
-          }));
-          importStockItemsBulk(newStockItems);
-        }
-      } catch (err: any) {
-        alert('Excel okuma hatası: ' + err.message);
-      } finally {
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      }
-    };
-    reader.readAsBinaryString(file);
-  };
-
-  const handlePurchaseMatchComplete = (resolutions: Record<string, UnmatchedResolution>) => {
-    const newStockItems: Array<Omit<StockItem, 'id'>> = pendingParsedPurchases.map(r => {
-      const res = resolutions[r.rawName];
-      const finalName = res ? res.productName : r.rawName;
-      const finalCat = res ? res.category : r.category;
-      const finalSub = res?.subCategory || r.subCategory;
-      const finalBrand = res?.brand || r.brand;
-      const finalCost = (res && res.costPrice > 0) ? res.costPrice : r.purchasePrice;
-      const finalSalePrice = (res && res.salePrice > 0) ? res.salePrice : (r.salePrice || Math.round(finalCost * 1.35));
-
-      return {
-        name: finalName,
-        category: finalCat,
-        subCategory: finalSub,
-        brand: finalBrand,
-        quantity: r.quantity,
-        unit: r.unit,
-        purchasePrice: finalCost,
-        totalValue: +(r.quantity * finalCost).toFixed(2),
-        salePrice: finalSalePrice,
-        supplierName: r.supplierName,
-        notes: r.notes,
-      };
-    });
-
-    importStockItemsBulk(newStockItems);
-    setPendingParsedPurchases([]);
-    setUnmatchedNamesForPurchase([]);
   };
 
   const handleExportStockCSV = () => {
@@ -436,59 +329,52 @@ export const StockTab: React.FC = () => {
             <span className="p-1.5 rounded-lg bg-sky-500/20 text-sky-400">
               <Boxes className="w-5 h-5" />
             </span>
-            <h2 className="text-xl font-bold tracking-tight">Mal Alış & Stok Yönetimi</h2>
+            <h2 className="text-xl font-bold tracking-tight">Mal Alımı & Stok Yönetimi</h2>
           </div>
           <p className="text-xs text-slate-400 max-w-xl leading-relaxed">
-            Tedarikçilerden yapılan mal alımları kaydedildiğinde ürün stokları ve ilgili tedarikçinin cari borcu otomatik güncellenir. Excel ile toplu irsaliye/fatura yükleme ve eksik ürün eşleştirme desteklenir.
+            Yalın 2 sütunlu Excel dosyasıyla (<code className="text-sky-300 font-mono">stokKodu</code>, <code className="text-sky-300 font-mono">alisAdeti</code>) fiyat listesi bazlı mal alımı yapabilir, iskonto düşülerek 10 TL katına yuvarlanmış satış fiyatını onaylayabilir ve tedarikçi cari borcunu vadesiyle işleyebilirsiniz.
           </p>
         </div>
-
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleExcelFileUpload}
-            accept=".xlsx, .xls, .csv"
-            className="hidden"
-          />
           <button
             onClick={() => openDataImporter('stok')}
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-sky-500/20 active:scale-95"
-            title="Excel/CSV Şablonu indir, sütun eşleştir ve toplu mal alımı/stok aktar"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-emerald-600 hover:from-sky-500 hover:to-emerald-500 text-white text-xs font-bold transition shadow-lg shadow-sky-500/20 active:scale-95"
+            title="Yalın Excel/CSV Mal Alım Aktarıcısı"
           >
             <FileSpreadsheet className="w-4 h-4 text-sky-200" />
-            <span>İçe Aktarma Sihirbazı</span>
-          </button>
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition active:scale-95"
-            title="Excel dosyasından toplu stok/mal alımı yükle"
-          >
-            <Upload className="w-4 h-4 text-emerald-400" />
-            <span>Hızlı Excel Yükle</span>
+            <span>Yalın Mal Alımı (Data Importer)</span>
           </button>
           <button
             onClick={() => {
-              setEditingStockItem(null);
-              setStockItemName('');
-              setStockItemCode('');
-              setStockItemCategory('Beyaz Eşya');
-              setStockItemQuantity(1);
-              setStockItemPurchasePrice(0);
-              setStockItemSalePrice(0);
-              setIsStockItemModalOpen(true);
+              openProductEditModal({
+                id: `stk-${Date.now()}`,
+                code: '',
+                name: '',
+                anaKategori: 'MOBİLYA',
+                altKategori: 'BAMBİ',
+                urunGrubu: 'BAMBİ YATAK',
+                brand: '',
+                quantity: 1,
+                unit: 'Adet',
+                purchasePrice: 0,
+                totalValue: 0,
+                salePrice: 0,
+                iskontoOrani: 10,
+                karMarjiOrani: 35,
+                vadeDays: 30,
+              });
             }}
             className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition active:scale-95"
           >
             <Plus className="w-4 h-4 text-sky-400" />
-            <span>Stok Kartı</span>
+            <span>Manuel Stok Kartı</span>
           </button>
           <button
             onClick={() => setIsPurchaseModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition shadow-lg shadow-sky-600/20 active:scale-95"
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition active:scale-95"
           >
-            <FileSpreadsheet className="w-4 h-4" />
-            <span>Yeni Mal Alışı (İrsaliye)</span>
+            <FileText className="w-4 h-4 text-amber-400" />
+            <span>Manuel İrsaliye Gir</span>
           </button>
         </div>
       </div>
@@ -507,10 +393,9 @@ export const StockTab: React.FC = () => {
             {stockItems.length} farklı stok kartı
           </span>
         </div>
-
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
-            <span>Toplam Stok Maliyeti</span>
+            <span>Toplam Depo Maliyeti</span>
             <FileText className="w-4 h-4 text-blue-500" />
           </div>
           <div className="text-2xl font-bold font-mono-num text-slate-900 dark:text-white mt-2">
@@ -520,11 +405,10 @@ export const StockTab: React.FC = () => {
             Depodaki malların toplam alış tutarı
           </span>
         </div>
-
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
             <span>Perakende Satış Değeri</span>
-            <Building className="w-4 h-4 text-emerald-500" />
+            <Building2 className="w-4 h-4 text-emerald-500" />
           </div>
           <div className="text-2xl font-bold font-mono-num text-emerald-600 dark:text-emerald-400 mt-2">
             {formatCurrency(totalStockSaleValue)}
@@ -533,7 +417,6 @@ export const StockTab: React.FC = () => {
             Beklenen brüt kâr: {formatCurrency(totalStockSaleValue - totalStockCostValue)}
           </span>
         </div>
-
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
             <span>Dönem Mal Alımları</span>
@@ -575,7 +458,7 @@ export const StockTab: React.FC = () => {
           }`}
         >
           <FileText className="w-4 h-4" />
-          <span>Mal Alım Faturaları / İrsaliyeleri</span>
+          <span>Mal Alım Faturaları & İrsaliyeleri</span>
           <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
             activeSubTab === 'purchases' ? 'bg-sky-800 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
           }`}>
@@ -597,7 +480,6 @@ export const StockTab: React.FC = () => {
               className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 outline-none focus:ring-2 focus:ring-sky-500"
             />
           </div>
-
           <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs">
             <Calendar className="w-3.5 h-3.5 text-slate-400" />
             <select
@@ -620,7 +502,6 @@ export const StockTab: React.FC = () => {
               <option value="12">Aralık</option>
             </select>
           </div>
-
           <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs">
             <select
               value={selectedYear}
@@ -633,34 +514,51 @@ export const StockTab: React.FC = () => {
               <option value="2024">2024</option>
             </select>
           </div>
-
+          {/* Ana Kategori Filtresi */}
           <select
-            value={selectedCategory}
-            onChange={e => setSelectedCategory(e.target.value)}
-            className="px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-sky-500"
+            value={selectedAnaKategori}
+            onChange={e => {
+              setSelectedAnaKategori(e.target.value);
+              setSelectedAltKategori('ALL');
+            }}
+            className="px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-sky-500"
           >
-            <option value="ALL">Tüm Kategoriler</option>
-            {productCategories.map(cat => (
-              <option key={cat.id} value={cat.name}>
-                {cat.name}
+            <option value="ALL">Tüm Ana Kategoriler</option>
+            {anaCategories.map(cat => (
+              <option key={cat} value={cat}>
+                {cat}
               </option>
             ))}
           </select>
 
+          {/* Alt Kategori Filtresi */}
+          <select
+            value={selectedAltKategori}
+            onChange={e => setSelectedAltKategori(e.target.value)}
+            className="px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-sky-500"
+          >
+            <option value="ALL">Tüm Alt Kategoriler</option>
+            {altCategories.map(alt => (
+              <option key={alt} value={alt}>
+                {alt}
+              </option>
+            ))}
+          </select>
+
+          {/* Marka Filtresi */}
           <select
             value={selectedBrand}
             onChange={e => setSelectedBrand(e.target.value)}
-            className="px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-sky-500"
+            className="px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-sky-500"
           >
             <option value="ALL">Tüm Markalar</option>
-            {productBrands.map(b => (
-              <option key={b.id} value={b.name}>
-                {b.name}
+            {Array.from(new Set(stockItems.map(s => (s.brand || '').trim().toUpperCase()).filter(Boolean))).sort().map(b => (
+              <option key={b} value={b}>
+                {b}
               </option>
             ))}
           </select>
         </div>
-
         <button
           onClick={handleExportStockCSV}
           className="flex items-center justify-center gap-1.5 px-3.5 py-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 transition shadow-xs shrink-0"
@@ -682,7 +580,6 @@ export const StockTab: React.FC = () => {
               Toplam Stok Değeri: {formatCurrency(totalStockCostValue)}
             </span>
           </div>
-
           {filteredStock.length === 0 ? (
             <div className="p-12 text-center space-y-3">
               <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
@@ -697,14 +594,15 @@ export const StockTab: React.FC = () => {
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-semibold">
                   <tr>
-                    <th className="py-3 px-3.5">Ürün Adı & Model</th>
-                    <th className="py-3 px-3.5">Kategori / Alt Kategori</th>
+                    <th className="py-3 px-3.5">Ürün Kodu & Adı</th>
+                    <th className="py-3 px-3.5">Ana Kategori</th>
+                    <th className="py-3 px-3.5">Alt Kategori</th>
+                    <th className="py-3 px-3.5">Ürün Grubu</th>
                     <th className="py-3 px-3.5">Marka</th>
-                    <th className="py-3 px-3.5">Tedarikçi</th>
-                    <th className="py-3 px-3.5 text-center">Mevcut Stok & Hızlı Sayım</th>
-                    <th className="py-3 px-3.5 text-right">Alış Fiyatı</th>
+                    <th className="py-3 px-3.5 text-center">Mevcut Stok & Sayım</th>
+                    <th className="py-3 px-3.5 text-right">Alış Fiyatı (Maliyet)</th>
                     <th className="py-3 px-3.5 text-right">Toplam Değer</th>
-                    <th className="py-3 px-3.5 text-right">Satış Fiyatı</th>
+                    <th className="py-3 px-3.5 text-right">Satış Fiyatı (10 TL)</th>
                     <th className="py-3 px-3 text-center">İşlem & Satış</th>
                   </tr>
                 </thead>
@@ -716,7 +614,7 @@ export const StockTab: React.FC = () => {
                         key={item.id}
                         className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition group"
                       >
-                        <td className="py-3 px-3.5 max-w-[260px]">
+                        <td className="py-3 px-3.5 max-w-[240px]">
                           <span className="font-semibold text-slate-900 dark:text-white block truncate">
                             {item.name}
                           </span>
@@ -727,17 +625,24 @@ export const StockTab: React.FC = () => {
                           )}
                         </td>
                         <td className="py-3 px-3.5 whitespace-nowrap">
-                          <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
-                            {item.category}
+                          <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                            {item.anaKategori || item.category || 'MOBİLYA'}
                           </span>
-                          {item.subCategory && (
-                            <span className="text-[10px] text-slate-400 block mt-0.5">
-                              {item.subCategory}
-                            </span>
-                          )}
                         </td>
                         <td className="py-3 px-3.5 whitespace-nowrap font-medium text-slate-800 dark:text-slate-200">
-                          {item.brand || '-'}
+                          {item.altKategori || item.subCategory || '-'}
+                        </td>
+                        <td className="py-3 px-3.5 text-slate-600 dark:text-slate-300 max-w-[160px] truncate">
+                          {item.urunGrubu || '-'}
+                        </td>
+                        <td className="py-3 px-3.5 whitespace-nowrap">
+                          {item.brand ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                              {item.brand}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-xs">-</span>
+                          )}
                         </td>
                         <td className="py-3 px-3.5 text-slate-600 dark:text-slate-300 max-w-[160px] truncate">
                           {item.supplierName || '-'}
@@ -826,13 +731,12 @@ export const StockTab: React.FC = () => {
           <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
             <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <FileSpreadsheet className="w-4 h-4 text-sky-600" />
-              Mal Alım Faturaları / İrsaliyeleri ({filteredPurchases.length})
+              Mal Alım Faturaları & İrsaliyeleri ({filteredPurchases.length})
             </h3>
             <span className="text-xs text-slate-400">
               Tedarikçi borcuna işlenen toplam alım: {formatCurrency(totalPurchasesAmount)}
             </span>
           </div>
-
           {filteredPurchases.length === 0 ? (
             <div className="p-12 text-center space-y-3">
               <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
@@ -881,7 +785,7 @@ export const StockTab: React.FC = () => {
                           {pur.items.map((item, idx) => (
                             <div key={idx} className="flex items-center justify-between text-[11px] text-slate-700 dark:text-slate-300">
                               <span className="truncate max-w-[200px]">
-                                • {item.name} ({item.quantity} Adet)
+                                {item.stokKodu ? `[${item.stokKodu}] ` : ''} {item.name} ({item.quantity} Adet)
                               </span>
                               <span className="font-mono text-slate-500">
                                 {formatCurrency(item.totalPrice)}
@@ -929,7 +833,7 @@ export const StockTab: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL 1: YENİ MAL ALIMI */}
+      {/* MODAL: YENİ MAL ALIMI (MANUEL İRSALİYE) */}
       {isPurchaseModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 text-slate-800 dark:text-slate-100 max-h-[92vh] overflow-y-auto">
@@ -940,7 +844,7 @@ export const StockTab: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Yeni Mal Alışı (Tedarikçi İrsaliyesi / Faturası)
+                    Yeni Mal Alımı (Tedarikçi İrsaliyesi / Faturası)
                   </h3>
                   <p className="text-xs text-slate-400">
                     Alım kaydedildiğinde ürün stokları ve ilgili tedarikçinin cari borcu otomatik güncellenir.
@@ -1077,7 +981,7 @@ export const StockTab: React.FC = () => {
                           <input
                             type="text"
                             required
-                            placeholder="Ürün Adı / Modeli (Örn: Bosch Çamaşır Makinesi)..."
+                            placeholder="Ürün Adı / Modeli (ör: Bosch Çamaşır Makinesi)..."
                             value={item.name}
                             onChange={e => handleUpdateItemLine(idx, 'name', e.target.value)}
                             className="w-full px-2.5 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:ring-1 focus:ring-sky-500 font-medium"
@@ -1207,7 +1111,7 @@ export const StockTab: React.FC = () => {
                   className="px-4 py-2 text-xs font-semibold bg-sky-600 hover:bg-sky-500 text-white rounded-xl flex items-center gap-1.5 shadow-sm active:scale-95"
                 >
                   <Check className="w-4 h-4" />
-                  <span>Alışı Kaydet & Cari Borca İşle</span>
+                  <span>Alımı Kaydet & Cari Borca İşle</span>
                 </button>
               </div>
             </form>
@@ -1215,7 +1119,7 @@ export const StockTab: React.FC = () => {
         </div>
       )}
 
-      {/* MODAL 2: STOK KARTI DÜZENLE */}
+      {/* MODAL: STOK KARTI DÜZENLE / YENİ EKLE */}
       {isStockItemModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-slate-800 dark:text-slate-100">
@@ -1230,7 +1134,6 @@ export const StockTab: React.FC = () => {
                 <X className="w-5 h-5" />
               </button>
             </div>
-
             <form onSubmit={handleSaveStockItem} className="space-y-3.5">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -1245,7 +1148,6 @@ export const StockTab: React.FC = () => {
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-sky-500 font-medium"
                 />
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -1280,7 +1182,6 @@ export const StockTab: React.FC = () => {
                   </select>
                 </div>
               </div>
-
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -1322,7 +1223,6 @@ export const StockTab: React.FC = () => {
                   />
                 </div>
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Tedarikçi Firma
@@ -1340,7 +1240,6 @@ export const StockTab: React.FC = () => {
                   ))}
                 </select>
               </div>
-
               <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
@@ -1360,15 +1259,6 @@ export const StockTab: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* MISSING PRODUCT MATCHING MODAL FOR PURCHASES */}
-      <ProductMatchModal
-        isOpen={isMatchModalOpen}
-        onClose={() => setIsMatchModalOpen(false)}
-        unmatchedNames={unmatchedNamesForPurchase}
-        sourceType="purchase"
-        onComplete={handlePurchaseMatchComplete}
-      />
     </div>
   );
 };
