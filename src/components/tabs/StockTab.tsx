@@ -9,7 +9,6 @@ import {
   Calendar,
   Building,
   FileText,
-  AlertTriangle,
   Trash2,
   Edit2,
   Check,
@@ -19,6 +18,7 @@ import {
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { StockItem, StockPurchaseRecord, PurchaseItemDetail } from '../../types/finance';
+import { ProductMatchModal, UnmatchedResolution } from '../modals/ProductMatchModal';
 import * as XLSX from 'xlsx';
 
 export const StockTab: React.FC = () => {
@@ -39,9 +39,13 @@ export const StockTab: React.FC = () => {
     setSaleModalPrefillProduct,
     setActiveTab,
     isAdmin,
+    openDataImporter,
+    showToast,
   } = useFinance();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const purchaseExcelRef = useRef<HTMLInputElement>(null);
+
   const now = new Date();
   const currentYearStr = String(now.getFullYear());
   const currentMonthStr = String(now.getMonth() + 1).padStart(2, '0');
@@ -53,6 +57,7 @@ export const StockTab: React.FC = () => {
   const [selectedBrand, setSelectedBrand] = useState<string>('ALL');
   const [searchTerm, setSearchTerm] = useState<string>('');
 
+  // Purchase Modal state
   const [isPurchaseModalOpen, setIsPurchaseModalOpen] = useState(false);
   const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
   const [purchaseDocNo, setPurchaseDocNo] = useState(`İRS-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
@@ -63,7 +68,6 @@ export const StockTab: React.FC = () => {
   );
   const [purchaseAccountId, setPurchaseAccountId] = useState(accounts[0]?.id || 'acc-banka');
   const [purchaseNotes, setPurchaseNotes] = useState('');
-
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItemDetail[]>([
     {
       name: '',
@@ -77,6 +81,7 @@ export const StockTab: React.FC = () => {
     },
   ]);
 
+  // Stock Item Modal state
   const [isStockItemModalOpen, setIsStockItemModalOpen] = useState(false);
   const [editingStockItem, setEditingStockItem] = useState<StockItem | null>(null);
   const [stockItemName, setStockItemName] = useState('');
@@ -89,6 +94,11 @@ export const StockTab: React.FC = () => {
   const [stockItemPurchasePrice, setStockItemPurchasePrice] = useState(0);
   const [stockItemSalePrice, setStockItemSalePrice] = useState(0);
   const [stockItemNotes, setStockItemNotes] = useState('');
+
+  // Missing product matching state for purchases
+  const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
+  const [unmatchedNamesForPurchase, setUnmatchedNamesForPurchase] = useState<string[]>([]);
+  const [pendingParsedPurchases, setPendingParsedPurchases] = useState<any[]>([]);
 
   const suppliers = useMemo(() => {
     return caris.filter(c => c.type === 'Tedarikçi');
@@ -180,7 +190,7 @@ export const StockTab: React.FC = () => {
     e.preventDefault();
     const sup = suppliers.find(s => s.id === selectedSupplierId);
     if (!sup) {
-      alert('Lütfen mal alımı yapılan tedarikçiyi seçin.');
+      alert('Lütfen mal alışı yapılan tedarikçiyi seçin.');
       return;
     }
     if (purchaseItems.some(i => !i.name.trim() || i.quantity <= 0 || i.unitPrice <= 0)) {
@@ -221,6 +231,7 @@ export const StockTab: React.FC = () => {
   const handleSaveStockItem = (e: React.FormEvent) => {
     e.preventDefault();
     const sup = suppliers.find(s => s.id === stockItemSupplierId);
+
     if (editingStockItem) {
       updateStockItem({
         ...editingStockItem,
@@ -278,9 +289,11 @@ export const StockTab: React.FC = () => {
     setActiveTab('profit');
   };
 
+  // Excel upload for Stock and Purchases with Missing Product Matching
   const handleExcelFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const reader = new FileReader();
     reader.onload = evt => {
       try {
@@ -289,38 +302,63 @@ export const StockTab: React.FC = () => {
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
         const rows = XLSX.utils.sheet_to_json(sheet) as any[];
+
         if (!rows || rows.length === 0) {
           alert('Excel dosyasında okunabilecek kayıt bulunamadı.');
           return;
         }
-        const newStockItems: Array<Omit<StockItem, 'id'>> = [];
+
+        const unmatchedNamesSet = new Set<string>();
+        const parsedRows: any[] = [];
+
         rows.forEach(row => {
           const name = row['Ürün Adı'] || row['Urun Adi'] || row['Ürün'] || row['Name'] || row['Açıklama'];
           if (name) {
-            const cat = row['Kategori'] || row['Category'] || 'Beyaz Eşya';
-            const brand = row['Marka'] || row['Brand'] || 'Genel';
-            const qty = Number(row['Adet'] || row['Miktar'] || row['Stok'] || row['Quantity'] || 1);
-            const pPrice = Number(row['Alış Fiyatı'] || row['Maliyet'] || row['Alis Fiyati'] || row['Cost'] || 0);
-            const sPrice = Number(row['Satış Fiyatı'] || row['Satis Fiyati'] || row['Price'] || pPrice * 1.35);
-            newStockItems.push({
-              name: String(name).trim(),
-              category: String(cat).trim(),
+            const rawName = String(name).trim();
+            const matched = stockItems.find(
+              s => s.name.toLowerCase() === rawName.toLowerCase() ||
+                   (s.code && s.code.toLowerCase() === rawName.toLowerCase())
+            );
+
+            if (!matched) {
+              unmatchedNamesSet.add(rawName);
+            }
+
+            parsedRows.push({
+              rawName,
+              matched,
+              category: row['Kategori'] || row['Category'] || 'Beyaz Eşya',
               subCategory: row['Alt Kategori'] ? String(row['Alt Kategori']).trim() : undefined,
-              brand: String(brand).trim(),
-              quantity: qty,
+              brand: row['Marka'] || row['Brand'] || 'Genel',
+              quantity: Number(row['Adet'] || row['Miktar'] || row['Stok'] || row['Quantity'] || 1),
               unit: row['Birim'] ? String(row['Birim']).trim() : 'Adet',
-              purchasePrice: pPrice,
-              totalValue: +(qty * pPrice).toFixed(2),
-              salePrice: sPrice,
+              purchasePrice: Number(row['Alış Fiyatı'] || row['Maliyet'] || row['Alis Fiyati'] || row['Cost'] || 0),
+              salePrice: Number(row['Satış Fiyatı'] || row['Satis Fiyati'] || row['Price'] || 0),
               supplierName: row['Tedarikçi'] ? String(row['Tedarikçi']).trim() : undefined,
               notes: 'Excel toplu yükleme',
             });
           }
         });
-        if (newStockItems.length > 0) {
-          importStockItemsBulk(newStockItems);
+
+        if (unmatchedNamesSet.size > 0) {
+          setUnmatchedNamesForPurchase(Array.from(unmatchedNamesSet));
+          setPendingParsedPurchases(parsedRows);
+          setIsMatchModalOpen(true);
         } else {
-          alert('Excel dosyasında geçerli "Ürün Adı" sütunu bulunamadı.');
+          const newStockItems: Array<Omit<StockItem, 'id'>> = parsedRows.map(r => ({
+            name: r.rawName,
+            category: r.category,
+            subCategory: r.subCategory,
+            brand: r.brand,
+            quantity: r.quantity,
+            unit: r.unit,
+            purchasePrice: r.purchasePrice,
+            totalValue: +(r.quantity * r.purchasePrice).toFixed(2),
+            salePrice: r.salePrice || Math.round(r.purchasePrice * 1.35),
+            supplierName: r.supplierName,
+            notes: r.notes,
+          }));
+          importStockItemsBulk(newStockItems);
         }
       } catch (err: any) {
         alert('Excel okuma hatası: ' + err.message);
@@ -329,6 +367,36 @@ export const StockTab: React.FC = () => {
       }
     };
     reader.readAsBinaryString(file);
+  };
+
+  const handlePurchaseMatchComplete = (resolutions: Record<string, UnmatchedResolution>) => {
+    const newStockItems: Array<Omit<StockItem, 'id'>> = pendingParsedPurchases.map(r => {
+      const res = resolutions[r.rawName];
+      const finalName = res ? res.productName : r.rawName;
+      const finalCat = res ? res.category : r.category;
+      const finalSub = res?.subCategory || r.subCategory;
+      const finalBrand = res?.brand || r.brand;
+      const finalCost = (res && res.costPrice > 0) ? res.costPrice : r.purchasePrice;
+      const finalSalePrice = (res && res.salePrice > 0) ? res.salePrice : (r.salePrice || Math.round(finalCost * 1.35));
+
+      return {
+        name: finalName,
+        category: finalCat,
+        subCategory: finalSub,
+        brand: finalBrand,
+        quantity: r.quantity,
+        unit: r.unit,
+        purchasePrice: finalCost,
+        totalValue: +(r.quantity * finalCost).toFixed(2),
+        salePrice: finalSalePrice,
+        supplierName: r.supplierName,
+        notes: r.notes,
+      };
+    });
+
+    importStockItemsBulk(newStockItems);
+    setPendingParsedPurchases([]);
+    setUnmatchedNamesForPurchase([]);
   };
 
   const handleExportStockCSV = () => {
@@ -368,12 +436,13 @@ export const StockTab: React.FC = () => {
             <span className="p-1.5 rounded-lg bg-sky-500/20 text-sky-400">
               <Boxes className="w-5 h-5" />
             </span>
-            <h2 className="text-xl font-bold tracking-tight">Mal Alımı & Stok Yönetimi</h2>
+            <h2 className="text-xl font-bold tracking-tight">Mal Alış & Stok Yönetimi</h2>
           </div>
           <p className="text-xs text-slate-400 max-w-xl leading-relaxed">
-            Tedarikçilerden yapılan mal alımları kaydedildiğinde ürün stokları ve ilgili tedarikçinin cari borcu otomatik güncellenir. Excel ile toplu irsaliye/fatura yükleme desteklenir.
+            Tedarikçilerden yapılan mal alımları kaydedildiğinde ürün stokları ve ilgili tedarikçinin cari borcu otomatik güncellenir. Excel ile toplu irsaliye/fatura yükleme ve eksik ürün eşleştirme desteklenir.
           </p>
         </div>
+
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <input
             type="file"
@@ -383,12 +452,20 @@ export const StockTab: React.FC = () => {
             className="hidden"
           />
           <button
+            onClick={() => openDataImporter('stok')}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-sky-500/20 active:scale-95"
+            title="Excel/CSV Şablonu indir, sütun eşleştir ve toplu mal alımı/stok aktar"
+          >
+            <FileSpreadsheet className="w-4 h-4 text-sky-200" />
+            <span>İçe Aktarma Sihirbazı</span>
+          </button>
+          <button
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition active:scale-95"
             title="Excel dosyasından toplu stok/mal alımı yükle"
           >
             <Upload className="w-4 h-4 text-emerald-400" />
-            <span>Excel Toplu Yükle</span>
+            <span>Hızlı Excel Yükle</span>
           </button>
           <button
             onClick={() => {
@@ -411,7 +488,7 @@ export const StockTab: React.FC = () => {
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition shadow-lg shadow-sky-600/20 active:scale-95"
           >
             <FileSpreadsheet className="w-4 h-4" />
-            <span>Yeni Mal Alımı (İrsaliye)</span>
+            <span>Yeni Mal Alışı (İrsaliye)</span>
           </button>
         </div>
       </div>
@@ -498,7 +575,7 @@ export const StockTab: React.FC = () => {
           }`}
         >
           <FileText className="w-4 h-4" />
-          <span>Mal Alım Faturaları & İrsaliyeleri</span>
+          <span>Mal Alım Faturaları / İrsaliyeleri</span>
           <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${
             activeSubTab === 'purchases' ? 'bg-sky-800 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
           }`}>
@@ -707,11 +784,10 @@ export const StockTab: React.FC = () => {
                         </td>
                         <td className="py-3 px-3 text-center whitespace-nowrap">
                           <div className="flex items-center justify-center gap-1.5">
-                            {/* Fast Action: Satış Yap */}
                             <button
                               onClick={() => handleSellDirectly(item)}
                               className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/60 dark:hover:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 text-[11px] font-bold flex items-center gap-1 transition shadow-2xs"
-                              title="Bu ürünü doğrudan müşteriye sat (Kâr Takip sekmesinde açılır)"
+                              title="Bu ürünü doğrudan müşteriye sat (Kâr Takip sekmesinde aç)"
                             >
                               <TrendingUp className="w-3 h-3" />
                               <span>Satış Yap</span>
@@ -726,7 +802,7 @@ export const StockTab: React.FC = () => {
                             {isAdmin && (
                               <button
                                 onClick={() => deleteStockItem(item.id)}
-                                title="Stok Kartını Sil"
+                                title="Stok Kartı Sil"
                                 className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -750,7 +826,7 @@ export const StockTab: React.FC = () => {
           <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
             <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
               <FileSpreadsheet className="w-4 h-4 text-sky-600" />
-              Mal Alım Faturaları & İrsaliyeleri ({filteredPurchases.length})
+              Mal Alım Faturaları / İrsaliyeleri ({filteredPurchases.length})
             </h3>
             <span className="text-xs text-slate-400">
               Tedarikçi borcuna işlenen toplam alım: {formatCurrency(totalPurchasesAmount)}
@@ -805,7 +881,7 @@ export const StockTab: React.FC = () => {
                           {pur.items.map((item, idx) => (
                             <div key={idx} className="flex items-center justify-between text-[11px] text-slate-700 dark:text-slate-300">
                               <span className="truncate max-w-[200px]">
-                                · {item.name} ({item.quantity} Adet)
+                                • {item.name} ({item.quantity} Adet)
                               </span>
                               <span className="font-mono text-slate-500">
                                 {formatCurrency(item.totalPrice)}
@@ -864,7 +940,7 @@ export const StockTab: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Yeni Mal Alımı (Tedarikçi İrsaliyesi / Faturası)
+                    Yeni Mal Alışı (Tedarikçi İrsaliyesi / Faturası)
                   </h3>
                   <p className="text-xs text-slate-400">
                     Alım kaydedildiğinde ürün stokları ve ilgili tedarikçinin cari borcu otomatik güncellenir.
@@ -989,6 +1065,7 @@ export const StockTab: React.FC = () => {
                     <span>Satır Ekle</span>
                   </button>
                 </div>
+
                 <div className="space-y-2.5 max-h-56 overflow-y-auto p-1">
                   {purchaseItems.map((item, idx) => (
                     <div
@@ -1033,6 +1110,7 @@ export const StockTab: React.FC = () => {
                           </select>
                         </div>
                       </div>
+
                       <div className="grid grid-cols-4 gap-2 items-center">
                         <div>
                           <label className="text-[10px] text-slate-400 block mb-0.5">Adet</label>
@@ -1282,6 +1360,15 @@ export const StockTab: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* MISSING PRODUCT MATCHING MODAL FOR PURCHASES */}
+      <ProductMatchModal
+        isOpen={isMatchModalOpen}
+        onClose={() => setIsMatchModalOpen(false)}
+        unmatchedNames={unmatchedNamesForPurchase}
+        sourceType="purchase"
+        onComplete={handlePurchaseMatchComplete}
+      />
     </div>
   );
 };

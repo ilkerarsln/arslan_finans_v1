@@ -25,8 +25,9 @@ export const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const filtered = transactions.filter(
-    t => (t.type === type || (type === 'Gider' && t.type === 'Mal Alımı')) && t.status !== 'İptal'
+    t => (t.type === type || (type === 'Gider' && t.type === 'Mal Alış')) && t.status !== 'İptal'
   );
+
   const total = filtered.reduce((acc, curr) => acc + curr.amount, 0);
 
   const categoryMap: { [cat: string]: number } = {};
@@ -88,6 +89,7 @@ export const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({
                 const strokeDashoffset = -((accumulatedPercent / 100) * circumference);
                 accumulatedPercent += cat.percentage;
                 const isSelected = selectedCategory === cat.name;
+
                 return (
                   <circle
                     key={cat.name}

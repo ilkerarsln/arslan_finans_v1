@@ -1,11 +1,6 @@
 {
-<<<<<<< HEAD
   "name": "Arslan Mobilya ERP & Finans Yönetimi",
   "description": "Arslan Mobilya ve Beyaz Eşya Kâr Takip, Stok, Mal Alış, Cari, Kasa, Banka ve Finans Yönetim Sistemi",
-=======
-  "name": "Arslan Finans - Modern Finans ve Nakit Akış Yönetimi",
-  "description": "Gelir-gider, banka hesapları, kredi kartları, cari hesap takibi ve nakit akış analiz platformu.",
->>>>>>> 135d1bcabc863509d38d2374a7c895c182f18173
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

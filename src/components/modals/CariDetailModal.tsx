@@ -61,7 +61,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
     .reduce((sum, t) => sum + t.amount, 0);
 
   const totalExpenseToCari = cariTransactions
-    .filter(t => t.type === 'Gider' || t.type === 'Mal Alımı')
+    .filter(t => t.type === 'Gider' || t.type === 'Mal Alış')
     .reduce((sum, t) => sum + t.amount, 0);
 
   const handleCollect = () => {
@@ -82,7 +82,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
       type: 'Gider',
       cariId: cari.id,
       cariName: cari.name,
-      category: 'Mal / Stok Alımı',
+      category: 'Mal / Stok Alışı',
       desc: `${cari.name} ödemesi`,
       amount: cari.balance < 0 ? Math.abs(cari.balance) : undefined,
     });
@@ -122,7 +122,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
               <span className="text-xs uppercase font-bold text-slate-400 tracking-wider">
                 {cari.type}
               </span>
-              <span className="text-slate-300 dark:text-slate-700">·</span>
+              <span className="text-slate-300 dark:text-slate-700">•</span>
               <span className="text-xs text-slate-500">{cari.city || 'Belirtilmedi'}</span>
             </div>
             <h3 className="text-xl font-bold text-slate-900 dark:text-white mt-1">
@@ -139,7 +139,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
             {isAdmin ? (
               <button
                 onClick={() => {
-                  if (window.confirm(`"${cari.name}" cari kartı silmek istediğinize emin misiniz?`)) {
+                  if (window.confirm(`"${cari.name}" cari kartını silmek istediğinize emin misiniz?`)) {
                     deleteCari(cari.id);
                     onClose();
                   }
@@ -154,8 +154,8 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
               <button
                 onClick={() => {
                   const reason = window.prompt(
-                    `"${cari.name}" cari kartı silmek için Yönetici (Admin) onayına gerekçe iletiniz:`,
-                    'Cari kapatılışı / mükerrer kayıt'
+                    `"${cari.name}" cari kartını silmek için Yönetici (Admin) onayına gerekçe iletiniz:`,
+                    'Cari kapatıldı / mükerrer kayıt'
                   );
                   if (reason !== null && reason.trim()) {
                     requestDeleteCari(cari.id, reason.trim());
@@ -248,7 +248,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
           </div>
         </div>
 
-        {/* Contact info grid with WhatsApp Quick Action */}
+        {/* Contact info grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
           <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800 relative group">
             <span className="text-slate-400 flex items-center gap-1 mb-1">
@@ -274,7 +274,6 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
               )}
             </div>
           </div>
-
           <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800">
             <span className="text-slate-400 flex items-center gap-1 mb-1">
               <Mail className="w-3 h-3" /> E-posta
@@ -286,7 +285,6 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
               {cari.email || '-'}
             </a>
           </div>
-
           <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800">
             <span className="text-slate-400 flex items-center gap-1 mb-1">
               <Building className="w-3 h-3" /> Vergi Dairesi
@@ -295,7 +293,6 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
               {cari.taxOffice || '-'}
             </span>
           </div>
-
           <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800">
             <span className="text-slate-400 flex items-center gap-1 mb-1">
               <Receipt className="w-3 h-3" /> Vergi / TCKN No
@@ -313,7 +310,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
           </div>
         )}
 
-        {/* Active Upcoming Dues / Installments preview */}
+        {/* Active Upcoming Dues */}
         {cariUpcomingDues.length > 0 && (
           <div className="space-y-2 p-3 bg-indigo-50/60 dark:bg-indigo-950/40 rounded-xl border border-indigo-200/60 dark:border-indigo-900/50">
             <div className="flex items-center justify-between">
@@ -361,7 +358,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
           </div>
         )}
 
-        {/* Cari Ekstre (Transactions Statement Table) */}
+        {/* Statement Table */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">

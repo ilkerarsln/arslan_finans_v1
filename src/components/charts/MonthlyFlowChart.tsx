@@ -98,7 +98,7 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
       if (found) {
         if (tx.type === 'Gelir') {
           found.realizedIncome += tx.amount;
-        } else if (tx.type === 'Gider' || tx.type === 'Mal Alımı') {
+        } else if (tx.type === 'Gider' || tx.type === 'Mal Alış') {
           found.realizedExpense += tx.amount;
         }
       }
@@ -152,7 +152,7 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
             Aylık Gelir ve Gider Dağılımı
           </h4>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Geçmiş aylar · İçinde bulunduğumuz ay · Gelecek aylar (planlanan)
+            Geçmiş aylar • İçinde bulunduğumuz ay • Gelecek aylar (planlanan)
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -239,6 +239,7 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
             const incH = (m.income / roundedMax) * chartHeight;
             const expH = (m.expense / roundedMax) * chartHeight;
             const isHovered = hoveredIndex === idx;
+
             return (
               <g
                 key={m.monthKey}
@@ -269,6 +270,7 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
                     rx="4"
                   />
                 )}
+
                 <rect
                   x={centerX - barWidth - 1.5}
                   y={paddingTop + chartHeight - incH}
@@ -281,6 +283,7 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
                       : 'fill-emerald-500 hover:fill-emerald-400'
                   } transition-all duration-200`}
                 />
+
                 <rect
                   x={centerX + 1.5}
                   y={paddingTop + chartHeight - expH}
@@ -293,6 +296,7 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
                       : 'fill-rose-500 hover:fill-rose-400'
                   } transition-all duration-200`}
                 />
+
                 <text
                   x={centerX}
                   y={height - (m.isCurrentMonth ? 6 : 10)}
@@ -309,6 +313,7 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
                 >
                   {m.monthName}
                 </text>
+
                 {m.isCurrentMonth && (
                   <text
                     x={centerX}
@@ -364,11 +369,6 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
                   {formatCurrency(months[hoveredIndex].income)}
                 </span>
               </div>
-              {months[hoveredIndex].plannedIncome > 0 && (
-                <div className="text-[10px] text-emerald-400/80 pl-3">
-                  (Planlanan Vade: {formatCurrency(months[hoveredIndex].plannedIncome)})
-                </div>
-              )}
               <div className="flex items-center justify-between gap-4">
                 <span className="text-rose-400 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span> Gider:
@@ -377,11 +377,6 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
                   {formatCurrency(months[hoveredIndex].expense)}
                 </span>
               </div>
-              {months[hoveredIndex].plannedExpense > 0 && (
-                <div className="text-[10px] text-rose-400/80 pl-3">
-                  (Planlanan Vade: {formatCurrency(months[hoveredIndex].plannedExpense)})
-                </div>
-              )}
             </div>
           </div>
         )}

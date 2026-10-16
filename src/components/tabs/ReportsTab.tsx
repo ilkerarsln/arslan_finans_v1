@@ -1,813 +1,621 @@
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useFinance } from '../../context/FinanceContext';
-import { formatCurrency } from '../../utils/formatters';
+import { formatCurrency, formatDate } from '../../utils/formatters';
 import {
-  FileText,
+  FileBarChart2,
+  Calendar,
   Download,
-  Upload,
   TrendingUp,
   TrendingDown,
-  ShieldCheck,
-  Printer,
-  Calendar,
-  FileSpreadsheet,
-  Cloud,
-  Smartphone,
-  RefreshCw,
-  Lock,
-  Trash2,
-  Building,
-  Boxes,
+  DollarSign,
+  PieChart,
+  ShoppingBag,
+  Users,
   ChevronRight,
   X,
+  CreditCard,
+  Building,
+  CheckCircle,
+  FileSpreadsheet,
 } from 'lucide-react';
-
-const MONTH_NAMES_TR = [
-  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
-];
+import * as XLSX from 'xlsx';
 
 export const ReportsTab: React.FC = () => {
-  const {
-    transactions,
-    accounts,
-    caris,
-    upcomingDues,
-    stockItems,
-    sales,
-    productCategories,
-    productSubCategories,
-    setActiveTab,
-    exportDataToExcel,
-    clearAllToZero,
-    exportDataAsJson,
-    importDataFromJson,
-    importDataFromExcel,
-    showToast,
-    user,
-    isAdmin,
-    isCloudSyncing,
-    loginWithGoogle,
-    logout,
-    syncLocalToCloud,
-  } = useFinance();
+  const { transactions, sales, purchases, accounts, caris, vadeRates } = useFinance();
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const excelInputRef = useRef<HTMLInputElement>(null);
-  const [isUploadingExcel, setIsUploadingExcel] = useState(false);
+  const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
+  const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [selectedMonthModal, setSelectedMonthModal] = useState<string | null>(null);
 
-  const availableMonths = useMemo(() => {
-    const monthSet = new Set<string>();
+  // Available years from transactions and sales
+  const availableYears = useMemo(() => {
+    const years = new Set<number>();
+    years.add(new Date().getFullYear());
     transactions.forEach(t => {
-      if (t.date && t.date.length >= 7) {
-        monthSet.add(t.date.slice(0, 7));
-      }
+      if (t.date) years.add(new Date(t.date).getFullYear());
     });
-    upcomingDues.forEach(d => {
-      if (d.dueDate && d.dueDate.length >= 7) {
-        monthSet.add(d.dueDate.slice(0, 7));
-      }
+    sales.forEach(s => {
+      if (s.date) years.add(new Date(s.date).getFullYear());
     });
+    return Array.from(years).sort((a, b) => b - a);
+  }, [transactions, sales]);
 
-    const now = new Date();
-    const currentYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-    monthSet.add(currentYm);
-    return Array.from(monthSet).sort().reverse();
-  }, [transactions, upcomingDues]);
+  const monthNames = [
+    'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+    'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+  ];
 
-  const now = new Date();
-  const defaultYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-  const [selectedYearMonth, setSelectedYearMonth] = useState<string>(
-    availableMonths.includes(defaultYm) ? defaultYm : (availableMonths[0] || defaultYm)
-  );
+  // Helper to get effective cost with vade for installment sales
+  const getSaleProfit = (sale: any) => {
+    let effectiveCost = sale.effectiveCost || (sale.costPrice * sale.quantity);
+    if (!sale.effectiveCost && sale.saleType === 'Senetli Satış' && sale.installmentsCount && sale.installmentsCount > 0) {
+      const saleMonthKey = sale.date?.slice(0, 7);
+      const vadeEntry = vadeRates.find(v => v.monthKey === saleMonthKey);
+      const monthlyRate = vadeEntry ? vadeEntry.rateMonthly : (sale.vadeRateMonthly || 3.5);
+      const vadeDiff = (sale.costPrice * sale.quantity) * (monthlyRate / 100) * (sale.installmentsCount / 12);
+      effectiveCost = (sale.costPrice * sale.quantity) + vadeDiff;
+    }
+    const revenue = sale.totalSaleAmount || (sale.salePrice * sale.quantity);
+    const profit = sale.netProfit !== undefined ? sale.netProfit : (revenue - effectiveCost);
+    return { revenue, cost: effectiveCost, profit };
+  };
 
-  const selectedMonthLabel = useMemo(() => {
-    const [y, m] = selectedYearMonth.split('-');
-    const mIndex = parseInt(m, 10) - 1;
-    return `${MONTH_NAMES_TR[mIndex] || m} ${y}`;
-  }, [selectedYearMonth]);
+  // Monthly aggregated data
+  const monthlyData = useMemo(() => {
+    const months = Array.from({ length: 12 }, (_, i) => {
+      const monthNum = i + 1;
+      const monthKey = `${selectedYear}-${String(monthNum).padStart(2, '0')}`;
+      const name = `${monthNames[i]} ${selectedYear}`;
 
-  const selectedMonthTransactions = useMemo(() => {
-    return transactions.filter(
-      t => t.date.startsWith(selectedYearMonth) && t.status !== 'İptal'
-    );
-  }, [transactions, selectedYearMonth]);
+      // Transactions
+      const monthTx = transactions.filter(t => t.date?.startsWith(monthKey));
+      const incomeTx = monthTx.filter(t => t.type === 'Gelir').reduce((sum, t) => sum + t.amount, 0);
+      const expenseTx = monthTx.filter(t => t.type === 'Gider').reduce((sum, t) => sum + t.amount, 0);
+      const purchaseTx = monthTx.filter(t => t.type === 'Mal Alış').reduce((sum, t) => sum + t.amount, 0);
 
-  const totalIncome = selectedMonthTransactions
-    .filter(t => t.type === 'Gelir')
-    .reduce((s, t) => s + t.amount, 0);
+      // Sales
+      const monthSales = sales.filter(s => {
+        if (!s.date?.startsWith(monthKey)) return false;
+        if (selectedCategory !== 'ALL' && s.category !== selectedCategory) return false;
+        return true;
+      });
 
-  const totalExpense = selectedMonthTransactions
-    .filter(t => t.type === 'Gider' || t.type === 'Mal Alımı')
-    .reduce((s, t) => s + t.amount, 0);
+      let turnover = 0;
+      let totalCost = 0;
+      let netProfit = 0;
 
-  const netProfit = totalIncome - totalExpense;
-  const profitMargin = totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0;
+      monthSales.forEach(s => {
+        const { revenue, cost, profit } = getSaleProfit(s);
+        turnover += revenue;
+        totalCost += cost;
+        netProfit += profit;
+      });
 
-  // Gider & Masraf Takibi Ay ve Yıl Filtresi
-  const [expenseYear, setExpenseYear] = useState<string>('2026');
-  const [expenseMonth, setExpenseMonth] = useState<string>('10');
-  const [selectedDetailItem, setSelectedDetailItem] = useState<{
-    type: 'category' | 'supplier';
-    name: string;
-    totalAmount: number;
-  } | null>(null);
-
-  const filteredExpenseTransactions = useMemo(() => {
-    return transactions.filter(t => {
-      if (t.status === 'İptal') return false;
-      if (t.type !== 'Gider' && t.type !== 'Mal Alımı') return false;
-      if (expenseYear !== 'ALL' && !t.date.startsWith(expenseYear)) return false;
-      if (expenseMonth !== 'ALL') {
-        const m = t.date.substring(5, 7);
-        if (m !== expenseMonth) return false;
-      }
-      return true;
-    });
-  }, [transactions, expenseYear, expenseMonth]);
-
-  const categoryExpenses = useMemo(() => {
-    const map = new Map<string, { count: number; total: number }>();
-    filteredExpenseTransactions.forEach(t => {
-      const cat = t.category || 'Genel Gider';
-      const cur = map.get(cat) || { count: 0, total: 0 };
-      map.set(cat, { count: cur.count + 1, total: cur.total + t.amount });
-    });
-    return Array.from(map.entries())
-      .map(([name, data]) => ({ name, ...data }))
-      .sort((a, b) => b.total - a.total);
-  }, [filteredExpenseTransactions]);
-
-  const supplierExpenses = useMemo(() => {
-    const map = new Map<string, { count: number; total: number }>();
-    filteredExpenseTransactions.forEach(t => {
-      const sup = t.supplierCariName || t.cariName || 'Diğer Tedarikçiler';
-      const cur = map.get(sup) || { count: 0, total: 0 };
-      map.set(sup, { count: cur.count + 1, total: cur.total + t.amount });
-    });
-    return Array.from(map.entries())
-      .map(([name, data]) => ({ name, ...data }))
-      .sort((a, b) => b.total - a.total);
-  }, [filteredExpenseTransactions]);
-
-  const detailTransactions = useMemo(() => {
-    if (!selectedDetailItem) return [];
-    return filteredExpenseTransactions.filter(t => {
-      if (selectedDetailItem.type === 'category') {
-        return (t.category || 'Genel Gider') === selectedDetailItem.name;
-      } else {
-        return (t.supplierCariName || t.cariName || 'Diğer Tedarikçiler') === selectedDetailItem.name;
-      }
-    });
-  }, [filteredExpenseTransactions, selectedDetailItem]);
-
-  const categoryDistribution = useMemo(() => {
-    const totalWarehouseValue = stockItems.reduce((sum, s) => sum + s.totalValue, 0) || 1;
-    return productCategories.map(cat => {
-      const catStockItems = stockItems.filter(
-        s => s.category.toLowerCase().trim() === cat.name.toLowerCase().trim() ||
-             (cat.type && s.category.toLowerCase().includes(cat.type.toLowerCase()))
-      );
-      const stokDegeri = catStockItems.reduce((sum, s) => sum + s.totalValue, 0);
-      const stokPayi = +((stokDegeri / totalWarehouseValue) * 100).toFixed(1);
-
-      const catSales = sales.filter(
-        s => s.category.toLowerCase().trim() === cat.name.toLowerCase().trim() ||
-             (cat.type && s.category.toLowerCase().includes(cat.type.toLowerCase()))
-      );
-      const satisCirosu = catSales.reduce((sum, s) => sum + s.totalSaleAmount, 0);
-      const brutKar = catSales.reduce((sum, s) => sum + s.netProfit, 0);
-      const margin = satisCirosu > 0 ? (brutKar / satisCirosu) * 100 : 0;
-      const count = catStockItems.reduce((sum, s) => sum + s.quantity, 0);
-
-      const subNames = productSubCategories
-        .filter(sub => sub.categoryId === cat.id || sub.categoryName === cat.name)
-        .map(sub => sub.name)
-        .slice(0, 3)
-        .join(', ');
+      const profitMargin = turnover > 0 ? (netProfit / turnover) * 100 : 0;
 
       return {
-        id: cat.id,
-        name: cat.name,
-        color: cat.color || '#0ea5e9',
-        itemCount: count,
-        subPreview: subNames || 'Genel',
-        stokDegeri,
-        stokPayi,
-        satisCirosu,
-        brutKar,
-        margin,
+        monthKey,
+        name,
+        monthIndex: i,
+        incomeTx,
+        expenseTx: expenseTx + purchaseTx,
+        turnover,
+        totalCost,
+        netProfit,
+        profitMargin,
+        salesCount: monthSales.length,
+        sales: monthSales,
+        transactions: monthTx,
       };
     });
-  }, [productCategories, productSubCategories, stockItems, sales]);
 
-  const totalDistStockValue = categoryDistribution.reduce((sum, c) => sum + c.stokDegeri, 0);
-  const totalDistSales = categoryDistribution.reduce((sum, c) => sum + c.satisCirosu, 0);
-  const totalDistGrossProfit = categoryDistribution.reduce((sum, c) => sum + c.brutKar, 0);
-  const totalDistMargin = totalDistSales > 0 ? (totalDistGrossProfit / totalDistSales) * 100 : 0;
+    return months;
+  }, [selectedYear, selectedCategory, transactions, sales, vadeRates]);
 
-  const liquidCash = accounts
-    .filter(a => a.type !== 'Şirket Kredi Kartı')
-    .reduce((s, a) => s + a.balance, 0);
-  const averageMonthlyExpense = totalExpense > 0 ? totalExpense : 30000;
-  const runwayMonths = averageMonthlyExpense > 0 ? liquidCash / averageMonthlyExpense : 0;
+  // Year totals
+  const yearTotals = useMemo(() => {
+    return monthlyData.reduce(
+      (acc, m) => {
+        acc.turnover += m.turnover;
+        acc.totalCost += m.totalCost;
+        acc.netProfit += m.netProfit;
+        acc.incomeTx += m.incomeTx;
+        acc.expenseTx += m.expenseTx;
+        acc.salesCount += m.salesCount;
+        return acc;
+      },
+      { turnover: 0, totalCost: 0, netProfit: 0, incomeTx: 0, expenseTx: 0, salesCount: 0 }
+    );
+  }, [monthlyData]);
 
-  const upcomingThisMonthIncome = upcomingDues
-    .filter(d => !d.isCompleted && d.dueDate.startsWith(selectedYearMonth) && d.type === 'Gelir')
-    .reduce((s, d) => s + d.amount, 0);
-  const upcomingThisMonthExpense = upcomingDues
-    .filter(d => !d.isCompleted && d.dueDate.startsWith(selectedYearMonth) && d.type === 'Gider')
-    .reduce((s, d) => s + d.amount, 0);
-  const projected30DayCash = liquidCash + upcomingThisMonthIncome - upcomingThisMonthExpense;
+  const yearMargin = yearTotals.turnover > 0 ? (yearTotals.netProfit / yearTotals.turnover) * 100 : 0;
 
-  const upcomingFutureMonths = useMemo(() => {
-    const result: { ym: string; label: string; income: number; expense: number; net: number }[] = [];
-    const [currY, currM] = selectedYearMonth.split('-').map(Number);
-    for (let i = 1; i <= 3; i++) {
-      let targetM = currM + i;
-      let targetY = currY;
-      if (targetM > 12) {
-        targetM -= 12;
-        targetY += 1;
-      }
-      const ymStr = `${targetY}-${String(targetM).padStart(2, '0')}`;
-      const labelStr = `${MONTH_NAMES_TR[targetM - 1]} ${targetY}`;
-      const inc = upcomingDues
-        .filter(d => !d.isCompleted && d.dueDate.startsWith(ymStr) && d.type === 'Gelir')
-        .reduce((sum, d) => sum + d.amount, 0);
-      const exp = upcomingDues
-        .filter(d => !d.isCompleted && d.dueDate.startsWith(ymStr) && d.type === 'Gider')
-        .reduce((sum, d) => sum + d.amount, 0);
-      result.push({
-        ym: ymStr,
-        label: labelStr,
-        income: inc,
-        expense: exp,
-        net: inc - exp,
+  // Selected Month Details for the Clickable Modal
+  const currentModalMonthData = useMemo(() => {
+    if (!selectedMonthModal) return null;
+    return monthlyData.find(m => m.monthKey === selectedMonthModal) || null;
+  }, [selectedMonthModal, monthlyData]);
+
+  // Category breakdown for the year
+  const categorySummary = useMemo(() => {
+    const cats: Record<string, { turnover: number; profit: number; count: number }> = {};
+    sales
+      .filter(s => s.date?.startsWith(String(selectedYear)))
+      .forEach(s => {
+        const cat = s.category || 'Belirtilmemiş';
+        if (!cats[cat]) cats[cat] = { turnover: 0, profit: 0, count: 0 };
+        const { revenue, profit } = getSaleProfit(s);
+        cats[cat].turnover += revenue;
+        cats[cat].profit += profit;
+        cats[cat].count += s.quantity;
       });
-    }
-    return result;
-  }, [selectedYearMonth, upcomingDues]);
 
-  const handleExportJson = () => {
-    const data = exportDataAsJson();
-    const blob = new Blob([data], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `arslan_finans_yedek_${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    showToast('Tüm finansal veriler JSON olarak yedeklendi', 'success');
-  };
+    return Object.entries(cats).sort((a, b) => b[1].turnover - a[1].turnover);
+  }, [sales, selectedYear, vadeRates]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = event => {
-      const content = event.target?.result as string;
-      if (content) {
-        importDataFromJson(content);
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
+  // Sales Staff Performance
+  const staffPerformance = useMemo(() => {
+    const staffMap: Record<string, { count: number; turnover: number; profit: number }> = {};
+    sales
+      .filter(s => s.date?.startsWith(String(selectedYear)))
+      .forEach(s => {
+        const staff = s.salesPerson || 'Genel Satış';
+        if (!staffMap[staff]) staffMap[staff] = { count: 0, turnover: 0, profit: 0 };
+        const { revenue, profit } = getSaleProfit(s);
+        staffMap[staff].count += 1;
+        staffMap[staff].turnover += revenue;
+        staffMap[staff].profit += profit;
+      });
 
-  const handleExcelUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploadingExcel(true);
-    try {
-      await importDataFromExcel(file);
-    } finally {
-      setIsUploadingExcel(false);
-      e.target.value = '';
-    }
-  };
+    return Object.entries(staffMap).sort((a, b) => b[1].profit - a[1].profit);
+  }, [sales, selectedYear, vadeRates]);
 
-  const handlePrint = () => {
-    window.print();
+  // Export full year report to Excel
+  const handleExportYearReport = () => {
+    const rows = monthlyData.map(m => ({
+      'Ay': m.name,
+      'Satış Adedi': m.salesCount,
+      'Satış Cirosu (₺)': m.turnover,
+      'Ürün Maliyeti (₺)': m.totalCost,
+      'Net Kâr (₺)': m.netProfit,
+      'Kâr Marjı (%)': `%${m.profitMargin.toFixed(1)}`,
+      'Kasa Geliri (₺)': m.incomeTx,
+      'Kasa Gideri (₺)': m.expenseTx,
+    }));
+
+    // Add totals row
+    rows.push({
+      'Ay': 'YILLIK TOPLAM',
+      'Satış Adedi': yearTotals.salesCount,
+      'Satış Cirosu (₺)': yearTotals.turnover,
+      'Ürün Maliyeti (₺)': yearTotals.totalCost,
+      'Net Kâr (₺)': yearTotals.netProfit,
+      'Kâr Marjı (%)': `%${yearMargin.toFixed(1)}`,
+      'Kasa Geliri (₺)': yearTotals.incomeTx,
+      'Kasa Gideri (₺)': yearTotals.expenseTx,
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, `Finansal Rapor ${selectedYear}`);
+    XLSX.writeFile(wb, `Arslan_Mobilya_Finansal_Rapor_${selectedYear}.xlsx`);
   };
 
   return (
     <div className="space-y-6">
-      {/* Header & Ay Seçici */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+      {/* Top Controls & Title */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-            Mali Raporlar & Nakit Akışı Analizi
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+            <FileBarChart2 className="w-6 h-6 text-sky-600 dark:text-sky-400" />
+            Finansal Genel Bakış & Yıllık Raporlar
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
-            Kâr-Zarar (P&L), Likidite Dayanımı (Runway) ve Dönemsel Raporlama
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Aylık ciro, maliyet, kârlılık oranları ve tıklanabilir aylık detay analizleri
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl">
-            <Calendar className="w-4 h-4 text-emerald-500" />
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-1.5 shadow-xs">
+            <Calendar className="w-4 h-4 text-slate-400" />
             <select
-              value={selectedYearMonth}
-              onChange={e => setSelectedYearMonth(e.target.value)}
-              className="bg-transparent text-xs font-semibold text-slate-800 dark:text-white outline-none cursor-pointer"
+              value={selectedYear}
+              onChange={e => setSelectedYear(Number(e.target.value))}
+              className="bg-transparent text-sm font-semibold text-slate-700 dark:text-slate-200 focus:outline-hidden"
             >
-              {availableMonths.map(ym => {
-                const [y, m] = ym.split('-');
-                const mIdx = parseInt(m, 10) - 1;
-                return (
-                  <option key={ym} value={ym} className="bg-white dark:bg-slate-900 text-slate-800 dark:text-white">
-                    {MONTH_NAMES_TR[mIdx] || m} {y}
-                  </option>
-                );
-              })}
+              {availableYears.map(yr => (
+                <option key={yr} value={yr} className="bg-white dark:bg-slate-800">
+                  {yr} Yılı
+                </option>
+              ))}
             </select>
           </div>
+
           <button
-            onClick={exportDataToExcel}
-            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+            onClick={handleExportYearReport}
+            className="flex items-center gap-2 px-3.5 py-2 text-xs sm:text-sm font-semibold rounded-xl text-emerald-700 bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/40 border border-emerald-200 dark:border-emerald-800 transition-colors shadow-xs"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5" /> Excel Dışa Aktar (.xlsx)
-          </button>
-          <button
-            onClick={handlePrint}
-            className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
-          >
-            <Printer className="w-3.5 h-3.5" /> Raporu Yazdır
-          </button>
-          <button
-            onClick={handleExportJson}
-            className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
-          >
-            <Download className="w-3.5 h-3.5" /> JSON Yedek
+            <Download className="w-4 h-4" />
+            <span>Raporu İndir</span>
           </button>
         </div>
       </div>
 
-      {/* Financial Health & Runway Analysis Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-              {selectedMonthLabel} Net Kâr
-            </span>
-            <div
-              className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                netProfit >= 0
-                  ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400'
-                  : 'bg-rose-50 text-rose-600 dark:bg-rose-950 dark:text-rose-400'
-              }`}
-            >
-              {netProfit >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-            </div>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider">Yıllık Toplam Ciro</span>
+            <DollarSign className="w-4 h-4 text-sky-500" />
           </div>
-          <h3
-            className={`text-2xl font-bold font-mono-num mt-2 ${
-              netProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
-            }`}
-          >
-            {formatCurrency(netProfit)}
-          </h3>
-          <div className="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between">
-            <span>Kâr Marjı:</span>
-            <span className="font-semibold text-slate-700 dark:text-slate-300">
-              %{profitMargin.toFixed(1)}
-            </span>
+          <div className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white">
+            {formatCurrency(yearTotals.turnover)}
+          </div>
+          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1">
+            <span>Toplam {yearTotals.salesCount} satış işlemi</span>
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-blue-600 uppercase tracking-wider">
-              Nakit Dayanımı (Runway)
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider">Toplam Ürün Maliyeti</span>
+            <TrendingDown className="w-4 h-4 text-amber-500" />
           </div>
-          <h3 className="text-2xl font-bold font-mono-num text-slate-900 dark:text-white mt-2">
-            {runwayMonths.toFixed(1)} Ay
-          </h3>
-          <div className="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between">
-            <span>Seçilen Ayın Gideri:</span>
-            <span className="font-semibold text-slate-700 dark:text-slate-300">
-              {formatCurrency(totalExpense)}
-            </span>
+          <div className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white">
+            {formatCurrency(yearTotals.totalCost)}
+          </div>
+          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Vade farkı dahil maliyet
           </div>
         </div>
 
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold text-amber-600 uppercase tracking-wider">
-              {selectedMonthLabel} Tahmini Nakit
-            </span>
-            <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400 flex items-center justify-center">
-              <Calendar className="w-4 h-4" />
-            </div>
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider">Yıllık Net Kâr</span>
+            <TrendingUp className="w-4 h-4 text-emerald-500" />
           </div>
-          <h3 className="text-2xl font-bold font-mono-num text-slate-900 dark:text-white mt-2">
-            {formatCurrency(projected30DayCash)}
-          </h3>
-          <div className="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between">
-            <span>Net Vade Etkisi:</span>
-            <span
-              className={`font-semibold ${
-                upcomingThisMonthIncome - upcomingThisMonthExpense >= 0
-                  ? 'text-emerald-600'
-                  : 'text-rose-600'
-              }`}
-            >
-              {formatCurrency(upcomingThisMonthIncome - upcomingThisMonthExpense)}
-            </span>
+          <div className="text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+            {formatCurrency(yearTotals.netProfit)}
+          </div>
+          <div className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 font-medium">
+            Ortalama Kâr Marjı: %{yearMargin.toFixed(1)}
+          </div>
+        </div>
+
+        <div className="p-4 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xs">
+          <div className="flex items-center justify-between text-slate-500 dark:text-slate-400 mb-2">
+            <span className="text-xs font-semibold uppercase tracking-wider">Kasa & Banka Nakit Akışı</span>
+            <Building className="w-4 h-4 text-purple-500" />
+          </div>
+          <div className={`text-xl sm:text-2xl font-bold ${
+            yearTotals.incomeTx - yearTotals.expenseTx >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+          }`}>
+            {formatCurrency(yearTotals.incomeTx - yearTotals.expenseTx)}
+          </div>
+          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Gelir: {formatCurrency(yearTotals.incomeTx)} / Gider: {formatCurrency(yearTotals.expenseTx)}
           </div>
         </div>
       </div>
 
-      {/* P&L Statement Table */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-emerald-600" />
-            <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-              Gelir - Gider Tablosu Özeti (P&L)
-            </h3>
-          </div>
-          <span className="text-xs font-semibold text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-lg">
-            {selectedMonthLabel} Dönemi
-          </span>
-        </div>
-        <div className="p-5 space-y-4 text-xs">
-          <div className="space-y-2">
-            <div className="flex items-center justify-between font-bold text-slate-900 dark:text-white text-sm border-b border-slate-200 dark:border-slate-800 pb-1">
-              <span>A. TOPLAM GELİRLER & TAHSİLATLAR</span>
-              <span className="font-mono-num text-emerald-600 dark:text-emerald-400">
-                +{formatCurrency(totalIncome)}
-              </span>
-            </div>
-            <div className="pl-4 space-y-1.5 text-slate-600 dark:text-slate-400">
-              {Object.entries(
-                selectedMonthTransactions
-                  .filter(t => t.type === 'Gelir')
-                  .reduce((acc: { [cat: string]: number }, curr) => {
-                    acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
-                    return acc;
-                  }, {})
-              ).map(([cat, amt]) => (
-                <div key={cat} className="flex justify-between">
-                  <span>{cat}</span>
-                  <span className="font-mono-num font-medium text-slate-800 dark:text-slate-200">
-                    {formatCurrency(amt as number)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-2 pt-2">
-            <div className="flex items-center justify-between font-bold text-slate-900 dark:text-white text-sm border-b border-slate-200 dark:border-slate-800 pb-1">
-              <span>B. TOPLAM GİDERLER & FAALİYET HARCAMALARI</span>
-              <span className="font-mono-num text-rose-600 dark:text-rose-400">
-                -{formatCurrency(totalExpense)}
-              </span>
-            </div>
-            <div className="pl-4 space-y-1.5 text-slate-600 dark:text-slate-400">
-              {Object.entries(
-                selectedMonthTransactions
-                  .filter(t => t.type === 'Gider' || t.type === 'Mal Alımı')
-                  .reduce((acc: { [cat: string]: number }, curr) => {
-                    acc[curr.category] = (acc[curr.category] || 0) + curr.amount;
-                    return acc;
-                  }, {})
-              ).map(([cat, amt]) => (
-                <div key={cat} className="flex justify-between">
-                  <span>{cat}</span>
-                  <span className="font-mono-num font-medium text-slate-800 dark:text-slate-200">
-                    {formatCurrency(amt as number)}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="pt-3 border-t-2 border-slate-300 dark:border-slate-700 flex justify-between font-bold text-sm">
-            <span className="text-slate-900 dark:text-white">NET FAALİYET SONUCU (A - B)</span>
-            <span
-              className={`font-mono-num text-base ${
-                netProfit >= 0
-                  ? 'text-emerald-600 dark:text-emerald-400'
-                  : 'text-rose-600 dark:text-rose-400'
-              }`}
-            >
-              {formatCurrency(netProfit)}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Rapor 1: Mobilya ve Beyaz Eşya Kategorilerine Göre Stok & Kâr Dağılımı */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      {/* Aylık Tablo (Clickable Rows to open detailed reports) */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="flex items-center gap-2">
-              <Boxes className="w-4 h-4 text-sky-500" />
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-                Mobilya ve Beyaz Eşya Kategorilerine Göre Stok & Kâr Dağılımı
-              </h3>
-            </div>
+            <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-sky-500" />
+              {selectedYear} Yılı Aylık Finansal Tablo
+            </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Ana ürün kategorilerine göre güncel depo stok değeri, stok payı (%), satış cirosu ve elde edilen brüt kâr analizi
+              İlgili ayın detaylı satış ve maliyet dökümünü incelemek için satıra tıklayınız.
             </p>
           </div>
-          <button
-            onClick={() => setActiveTab('stock')}
-            className="text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1 self-start sm:self-center"
-          >
-            <span>Stok Kartlarını Yönet</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
         </div>
+
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-semibold">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 text-xs font-semibold uppercase border-b border-slate-200 dark:border-slate-700">
               <tr>
-                <th className="py-3 px-4">Kategori Çeşidi</th>
-                <th className="py-3 px-4">Alt Kategori Detayları</th>
-                <th className="py-3 px-3 text-center">Stok Adedi</th>
-                <th className="py-3 px-4 text-right">Stok Değeri</th>
-                <th className="py-3 px-4 text-center">Stok Payı (%)</th>
+                <th className="py-3 px-4">Dönem / Ay</th>
+                <th className="py-3 px-4 text-center">Satış Adedi</th>
                 <th className="py-3 px-4 text-right">Satış Cirosu</th>
-                <th className="py-3 px-4 text-right">Elde Edilen Brüt Kâr</th>
-                <th className="py-3 px-4 text-center">Kâr Marjı %</th>
+                <th className="py-3 px-4 text-right">Ürün Maliyeti</th>
+                <th className="py-3 px-4 text-right">Net Kâr</th>
+                <th className="py-3 px-4 text-right">Kâr Marjı</th>
+                <th className="py-3 px-4 text-right">Kasa Girişi</th>
+                <th className="py-3 px-4 text-right">Kasa Çıkışı</th>
+                <th className="py-3 px-4 text-center">Detay</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-              {categoryDistribution.map(cat => (
-                <tr
-                  key={cat.id}
-                  className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition"
-                >
-                  <td className="py-3 px-4 whitespace-nowrap">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="w-3 h-3 rounded-full shrink-0"
-                        style={{ backgroundColor: cat.color }}
-                      />
-                      <span className="font-bold text-slate-900 dark:text-white">
-                        {cat.name}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-slate-500 dark:text-slate-400 max-w-[200px] truncate">
-                    {cat.subPreview}
-                  </td>
-                  <td className="py-3 px-3 text-center font-mono-num font-semibold text-slate-700 dark:text-slate-300">
-                    {cat.itemCount} adet
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono-num font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
-                    {formatCurrency(cat.stokDegeri)}
-                  </td>
-                  <td className="py-3 px-4 text-center whitespace-nowrap">
-                    <div className="flex items-center justify-center gap-1.5">
-                      <span className="font-mono-num font-bold text-slate-700 dark:text-slate-300">
-                        %{cat.stokPayi}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono-num font-bold text-slate-900 dark:text-white whitespace-nowrap">
-                    {formatCurrency(cat.satisCirosu)}
-                  </td>
-                  <td className="py-3 px-4 text-right font-mono-num font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
-                    +{formatCurrency(cat.brutKar)}
-                  </td>
-                  <td className="py-3 px-4 text-center whitespace-nowrap">
-                    <span
-                      className={`font-mono-num font-bold px-2 py-0.5 rounded text-[11px] ${
-                        cat.margin >= 20
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                          : cat.margin > 0
-                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
-                          : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
-                      }`}
-                    >
-                      %{cat.margin.toFixed(1)}
-                    </span>
-                  </td>
-                </tr>
-              ))}
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+              {monthlyData.map(m => {
+                const isProfitable = m.netProfit >= 0;
+                return (
+                  <tr
+                    key={m.monthKey}
+                    onClick={() => setSelectedMonthModal(m.monthKey)}
+                    className="hover:bg-sky-50/50 dark:hover:bg-slate-700/40 cursor-pointer transition-colors group"
+                  >
+                    <td className="py-3.5 px-4 font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-sky-500 group-hover:scale-125 transition-transform" />
+                      {m.name}
+                    </td>
+                    <td className="py-3.5 px-4 text-center text-slate-600 dark:text-slate-300">
+                      {m.salesCount > 0 ? (
+                        <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                          {m.salesCount} adet
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-xs">-</span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4 text-right font-semibold text-slate-800 dark:text-slate-200">
+                      {formatCurrency(m.turnover)}
+                    </td>
+                    <td className="py-3.5 px-4 text-right text-slate-600 dark:text-slate-400">
+                      {formatCurrency(m.totalCost)}
+                    </td>
+                    <td className={`py-3.5 px-4 text-right font-bold ${
+                      m.turnover === 0 ? 'text-slate-400' : isProfitable ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
+                    }`}>
+                      {formatCurrency(m.netProfit)}
+                    </td>
+                    <td className="py-3.5 px-4 text-right">
+                      {m.turnover > 0 ? (
+                        <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-semibold ${
+                          m.profitMargin >= 20
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            : m.profitMargin > 0
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                            : 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                        }`}>
+                          %{m.profitMargin.toFixed(1)}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 text-xs">-</span>
+                      )}
+                    </td>
+                    <td className="py-3.5 px-4 text-right text-emerald-600 dark:text-emerald-400 font-medium">
+                      {formatCurrency(m.incomeTx)}
+                    </td>
+                    <td className="py-3.5 px-4 text-right text-rose-600 dark:text-rose-400 font-medium">
+                      {formatCurrency(m.expenseTx)}
+                    </td>
+                    <td className="py-3.5 px-4 text-center">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedMonthModal(m.monthKey);
+                        }}
+                        className="p-1.5 rounded-lg text-sky-600 hover:bg-sky-100 dark:text-sky-400 dark:hover:bg-slate-700 transition-colors"
+                        title="Aylık Detay Raporunu Aç"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
-            <tfoot className="bg-slate-50 dark:bg-slate-800/90 font-bold border-t-2 border-slate-200 dark:border-slate-700 text-xs">
+            <tfoot className="bg-slate-50 dark:bg-slate-900/80 font-bold border-t border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white">
               <tr>
-                <td className="py-3 px-4 text-slate-900 dark:text-white" colSpan={3}>
-                  GENEL TOPLAM DEPO STOK & SATIŞ
+                <td className="py-3.5 px-4">YILLIK TOPLAM</td>
+                <td className="py-3.5 px-4 text-center">{yearTotals.salesCount} adet</td>
+                <td className="py-3.5 px-4 text-right">{formatCurrency(yearTotals.turnover)}</td>
+                <td className="py-3.5 px-4 text-right text-slate-600 dark:text-slate-400">{formatCurrency(yearTotals.totalCost)}</td>
+                <td className="py-3.5 px-4 text-right text-emerald-600 dark:text-emerald-400">{formatCurrency(yearTotals.netProfit)}</td>
+                <td className="py-3.5 px-4 text-right">
+                  <span className="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                    %{yearMargin.toFixed(1)}
+                  </span>
                 </td>
-                <td className="py-3 px-4 text-right font-mono-num text-slate-900 dark:text-white">
-                  {formatCurrency(totalDistStockValue)}
-                </td>
-                <td className="py-3 px-4 text-center font-mono-num text-slate-900 dark:text-white">
-                  %100.0
-                </td>
-                <td className="py-3 px-4 text-right font-mono-num text-slate-900 dark:text-white">
-                  {formatCurrency(totalDistSales)}
-                </td>
-                <td className="py-3 px-4 text-right font-mono-num text-emerald-600 dark:text-emerald-400">
-                  +{formatCurrency(totalDistGrossProfit)}
-                </td>
-                <td className="py-3 px-4 text-center font-mono-num text-purple-600 dark:text-purple-400">
-                  %{totalDistMargin.toFixed(1)}
-                </td>
+                <td className="py-3.5 px-4 text-right text-emerald-600 dark:text-emerald-400">{formatCurrency(yearTotals.incomeTx)}</td>
+                <td className="py-3.5 px-4 text-right text-rose-600 dark:text-rose-400">{formatCurrency(yearTotals.expenseTx)}</td>
+                <td></td>
               </tr>
             </tfoot>
           </table>
         </div>
       </div>
 
-      {/* Rapor 2: Gider & Masraf Takibi ve Tedarikçi Harcamaları */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-5 space-y-4">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <Building className="w-4 h-4 text-rose-500" />
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-                Gider & Masraf Takibi ve Tedarikçi Harcama Raporu
-              </h3>
-            </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Tedarikçi veya masraf satırları üzerine tıklayarak ilgili döneme ait aylık fatura ve işlem dökümlerini görebilirsiniz.
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2 shrink-0">
-            <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl text-xs">
-              <Calendar className="w-3.5 h-3.5 text-slate-400" />
-              <span className="font-medium text-slate-500">Ay:</span>
-              <select
-                value={expenseMonth}
-                onChange={e => setExpenseMonth(e.target.value)}
-                className="bg-transparent font-semibold text-slate-800 dark:text-slate-100 outline-none cursor-pointer"
-              >
-                <option value="ALL">Tüm Aylar</option>
-                <option value="01">Ocak</option>
-                <option value="02">Şubat</option>
-                <option value="03">Mart</option>
-                <option value="04">Nisan</option>
-                <option value="05">Mayıs</option>
-                <option value="06">Haziran</option>
-                <option value="07">Temmuz</option>
-                <option value="08">Ağustos</option>
-                <option value="09">Eylül</option>
-                <option value="10">Ekim</option>
-                <option value="11">Kasım</option>
-                <option value="12">Aralık</option>
-              </select>
-            </div>
-            <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl text-xs">
-              <span className="font-medium text-slate-500">Yıl:</span>
-              <select
-                value={expenseYear}
-                onChange={e => setExpenseYear(e.target.value)}
-                className="bg-transparent font-semibold text-slate-800 dark:text-slate-100 outline-none cursor-pointer"
-              >
-                <option value="ALL">Tüm Yıllar</option>
-                <option value="2026">2026</option>
-                <option value="2025">2025</option>
-                <option value="2024">2024</option>
-              </select>
-            </div>
+      {/* Bottom Grid: Category Performance & Sales Staff Performance */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Category Breakdown */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-xs">
+          <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-4">
+            <PieChart className="w-4 h-4 text-amber-500" />
+            Kategori Bazında {selectedYear} Yılı Ciro & Kârlılık
+          </h3>
+
+          <div className="space-y-3">
+            {categorySummary.length === 0 ? (
+              <p className="text-sm text-slate-400 py-4 text-center">Bu yılda henüz kayıtlı satış bulunmamaktadır.</p>
+            ) : (
+              categorySummary.map(([catName, stats]) => {
+                const pct = yearTotals.turnover > 0 ? (stats.turnover / yearTotals.turnover) * 100 : 0;
+                const margin = stats.turnover > 0 ? (stats.profit / stats.turnover) * 100 : 0;
+                return (
+                  <div key={catName} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700/60">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{catName}</span>
+                      <span className="font-bold text-slate-800 dark:text-slate-200 text-sm">{formatCurrency(stats.turnover)}</span>
+                    </div>
+                    <div className="w-full bg-slate-200 dark:bg-slate-600 h-2 rounded-full overflow-hidden mb-2">
+                      <div className="bg-sky-500 h-full rounded-full" style={{ width: `${Math.min(pct, 100)}%` }} />
+                    </div>
+                    <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
+                      <span>{stats.count} adet ürün</span>
+                      <span>Net Kâr: <strong className="text-emerald-600 dark:text-emerald-400 font-semibold">{formatCurrency(stats.profit)}</strong> (%{margin.toFixed(1)})</span>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 pt-1">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-rose-500" />
-                Gider & Masraf Kalemleri ({categoryExpenses.length})
-              </h4>
-              <span className="text-[11px] text-slate-400">Detay için satıra tıklayın</span>
-            </div>
-            <div className="space-y-2">
-              {categoryExpenses.map(item => (
-                <button
-                  key={item.name}
-                  type="button"
-                  onClick={() => setSelectedDetailItem({ type: 'category', name: item.name, totalAmount: item.total })}
-                  className="w-full text-left p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-rose-50/50 dark:hover:bg-rose-950/20 hover:border-rose-300 dark:hover:border-rose-800 transition flex items-center justify-between group"
-                >
-                  <div>
-                    <span className="font-bold text-xs text-slate-800 dark:text-slate-200 group-hover:text-rose-600 dark:group-hover:text-rose-400 transition">
-                      {item.name}
-                    </span>
-                    <span className="text-[11px] text-slate-400 block mt-0.5">
-                      {item.count} adet işlem kaydı
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono-num font-bold text-xs text-rose-600 dark:text-rose-400">
-                      {formatCurrency(item.total)}
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
+        {/* Sales Staff Performance */}
+        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-5 shadow-xs">
+          <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-4">
+            <Users className="w-4 h-4 text-sky-500" />
+            Satış Personeli Performans Tablosu ({selectedYear})
+          </h3>
 
           <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-amber-500" />
-                Tedarikçi Alım & Harcamaları ({supplierExpenses.length})
-              </h4>
-              <span className="text-[11px] text-slate-400">Detay için satıra tıklayın</span>
-            </div>
-            <div className="space-y-2">
-              {supplierExpenses.map(item => (
-                <button
-                  key={item.name}
-                  type="button"
-                  onClick={() => setSelectedDetailItem({ type: 'supplier', name: item.name, totalAmount: item.total })}
-                  className="w-full text-left p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:bg-amber-50/50 dark:hover:bg-amber-950/20 hover:border-amber-300 dark:hover:border-amber-800 transition flex items-center justify-between group"
-                >
-                  <div>
-                    <span className="font-bold text-xs text-slate-800 dark:text-slate-200 group-hover:text-amber-600 dark:group-hover:text-amber-400 transition">
-                      {item.name}
-                    </span>
-                    <span className="text-[11px] text-slate-400 block mt-0.5">
-                      {item.count} adet fatura/mal alımı
-                    </span>
+            {staffPerformance.length === 0 ? (
+              <p className="text-sm text-slate-400 py-4 text-center">Bu yılda henüz personel satışı bulunmamaktadır.</p>
+            ) : (
+              staffPerformance.map(([person, stats]) => {
+                const margin = stats.turnover > 0 ? (stats.profit / stats.turnover) * 100 : 0;
+                return (
+                  <div key={person} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-700/40 border border-slate-100 dark:border-slate-700/60 flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-slate-800 dark:text-slate-200 text-sm flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-sky-100 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 flex items-center justify-center font-bold text-xs">
+                          {person.slice(0, 2).toUpperCase()}
+                        </div>
+                        {person}
+                      </div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 ml-9">
+                        {stats.count} satış işlemi
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <div className="font-bold text-slate-800 dark:text-slate-200 text-sm">
+                        {formatCurrency(stats.turnover)}
+                      </div>
+                      <div className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                        Kâr: {formatCurrency(stats.profit)} (%{margin.toFixed(1)})
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono-num font-bold text-xs text-amber-600 dark:text-amber-400">
-                      {formatCurrency(item.total)}
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
-                  </div>
-                </button>
-              ))}
-            </div>
+                );
+              })
+            )}
           </div>
         </div>
       </div>
 
-      {/* Modal Detail for Expenses */}
-      {selectedDetailItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 max-w-2xl w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+      {/* MONTHLY DETAIL MODAL (Tıklanabilir Aylık Detay Raporu) */}
+      {selectedMonthModal && currentModalMonthData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 max-w-4xl w-full max-h-[90vh] flex flex-col shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="p-5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
               <div>
-                <span className="text-[11px] font-semibold text-slate-400 block uppercase tracking-wider">
-                  {selectedDetailItem.type === 'category' ? 'Masraf Kategorisi Aylık Dökümü' : 'Tedarikçi Aylık Harcama Detayı'}
-                </span>
-                <h3 className="font-bold text-slate-900 dark:text-white text-base">
-                  {selectedDetailItem.name}
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-sky-500" />
+                  {currentModalMonthData.name} Detaylı Finans & Satış Raporu
                 </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                  Bu döneme ait tüm satış işlemleri, maliyetler ve kasa hareketleri
+                </p>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="font-mono-num font-bold text-sm text-rose-600 dark:text-rose-400">
-                  Toplam: {formatCurrency(selectedDetailItem.totalAmount)}
-                </span>
-                <button
-                  onClick={() => setSelectedDetailItem(null)}
-                  className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-            </div>
-            <div className="max-h-[360px] overflow-y-auto">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500 font-semibold border-b border-slate-200 dark:border-slate-800">
-                  <tr>
-                    <th className="py-2.5 px-3">Tarih</th>
-                    <th className="py-2.5 px-3">Belge / Açıklama</th>
-                    <th className="py-2.5 px-3">Kategori / Cari</th>
-                    <th className="py-2.5 px-3 text-right">Tutar</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {detailTransactions.map(tx => (
-                    <tr key={tx.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                      <td className="py-2.5 px-3 text-slate-500 font-mono text-[11px] whitespace-nowrap">
-                        {tx.date}
-                      </td>
-                      <td className="py-2.5 px-3 text-slate-800 dark:text-slate-200">
-                        {tx.documentNo && <span className="font-mono text-[10px] text-slate-400 block">{tx.documentNo}</span>}
-                        <span>{tx.desc}</span>
-                      </td>
-                      <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300">
-                        {selectedDetailItem.type === 'category' ? (tx.supplierCariName || tx.cariName || '-') : tx.category}
-                      </td>
-                      <td className="py-2.5 px-3 text-right font-mono-num font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap">
-                        -{formatCurrency(tx.amount)}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-800">
+
               <button
-                type="button"
-                onClick={() => setSelectedDetailItem(null)}
-                className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold"
+                onClick={() => setSelectedMonthModal(null)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Summary KPI Strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-slate-50 dark:bg-slate-900/40 border-b border-slate-200 dark:border-slate-700">
+              <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span className="text-xs text-slate-500 dark:text-slate-400 block font-medium">Satış Cirosu</span>
+                <span className="text-base font-bold text-slate-800 dark:text-white">
+                  {formatCurrency(currentModalMonthData.turnover)}
+                </span>
+              </div>
+              <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span className="text-xs text-slate-500 dark:text-slate-400 block font-medium">Ürün Maliyeti</span>
+                <span className="text-base font-bold text-slate-800 dark:text-white">
+                  {formatCurrency(currentModalMonthData.totalCost)}
+                </span>
+              </div>
+              <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span className="text-xs text-slate-500 dark:text-slate-400 block font-medium">Net Kâr</span>
+                <span className="text-base font-bold text-emerald-600 dark:text-emerald-400">
+                  {formatCurrency(currentModalMonthData.netProfit)}
+                </span>
+              </div>
+              <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                <span className="text-xs text-slate-500 dark:text-slate-400 block font-medium">Kâr Marjı</span>
+                <span className="text-base font-bold text-sky-600 dark:text-sky-400">
+                  %{currentModalMonthData.profitMargin.toFixed(1)}
+                </span>
+              </div>
+            </div>
+
+            {/* Modal Body - Sales Items List */}
+            <div className="p-5 overflow-y-auto flex-1 space-y-4">
+              <h4 className="text-sm font-bold text-slate-800 dark:text-white flex items-center justify-between">
+                <span>Dönem Satışları ({currentModalMonthData.sales.length} Kayıt)</span>
+              </h4>
+
+              {currentModalMonthData.sales.length === 0 ? (
+                <div className="text-center py-8 text-slate-400 text-sm">
+                  Bu ayda kayıtlı satış bulunmamaktadır.
+                </div>
+              ) : (
+                <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-xl">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 font-semibold uppercase">
+                      <tr>
+                        <th className="py-2.5 px-3">Tarih</th>
+                        <th className="py-2.5 px-3">Müşteri</th>
+                        <th className="py-2.5 px-3">Ürün</th>
+                        <th className="py-2.5 px-3">Satış Şekli</th>
+                        <th className="py-2.5 px-3">Personel</th>
+                        <th className="py-2.5 px-3 text-right">Satış Tutarı</th>
+                        <th className="py-2.5 px-3 text-right">Maliyet</th>
+                        <th className="py-2.5 px-3 text-right">Net Kâr</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+                      {currentModalMonthData.sales.map(s => {
+                        const { revenue, cost, profit } = getSaleProfit(s);
+                        return (
+                          <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-slate-700/40">
+                            <td className="py-2.5 px-3 font-medium text-slate-700 dark:text-slate-300">{formatDate(s.date)}</td>
+                            <td className="py-2.5 px-3 text-slate-800 dark:text-slate-200 font-semibold">{s.customerName}</td>
+                            <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300">
+                              <div>{s.productName}</div>
+                              <div className="text-[10px] text-slate-400">{s.category} {s.subCategory ? `• ${s.subCategory}` : ''}</div>
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                s.saleType === 'Peşin'
+                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                  : s.saleType === 'Kredi Kartı'
+                                  ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300'
+                                  : 'bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300'
+                              }`}>
+                                {s.saleType} {s.installmentsCount ? `(${s.installmentsCount} Taksit)` : ''}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-600 dark:text-slate-400">{s.salesPerson || '-'}</td>
+                            <td className="py-2.5 px-3 text-right font-semibold text-slate-800 dark:text-white">{formatCurrency(revenue)}</td>
+                            <td className="py-2.5 px-3 text-right text-slate-500">{formatCurrency(cost)}</td>
+                            <td className={`py-2.5 px-3 text-right font-bold ${profit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600'}`}>
+                              {formatCurrency(profit)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex justify-end">
+              <button
+                onClick={() => setSelectedMonthModal(null)}
+                className="px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-xl transition-colors"
               >
                 Kapat
               </button>
@@ -815,133 +623,6 @@ export const ReportsTab: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Gelecek Dönem Projeksiyonları */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-5 space-y-4">
-        <div>
-          <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-emerald-500" />
-            Gelecek Dönem Nakit Projeksiyonları (Önümüzdeki 3 Ay)
-          </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Vade takvimindeki kayıtlı çek, senet ve planlı ödemelere göre gelecek aylar
-          </p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {upcomingFutureMonths.map(fm => (
-            <div
-              key={fm.ym}
-              className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/60 space-y-3"
-            >
-              <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/60 pb-2">
-                <span className="font-bold text-xs text-slate-900 dark:text-white uppercase tracking-wider">
-                  {fm.label}
-                </span>
-                <span
-                  className={`text-xs font-mono-num font-bold ${
-                    fm.net >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'
-                  }`}
-                >
-                  Net: {formatCurrency(fm.net)}
-                </span>
-              </div>
-              <div className="space-y-1.5 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-emerald-600 dark:text-emerald-400 font-medium">Gelir:</span>
-                  <span className="font-mono-num font-semibold text-emerald-600 dark:text-emerald-400">
-                    +{formatCurrency(fm.income)}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-rose-600 dark:text-rose-400 font-medium">Gider:</span>
-                  <span className="font-mono-num font-semibold text-rose-600 dark:text-rose-400">
-                    -{formatCurrency(fm.expense)}
-                  </span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Cloud Sync & Backup Card */}
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-5 space-y-4">
-        <div>
-          <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-            Veri Güvenliği, Yedekleme & İçe/Dışa Aktarma
-          </h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Tüm işlem ve cari kayıtları JSON veya Excel (.xlsx / .xls) ile cihazınıza aktarabilir, yedek yükleyebilir veya sıfırlayabilirsiniz.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3 pt-2">
-          <button
-            onClick={handleExportJson}
-            className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 transition"
-          >
-            <Download className="w-4 h-4 text-emerald-600" />
-            Yedek Dosyası Al (JSON)
-          </button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleFileUpload}
-            accept=".json"
-            className="hidden"
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center gap-2 transition"
-          >
-            <Upload className="w-4 h-4 text-blue-600" />
-            Yedekten Geri Yükle (JSON)
-          </button>
-          <input
-            type="file"
-            ref={excelInputRef}
-            onChange={handleExcelUpload}
-            accept=".xlsx, .xls"
-            className="hidden"
-          />
-          <button
-            onClick={() => excelInputRef.current?.click()}
-            disabled={isUploadingExcel}
-            className="px-4 py-2 bg-emerald-50 dark:bg-emerald-950/60 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-semibold flex items-center gap-2 transition disabled:opacity-50"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
-            {isUploadingExcel ? 'Excel Yükleniyor...' : "Excel'den Veri İçe Aktar (.xlsx / .xls)"}
-          </button>
-          <button
-            onClick={exportDataToExcel}
-            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 transition shadow-xs"
-          >
-            <Download className="w-4 h-4" />
-            Excel'e Dışa Aktar (.xlsx)
-          </button>
-          {isAdmin ? (
-            <button
-              onClick={() => {
-                if (
-                  window.confirm(
-                    'DİKKAT: Tüm şirket veritabanı (işlemler, cariler, vadeler) sıfırlanacaktır. Bu işlem geri alınamaz! Devam etmek istiyor musunuz?'
-                  )
-                ) {
-                  clearAllToZero();
-                }
-              }}
-              className="px-4 py-2 bg-rose-50 dark:bg-rose-950/60 hover:bg-rose-100 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 rounded-xl text-xs font-semibold flex items-center gap-2 transition"
-            >
-              <Trash2 className="w-4 h-4 text-rose-600" />
-              Tüm Verileri Sıfırla (Admin)
-            </button>
-          ) : (
-            <div className="px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 rounded-xl text-[11px] text-slate-400 flex items-center gap-1.5">
-              <Lock className="w-3.5 h-3.5 text-slate-400" />
-              <span>Veri Sıfırlama: Yalnızca Admin</span>
-            </div>
-          )}
-        </div>
-      </div>
     </div>
   );
 };

@@ -10,14 +10,12 @@ import {
   Plus,
   Layers,
   Calendar,
-  Sparkles,
   ShoppingBag,
   AlertCircle,
 } from 'lucide-react';
 import {
   formatCurrency,
   formatDate,
-  calculateInstallmentDate,
 } from '../../utils/formatters';
 
 export const TransactionModal: React.FC = () => {
@@ -49,9 +47,11 @@ export const TransactionModal: React.FC = () => {
   const [desc, setDesc] = useState<string>('');
   const [documentNo, setDocumentNo] = useState<string>('');
   const [editingId, setEditingId] = useState<string | null>(null);
+
   const [isInstallment, setIsInstallment] = useState(false);
   const [installmentsCount, setInstallmentsCount] = useState<number>(6);
   const [firstDueDate, setFirstDueDate] = useState<string>('');
+
   const [isPosOffset, setIsPosOffset] = useState<boolean>(false);
   const [supplierCariId, setSupplierCariId] = useState<string>('');
 
@@ -89,7 +89,7 @@ export const TransactionModal: React.FC = () => {
         setFirstDueDate(targetDate);
         setCategory(
           prefillTransaction?.category ||
-            (prefillTransaction?.type === 'Mal Alımı' ? 'Mal / Stok Alımı' : '')
+            (prefillTransaction?.type === 'Mal Alış' ? 'Mal / Stok Alışı' : '')
         );
         setCariName(prefillTransaction?.cariName || '');
         setCariId(prefillTransaction?.cariId || '');
@@ -100,6 +100,7 @@ export const TransactionModal: React.FC = () => {
         setDocumentNo(prefillTransaction?.documentNo || '');
         setIsInstallment(false);
         setInstallmentsCount(6);
+
         const isPos = Boolean(
           prefillTransaction?.isPosOffset ||
             accounts.find(a => a.id === defaultAcc)?.type === 'POS Cihazı / Hesabı'
@@ -116,7 +117,7 @@ export const TransactionModal: React.FC = () => {
 
   const filteredCategories = categories.filter(c => {
     if (type === 'Transfer') return c.type === 'Gider';
-    if (type === 'Mal Alımı') return c.type === 'Gider';
+    if (type === 'Mal Alış') return c.type === 'Gider';
     return c.type === type;
   });
 
@@ -152,7 +153,7 @@ export const TransactionModal: React.FC = () => {
     }
 
     let finalCariId = cariId;
-    if (type === 'Mal Alımı' && cariName.trim() && !finalCariId) {
+    if (type === 'Mal Alış' && cariName.trim() && !finalCariId) {
       const existing = caris.find(c => c.name.toLowerCase() === cariName.trim().toLowerCase());
       if (existing) {
         finalCariId = existing.id;
@@ -170,18 +171,17 @@ export const TransactionModal: React.FC = () => {
       type === 'Gelir' &&
       (isPosOffset || Boolean(accounts.find(a => a.id === accountId && (a.type === 'POS Cihazı / Hesabı' || a.name.toLowerCase().includes('pos'))))) &&
       Boolean(supplierCariId);
-
     const matchedSupplier = isEffectivePosOffset ? caris.find(c => c.id === supplierCariId) : null;
 
     const payload = {
       date: date || new Date().toISOString().split('T')[0],
-      dueDate: type === 'Mal Alımı' ? (dueDate || new Date().toISOString().split('T')[0]) : undefined,
+      dueDate: type === 'Mal Alış' ? (dueDate || new Date().toISOString().split('T')[0]) : undefined,
       type,
       category:
         type === 'Transfer'
           ? 'Virman'
-          : type === 'Mal Alımı'
-          ? category || 'Mal / Stok Alımı'
+          : type === 'Mal Alış'
+          ? category || 'Mal / Stok Alışı'
           : category || 'Genel',
       cariId: finalCariId || undefined,
       cariName: cariName.trim() || undefined,
@@ -190,8 +190,8 @@ export const TransactionModal: React.FC = () => {
       isPosOffset: isEffectivePosOffset,
       desc:
         desc.trim() ||
-        (type === 'Mal Alımı'
-          ? 'Mal Alımı / Tedarikçi Borçlandırması'
+        (type === 'Mal Alış'
+          ? 'Mal Alışı / Tedarikçi Borçlandırması'
           : isEffectivePosOffset && matchedSupplier
           ? `POS Tahsilatı (Mahsup: ${matchedSupplier.name})`
           : ''),
@@ -202,7 +202,7 @@ export const TransactionModal: React.FC = () => {
       documentNo: documentNo.trim() || undefined,
     };
 
-    if (!editingId && isInstallment && type !== 'Transfer' && type !== 'Mal Alımı') {
+    if (!editingId && isInstallment && type !== 'Transfer' && type !== 'Mal Alış') {
       const count = Math.max(1, Math.floor(installmentsCount || 1));
       const targetFirstDueDate = firstDueDate || date || new Date().toISOString().split('T')[0];
       createInstallmentPlan({
@@ -212,7 +212,7 @@ export const TransactionModal: React.FC = () => {
         firstDueDate: targetFirstDueDate,
         cariId: finalCariId || undefined,
         cariName: cariName.trim() || undefined,
-        category: category || (type === 'Gelir' ? 'Taksitli Satış' : 'Taksitli Mal Alımı'),
+        category: category || (type === 'Gelir' ? 'Taksitli Satış' : 'Taksitli Mal Alış'),
         accountId,
         documentNo: documentNo.trim() || undefined,
         notes: desc.trim() || undefined,
@@ -230,6 +230,7 @@ export const TransactionModal: React.FC = () => {
     } else {
       addTransaction(payload);
     }
+
     closeTransactionModal();
   };
 
@@ -245,26 +246,26 @@ export const TransactionModal: React.FC = () => {
                   ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
                   : type === 'Gider'
                   ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
-                  : type === 'Mal Alımı'
+                  : type === 'Mal Alış'
                   ? 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
                   : 'bg-blue-100 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400'
               }`}
             >
               {type === 'Gelir' && <ArrowDownRight className="w-5 h-5" />}
               {type === 'Gider' && <ArrowUpRight className="w-5 h-5" />}
-              {type === 'Mal Alımı' && <ShoppingBag className="w-5 h-5" />}
+              {type === 'Mal Alış' && <ShoppingBag className="w-5 h-5" />}
               {type === 'Transfer' && <ArrowRightLeft className="w-5 h-5" />}
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
                 {editingId
                   ? 'İşlemi Düzenle'
-                  : type === 'Mal Alımı'
-                  ? 'Yeni Mal Alımı (Tedarikçi Borcu)'
+                  : type === 'Mal Alış'
+                  ? 'Yeni Mal Alışı (Tedarikçi Borcu)'
                   : 'Yeni Finansal İşlem'}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                {type === 'Mal Alımı'
+                {type === 'Mal Alış'
                   ? 'Kasadan nakit düşmeden vadeli tedarikçi borçlandırması'
                   : 'Kasa, banka ve cari hesap hareket kaydı'}
               </p>
@@ -309,16 +310,16 @@ export const TransactionModal: React.FC = () => {
             <button
               type="button"
               onClick={() => {
-                setType('Mal Alımı');
-                if (!category) setCategory('Mal / Stok Alımı');
+                setType('Mal Alış');
+                if (!category) setCategory('Mal / Stok Alışı');
               }}
               className={`py-2 px-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
-                type === 'Mal Alımı'
+                type === 'Mal Alış'
                   ? 'bg-amber-600 text-white shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <ShoppingBag className="w-3.5 h-3.5" /> Mal Alımı (Borç)
+              <ShoppingBag className="w-3.5 h-3.5" /> Mal Alış (Borç)
             </button>
             <button
               type="button"
@@ -335,7 +336,7 @@ export const TransactionModal: React.FC = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {type === 'Mal Alımı' ? (
+          {type === 'Mal Alış' ? (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -459,7 +460,7 @@ export const TransactionModal: React.FC = () => {
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200"
                   >
                     <option value="">Kategori Seçin...</option>
-                    {type === 'Mal Alımı' && <option value="Mal / Stok Alımı">Mal / Stok Alımı</option>}
+                    {type === 'Mal Alış' && <option value="Mal / Stok Alışı">Mal / Stok Alışı</option>}
                     {filteredCategories.map(cat => (
                       <option key={cat.id} value={cat.name}>
                         {cat.name}
@@ -472,17 +473,17 @@ export const TransactionModal: React.FC = () => {
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  {type === 'Mal Alımı' ? 'Tedarikçi Firma / Satıcı *' : 'Cari / Firma Adı'}
+                  {type === 'Mal Alış' ? 'Tedarikçi Firma / Satıcı *' : 'Cari / Firma Adı'}
                 </label>
                 <div className="relative">
                   <input
                     type="text"
-                    required={type === 'Mal Alımı'}
+                    required={type === 'Mal Alış'}
                     list="cari-datalist"
                     value={cariName}
                     onChange={e => handleCariSelect(e.target.value)}
                     placeholder={
-                      type === 'Mal Alımı'
+                      type === 'Mal Alış'
                         ? 'Mal aldığınız tedarikçi firma adını yazın veya seçin...'
                         : 'Müşteri, Tedarikçi veya Firma adı...'
                     }
@@ -498,7 +499,7 @@ export const TransactionModal: React.FC = () => {
                 </div>
               </div>
 
-              {type === 'Mal Alımı' ? (
+              {type === 'Mal Alış' ? (
                 <div className="p-3 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-xl space-y-1">
                   <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-semibold text-xs">
                     <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
@@ -545,7 +546,7 @@ export const TransactionModal: React.FC = () => {
                             onChange={e => setIsPosOffset(e.target.checked)}
                             className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
                           />
-                          <span>POS Tahsilatını Tedarikçi Cari Borcundan Düş (Mahsup Et)</span>
+                          <span>POS Tahsilatı Tedarikçi Cari Borcundan Düş (Mahsup Et)</span>
                         </label>
                       </div>
 
@@ -616,7 +617,7 @@ export const TransactionModal: React.FC = () => {
           )}
 
           {/* Taksitlendirme */}
-          {!editingId && type !== 'Transfer' && type !== 'Mal Alımı' && (
+          {!editingId && type !== 'Transfer' && type !== 'Mal Alış' && (
             <div className="p-3 bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/80 rounded-xl space-y-2">
               <label className="flex items-center justify-between cursor-pointer select-none">
                 <div className="flex items-center gap-2">
@@ -729,13 +730,13 @@ export const TransactionModal: React.FC = () => {
                   ? 'bg-emerald-600 hover:bg-emerald-700'
                   : type === 'Gider'
                   ? 'bg-rose-600 hover:bg-rose-700'
-                  : type === 'Mal Alımı'
+                  : type === 'Mal Alış'
                   ? 'bg-amber-600 hover:bg-amber-700'
                   : 'bg-blue-600 hover:bg-blue-700'
               }`}
             >
               <Check className="w-4 h-4" />
-              {editingId ? 'Güncelle' : type === 'Mal Alımı' ? 'Mal Alımı & Borcu Kaydet' : 'Kaydet'}
+              {editingId ? 'Güncelle' : type === 'Mal Alış' ? 'Mal Alışı & Borcu Kaydet' : 'Kaydet'}
             </button>
           </div>
         </form>

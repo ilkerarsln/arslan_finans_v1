@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useFinance } from '../../context/FinanceContext';
-import { Account, Transaction } from '../../types/finance';
+import { Account } from '../../types/finance';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import {
   Building2,
@@ -60,8 +60,6 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
 
   const totalBankBalance = bankAccounts.reduce((sum, a) => sum + a.balance, 0);
   const totalCardDebt = creditCards.reduce((sum, a) => sum + Math.abs(Math.min(a.balance, 0)), 0);
-  const totalCreditLimit = creditCards.reduce((sum, a) => sum + (a.creditLimit || 50000), 0);
-  const totalAvailableLimit = Math.max(totalCreditLimit - totalCardDebt, 0);
 
   const selectedAccount = accounts.find(a => a.id === selectedAccountId);
   const accountTransactions = transactions.filter(
@@ -69,6 +67,7 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
   );
 
   const [movementPeriod, setMovementPeriod] = useState<'all' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('all');
+
   const now = new Date();
   const todayStr = now.toISOString().split('T')[0];
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -94,7 +93,7 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
 
   const periodTotalOut = useMemo(() => {
     return filteredAccountTransactions.reduce((sum, tx) => {
-      const isOutgoing = tx.type === 'Gider' || tx.type === 'Mal Alımı' || (tx.type === 'Transfer' && tx.accountId === selectedAccountId);
+      const isOutgoing = tx.type === 'Gider' || tx.type === 'Mal Alış' || (tx.type === 'Transfer' && tx.accountId === selectedAccountId);
       return isOutgoing ? sum + tx.amount : sum;
     }, 0);
   }, [filteredAccountTransactions, selectedAccountId]);
@@ -342,6 +341,7 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
                         </div>
                       )}
                     </div>
+
                     <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px]">
                       <span className="text-slate-400">
                         {transactions.filter(t => t.accountId === acc.id || t.targetAccountId === acc.id).length} hareket
@@ -400,6 +400,7 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
                   : card.cutOffDay
                   ? `Her ayın ${card.cutOffDay}. günü`
                   : 'Belirtilmedi';
+
                 return (
                   <div
                     key={card.id}
@@ -498,6 +499,7 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
                         </span>
                       </div>
                     </div>
+
                     <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px]">
                       <span className="text-slate-400">
                         {transactions.filter(t => t.accountId === card.id || t.targetAccountId === card.id).length} harcama
@@ -534,6 +536,7 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
                 Bu kasa veya banka hesabına ait günlük, haftalık, aylık ve yıllık para giriş-çıkış hareketleri
               </p>
             </div>
+
             <div className="flex items-center gap-2.5 shrink-0">
               <div className="text-right pr-2">
                 <span className="text-[11px] text-slate-400 block font-medium">
@@ -698,7 +701,7 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
                             className={
                               isIncoming
                                 ? 'text-emerald-600 dark:text-emerald-400'
-                                : tx.type === 'Mal Alımı'
+                                : tx.type === 'Mal Alış'
                                 ? 'text-amber-600 dark:text-amber-400'
                                 : 'text-rose-600 dark:text-rose-400'
                             }
@@ -712,7 +715,7 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
                         </td>
                         <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300">{tx.category}</td>
                         <td className="py-2.5 px-3 text-slate-800 dark:text-slate-200">
-                          {tx.cariName ? <span className="font-semibold text-slate-900 dark:text-white">{tx.cariName} · </span> : ''}
+                          {tx.cariName ? <span className="font-semibold text-slate-900 dark:text-white">{tx.cariName} • </span> : ''}
                           <span>{tx.desc}</span>
                         </td>
                         <td className="py-2.5 px-3 text-right font-mono-num font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">

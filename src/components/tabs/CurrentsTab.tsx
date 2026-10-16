@@ -8,8 +8,6 @@ import {
   Plus,
   ArrowDownRight,
   ArrowUpRight,
-  Phone,
-  Mail,
   Edit2,
   Trash2,
   FileSpreadsheet,
@@ -27,7 +25,7 @@ export const CurrentsTab: React.FC<CurrentsTabProps> = ({
   onEditCari,
   onSelectCariDetail,
 }) => {
-  const { caris, deleteCari, openTransactionModal } = useFinance();
+  const { caris, deleteCari, openTransactionModal, openDataImporter } = useFinance();
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'All' | CariType>('All');
 
@@ -47,9 +45,11 @@ export const CurrentsTab: React.FC<CurrentsTabProps> = ({
   const totalReceivables = caris
     .filter(c => c.balance > 0)
     .reduce((sum, c) => sum + c.balance, 0);
+
   const totalPayables = caris
     .filter(c => c.balance < 0)
     .reduce((sum, c) => sum + Math.abs(c.balance), 0);
+
   const netCariBalance = totalReceivables - totalPayables;
 
   const handleDelete = (id: string, name: string) => {
@@ -76,7 +76,7 @@ export const CurrentsTab: React.FC<CurrentsTabProps> = ({
       type: 'Gider',
       cariId: cari.id,
       cariName: cari.name,
-      category: 'Mal / Stok Alımı',
+      category: 'Mal / Stok Alışı',
       desc: `${cari.name} cari ödemesi`,
       amount: cari.balance < 0 ? Math.abs(cari.balance) : undefined,
     });
@@ -94,12 +94,22 @@ export const CurrentsTab: React.FC<CurrentsTabProps> = ({
             Borç, alacak ve hesap mutabakatlarının tek merkezden takibi
           </p>
         </div>
-        <button
-          onClick={onOpenAddCari}
-          className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
-        >
-          <Plus className="w-3.5 h-3.5" /> Yeni Cari Kart Ekle
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => openDataImporter('cari')}
+            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition active:scale-95 shadow-xs"
+            title="Excel/CSV ile toplu cari kart içe aktar"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Excel Cari İçe Aktar</span>
+          </button>
+          <button
+            onClick={onOpenAddCari}
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
+          >
+            <Plus className="w-3.5 h-3.5" /> Yeni Cari Kart Ekle
+          </button>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -214,7 +224,7 @@ export const CurrentsTab: React.FC<CurrentsTabProps> = ({
                         href={whatsappUrl}
                         target="_blank"
                         rel="noreferrer"
-                        title="WhatsApp Mesajı Gönder"
+                        title="WhatsApp Mesaj Gönder"
                         className="p-1 text-slate-400 hover:text-emerald-600 rounded transition"
                       >
                         <MessageCircle className="w-3.5 h-3.5" />
@@ -241,7 +251,7 @@ export const CurrentsTab: React.FC<CurrentsTabProps> = ({
                   {cari.name}
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  {cari.city || 'Şehir belirtilmedi'} {cari.taxOffice ? ` · ${cari.taxOffice}` : ''}
+                  {cari.city || 'Şehir belirtilmedi'} {cari.taxOffice ? `• ${cari.taxOffice}` : ''}
                 </p>
 
                 <div className="mt-4 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between">

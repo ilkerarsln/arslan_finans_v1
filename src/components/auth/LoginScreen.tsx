@@ -12,14 +12,14 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
+  Sparkles,
 } from 'lucide-react';
 
 export const LoginScreen: React.FC = () => {
   const { loginWithGoogle, loginWithUsername, isCloudSyncing } = useFinance();
-
   const [authMode, setAuthMode] = useState<'staff' | 'google'>('staff');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('ilkerarslan78@gmail');
+  const [password, setPassword] = useState('140514');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -36,14 +36,21 @@ export const LoginScreen: React.FC = () => {
       setErrorMessage('Lütfen şifrenizi girin.');
       return;
     }
+
     try {
       setIsSubmitting(true);
       await loginWithUsername(cleanUsername, password);
     } catch (err: any) {
-      setErrorMessage(err?.message || 'Giriş yapılamadı. Kullanıcı veya şifre hatalı.');
+      setErrorMessage(err?.message || 'Giriş yapılamadı. Kullanıcı adı veya şifre hatalı.');
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSetDemoAdmin = () => {
+    setUsername('ilkerarslan78@gmail');
+    setPassword('140514');
+    setErrorMessage(null);
   };
 
   return (
@@ -58,10 +65,10 @@ export const LoginScreen: React.FC = () => {
             <TrendingUp className="w-9 h-9" />
           </div>
           <h1 className="text-3xl font-extrabold tracking-tight text-white mb-1.5">
-            Arslan Finans
+            Arslan Mobilya
           </h1>
           <p className="text-slate-400 text-sm">
-            Kurumsal Finans, Nakit Akışı ve Yetkilendirme Platformu
+            ERP, Kâr Takip ve Finans Yönetim Sistemi
           </p>
         </div>
 
@@ -74,7 +81,7 @@ export const LoginScreen: React.FC = () => {
             </div>
             <div className="flex items-center gap-1.5">
               <span className="text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-medium">
-                Hibrit Giriş
+                Admin & Personel
               </span>
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-700/60 text-slate-300 font-mono font-bold">
                 V2.5
@@ -135,12 +142,25 @@ export const LoginScreen: React.FC = () => {
 
           {authMode === 'staff' && (
             <form onSubmit={handleStaffLogin} className="space-y-4" autoComplete="off">
-              <p className="text-slate-300 text-xs leading-relaxed">
-                E-posta adresi gerekmeden kullanıcı adı ve şifrenizle güvenle giriş yapın.
-              </p>
+              {/* Quick Admin Helper Badge */}
+              <div
+                onClick={handleSetDemoAdmin}
+                className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 hover:border-emerald-500/50 cursor-pointer transition flex items-center justify-between text-xs"
+                title="Yönetici bilgilerini otomatik doldur"
+              >
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="text-slate-300">
+                    Varsayılan Yönetici: <strong className="text-white">ilkerarslan78@gmail</strong>
+                  </span>
+                </div>
+                <span className="font-mono text-[11px] font-bold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded">
+                  140514
+                </span>
+              </div>
 
               {errorMessage && (
-                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs animate-shake">
+                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs">
                   <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
                   <span>{errorMessage}</span>
                 </div>
@@ -161,8 +181,8 @@ export const LoginScreen: React.FC = () => {
                     autoComplete="off"
                     value={username}
                     onChange={e => setUsername(e.target.value)}
-                    placeholder="Örn: ilkerarslan78@gmail veya admin"
-                    className="w-full pl-9 pr-3 py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
+                    placeholder="ilkerarslan78@gmail"
+                    className="w-full pl-9 pr-3 py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all font-mono"
                     disabled={isSubmitting || isCloudSyncing}
                     autoCapitalize="none"
                     autoCorrect="off"
@@ -188,7 +208,7 @@ export const LoginScreen: React.FC = () => {
                     autoComplete="current-password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    placeholder="Şifrenizi girin"
+                    placeholder="140514"
                     className="w-full pl-9 pr-10 py-2.5 bg-slate-900/80 border border-slate-700 rounded-xl text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all font-mono"
                     disabled={isSubmitting || isCloudSyncing}
                   />
@@ -211,7 +231,7 @@ export const LoginScreen: React.FC = () => {
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                 ) : (
                   <>
-                    <span>Güvenli Giriş Yap</span>
+                    <span>Sisteme Giriş Yap</span>
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}
@@ -261,22 +281,18 @@ export const LoginScreen: React.FC = () => {
           <div className="mt-6 pt-5 border-t border-slate-700/60 space-y-2.5">
             <div className="flex items-center gap-2.5 text-xs text-slate-400">
               <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Rol Tabanlı Yetkilendirme (Admin & Standart).</span>
+              <span>Sabit Yönetici: ilkerarslan78@gmail / Şifre: 140514</span>
             </div>
             <div className="flex items-center gap-2.5 text-xs text-slate-400">
               <Building2 className="w-4 h-4 text-sky-400 shrink-0" />
-              <span>Ofis, telefon ve tablette anlık bulut senkronizasyonu.</span>
+              <span>Ofis PC ve Cep Telefonu kesintisiz 7/24 senkronize.</span>
             </div>
             <div className="flex items-center gap-2.5 text-xs text-slate-400">
               <Wallet className="w-4 h-4 text-purple-400 shrink-0" />
-              <span>Kasa, Banka, Cari ve Vade hesapları güvende.</span>
+              <span>Stok, Kâr Takip, Kasa, Banka ve Vade Sistemi.</span>
             </div>
           </div>
         </div>
-
-        <p className="text-center text-xs text-slate-500 mt-6">
-          © {new Date().getFullYear()} Arslan Finans · Güvenli Bulut Altyapısı
-        </p>
       </div>
     </div>
   );

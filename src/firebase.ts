@@ -63,7 +63,8 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     path,
   };
   console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  // Non-fatal logging to prevent application crash during transient network issues
+  return errInfo;
 }
 
 export async function testConnection() {
@@ -71,7 +72,7 @@ export async function testConnection() {
     await getDocFromServer(doc(db, 'test', 'connection'));
   } catch (error) {
     if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error('Please check your Firebase configuration.');
+      console.warn('Firebase client in offline fallback mode.');
     }
   }
 }

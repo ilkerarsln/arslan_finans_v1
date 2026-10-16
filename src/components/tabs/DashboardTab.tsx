@@ -18,12 +18,9 @@ import {
   TrendingUp,
   TrendingDown,
   Users,
-  Layers,
-  ShoppingBag,
   Download,
   BarChart3,
-  Clock,
-  Sparkles,
+  ShoppingBag,
 } from 'lucide-react';
 
 const MONTH_NAMES_TR = [
@@ -32,18 +29,16 @@ const MONTH_NAMES_TR = [
 ];
 
 export const DashboardTab: React.FC<{
-  onOpenTransfer: () => void;
-  onOpenAddAccount: () => void;
-  onOpenAddCari: () => void;
-}> = ({ onOpenTransfer, onOpenAddAccount, onOpenAddCari }) => {
+  onOpenTransfer?: () => void;
+  onOpenAddAccount?: () => void;
+  onOpenAddCari?: () => void;
+}> = () => {
   const {
     transactions,
     accounts,
     caris,
     upcomingDues,
     sales,
-    openTransactionModal,
-    openInstallmentModal,
     setActiveTab,
     toggleUpcomingDue,
   } = useFinance();
@@ -84,7 +79,7 @@ export const DashboardTab: React.FC<{
 
   const totalExpenseThisMonth = useMemo(() => {
     return currentMonthTxs
-      .filter(tx => tx.type === 'Gider' || tx.type === 'Mal Alımı')
+      .filter(tx => tx.type === 'Gider' || tx.type === 'Mal Alış')
       .reduce((sum, tx) => sum + tx.amount, 0);
   }, [currentMonthTxs]);
 
@@ -99,6 +94,7 @@ export const DashboardTab: React.FC<{
   const totalReceivables = caris
     .filter(c => c.balance > 0)
     .reduce((sum, c) => sum + c.balance, 0);
+
   const totalPayables = caris
     .filter(c => c.balance < 0)
     .reduce((sum, c) => sum + Math.abs(c.balance), 0);
@@ -107,8 +103,9 @@ export const DashboardTab: React.FC<{
   const todayIncome = transactions
     .filter(t => t.date === todayStr && t.type === 'Gelir' && t.status !== 'İptal')
     .reduce((s, t) => s + t.amount, 0);
+
   const todayExpense = transactions
-    .filter(t => t.date === todayStr && (t.type === 'Gider' || t.type === 'Mal Alımı') && t.status !== 'İptal')
+    .filter(t => t.date === todayStr && (t.type === 'Gider' || t.type === 'Mal Alış') && t.status !== 'İptal')
     .reduce((s, t) => s + t.amount, 0);
 
   // Recent 6 transactions
@@ -125,6 +122,7 @@ export const DashboardTab: React.FC<{
 
   const periodicRows = useMemo(() => {
     const currentYear = now.getFullYear();
+
     if (periodFilterMode === 'monthly') {
       const list = [];
       for (let i = 5; i >= 0; i--) {
@@ -133,18 +131,23 @@ export const DashboardTab: React.FC<{
         const m = String(d.getMonth() + 1).padStart(2, '0');
         const ym = `${y}-${m}`;
         const isCurrent = ym === currentMonthKey;
+
         const mIncome = transactions
           .filter(t => t.date.startsWith(ym) && t.type === 'Gelir' && t.status !== 'İptal')
           .reduce((sum, t) => sum + t.amount, 0);
+
         const mExpense = transactions
-          .filter(t => t.date.startsWith(ym) && (t.type === 'Gider' || t.type === 'Mal Alımı') && t.status !== 'İptal')
+          .filter(t => t.date.startsWith(ym) && (t.type === 'Gider' || t.type === 'Mal Alış') && t.status !== 'İptal')
           .reduce((sum, t) => sum + t.amount, 0);
+
         const mCiro = sales
           .filter(s => s.date.startsWith(ym))
           .reduce((sum, s) => sum + s.totalSaleAmount, 0) || mIncome;
+
         const net = mIncome - mExpense;
         const margin = mCiro > 0 ? (net / mCiro) * 100 : (mIncome > 0 ? (net / mIncome) * 100 : 0);
         const mIdx = d.getMonth();
+
         list.push({
           key: ym,
           label: `${MONTH_NAMES_TR[mIdx]} ${y}`,
@@ -166,17 +169,22 @@ export const DashboardTab: React.FC<{
         const startStr = startDay.toISOString().split('T')[0];
         const endStr = endDay.toISOString().split('T')[0];
         const isCurrent = w === 0;
+
         const wIncome = transactions
           .filter(t => t.date >= startStr && t.date <= endStr && t.type === 'Gelir' && t.status !== 'İptal')
           .reduce((sum, t) => sum + t.amount, 0);
+
         const wExpense = transactions
-          .filter(t => t.date >= startStr && t.date <= endStr && (t.type === 'Gider' || t.type === 'Mal Alımı') && t.status !== 'İptal')
+          .filter(t => t.date >= startStr && t.date <= endStr && (t.type === 'Gider' || t.type === 'Mal Alış') && t.status !== 'İptal')
           .reduce((sum, t) => sum + t.amount, 0);
+
         const wCiro = sales
           .filter(s => s.date >= startStr && s.date <= endStr)
           .reduce((sum, s) => sum + s.totalSaleAmount, 0) || wIncome;
+
         const net = wIncome - wExpense;
         const margin = wCiro > 0 ? (net / wCiro) * 100 : 0;
+
         list.push({
           key: `week-${w}`,
           label: isCurrent ? 'Bu Hafta (Güncel)' : `${startDay.getDate()}/${startDay.getMonth() + 1} - ${endDay.getDate()}/${endDay.getMonth() + 1}`,
@@ -200,12 +208,15 @@ export const DashboardTab: React.FC<{
         const bIncome = transactions
           .filter(t => t.date >= b.start && t.date <= b.end && t.type === 'Gelir' && t.status !== 'İptal')
           .reduce((sum, t) => sum + t.amount, 0);
+
         const bExpense = transactions
-          .filter(t => t.date >= b.start && t.date <= b.end && (t.type === 'Gider' || t.type === 'Mal Alımı') && t.status !== 'İptal')
+          .filter(t => t.date >= b.start && t.date <= b.end && (t.type === 'Gider' || t.type === 'Mal Alış') && t.status !== 'İptal')
           .reduce((sum, t) => sum + t.amount, 0);
+
         const bCiro = sales
           .filter(s => s.date >= b.start && s.date <= b.end)
           .reduce((sum, s) => sum + s.totalSaleAmount, 0) || bIncome;
+
         const net = bIncome - bExpense;
         return {
           key: b.key,
@@ -223,15 +234,19 @@ export const DashboardTab: React.FC<{
       return years.map(yr => {
         const yrStr = String(yr);
         const isCurrent = yr === currentYear;
+
         const yIncome = transactions
           .filter(t => t.date.startsWith(yrStr) && t.type === 'Gelir' && t.status !== 'İptal')
           .reduce((sum, t) => sum + t.amount, 0);
+
         const yExpense = transactions
-          .filter(t => t.date.startsWith(yrStr) && (t.type === 'Gider' || t.type === 'Mal Alımı') && t.status !== 'İptal')
+          .filter(t => t.date.startsWith(yrStr) && (t.type === 'Gider' || t.type === 'Mal Alış') && t.status !== 'İptal')
           .reduce((sum, t) => sum + t.amount, 0);
+
         const yCiro = sales
           .filter(s => s.date.startsWith(yrStr))
           .reduce((sum, s) => sum + s.totalSaleAmount, 0) || yIncome;
+
         const net = yIncome - yExpense;
         return {
           key: yrStr,
@@ -269,11 +284,11 @@ export const DashboardTab: React.FC<{
 
   return (
     <div className="space-y-6">
-      {/* Top Banner & Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border border-slate-700/80 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
+      {/* Top Banner (Clean, no unnecessary rapid-fire quick action clutter) */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-850 to-slate-900 border border-slate-700/80 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="relative z-10">
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-emerald-400">
-            <span>Finansal Durum Raporu · {selectedMonthLabel}</span>
+            <span>Finansal Durum Raporu • {selectedMonthLabel}</span>
             {availableMonths.length > 1 && (
               <div className="flex items-center gap-1.5 ml-1 bg-slate-800/90 border border-slate-700/80 rounded-lg px-2 py-0.5">
                 <Calendar className="w-3 h-3 text-emerald-400" />
@@ -304,41 +319,11 @@ export const DashboardTab: React.FC<{
           </p>
         </div>
 
-        {/* Quick Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2 relative z-10">
-          <button
-            onClick={() => openTransactionModal({ type: 'Gelir' })}
-            className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
-            title="Yeni Gelir / Tahsilat Kaydı"
-          >
-            <ArrowDownRight className="w-3.5 h-3.5" /> Gelir Ekle
-          </button>
-          <button
-            onClick={() => openTransactionModal({ type: 'Gider' })}
-            className="px-3.5 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
-            title="Yeni Gider / Ödeme Kaydı"
-          >
-            <ArrowUpRight className="w-3.5 h-3.5" /> Gider Ekle
-          </button>
-          <button
-            onClick={() => openTransactionModal({ type: 'Mal Alımı' })}
-            className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
-            title="Tedarikçiden Vadeli Mal Alımı"
-          >
-            <ShoppingBag className="w-3.5 h-3.5" /> Mal Alımı
-          </button>
-          <button
-            onClick={() => openInstallmentModal()}
-            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
-          >
-            <Layers className="w-3.5 h-3.5" /> Taksit Planla
-          </button>
-          <button
-            onClick={onOpenTransfer}
-            className="px-3.5 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition border border-slate-600 shadow-sm active:scale-95"
-          >
-            <ArrowRightLeft className="w-3.5 h-3.5 text-blue-400" /> Virman
-          </button>
+        <div className="flex items-center gap-2 text-xs text-slate-400 self-start sm:self-center">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/80 border border-slate-700 rounded-xl">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-slate-200 font-medium">Bulut Senkronize</span>
+          </div>
         </div>
       </div>
 
@@ -358,7 +343,7 @@ export const DashboardTab: React.FC<{
             {formatCurrency(totalLiquidAssets)}
           </h3>
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
-            <span>Bugünkü Net Giriş:</span>
+            <span>Bugün Net Giriş:</span>
             <span
               className={`font-mono-num font-semibold ${
                 todayIncome - todayExpense >= 0
@@ -408,12 +393,12 @@ export const DashboardTab: React.FC<{
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
             <span>İşlem Adedi:</span>
             <span className="font-mono-num font-semibold text-slate-700 dark:text-slate-300">
-              {currentMonthTxs.filter(t => t.type === 'Gider' || t.type === 'Mal Alımı').length} ödeme
+              {currentMonthTxs.filter(t => t.type === 'Gider' || t.type === 'Mal Alış').length} ödeme
             </span>
           </div>
         </div>
 
-        {/* Card 4: Net Likit Varlık */}
+        {/* Card 4: Net Nakit Akışı */}
         <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between">
             <span
@@ -576,7 +561,6 @@ export const DashboardTab: React.FC<{
             </button>
           </div>
         </div>
-
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-semibold">
@@ -690,7 +674,7 @@ export const DashboardTab: React.FC<{
               onClick={() => setActiveTab('transactions')}
               className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
             >
-              Tümünü Gör ({transactions.length})
+              Tümü ({transactions.length})
             </button>
           </div>
           <div className="overflow-x-auto">
@@ -720,14 +704,14 @@ export const DashboardTab: React.FC<{
                             ? 'text-emerald-600 dark:text-emerald-400'
                             : tx.type === 'Gider'
                             ? 'text-rose-600 dark:text-rose-400'
-                            : tx.type === 'Mal Alımı'
+                            : tx.type === 'Mal Alış'
                             ? 'text-amber-600 dark:text-amber-400'
                             : 'text-blue-600 dark:text-blue-400'
                         }`}
                       >
                         {tx.type === 'Gelir' && <ArrowDownRight className="w-3 h-3" />}
                         {tx.type === 'Gider' && <ArrowUpRight className="w-3 h-3" />}
-                        {tx.type === 'Mal Alımı' && <ShoppingBag className="w-3 h-3" />}
+                        {tx.type === 'Mal Alış' && <ShoppingBag className="w-3 h-3" />}
                         {tx.type === 'Transfer' && <ArrowRightLeft className="w-3 h-3" />}
                         {tx.type}
                       </span>
@@ -742,14 +726,14 @@ export const DashboardTab: React.FC<{
                       className={`py-3 px-4 text-right font-mono-num font-bold ${
                         tx.type === 'Gelir'
                           ? 'text-emerald-600 dark:text-emerald-400'
-                          : tx.type === 'Mal Alımı'
+                          : tx.type === 'Mal Alış'
                           ? 'text-amber-600 dark:text-amber-400'
                           : tx.type === 'Gider'
                           ? 'text-rose-600 dark:text-rose-400'
                           : 'text-blue-600 dark:text-blue-400'
                       }`}
                     >
-                      {tx.type === 'Gelir' ? '+' : tx.type === 'Gider' ? '-' : tx.type === 'Mal Alımı' ? '-' : ''}
+                      {tx.type === 'Gelir' ? '+' : tx.type === 'Gider' ? '-' : tx.type === 'Mal Alış' ? '-' : ''}
                       {formatCurrency(tx.amount)}
                     </td>
                   </tr>
@@ -807,7 +791,7 @@ export const DashboardTab: React.FC<{
                         </div>
                         <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5 ml-4">
                           <span>{formatDate(due.dueDate)}</span>
-                          <span>·</span>
+                          <span>•</span>
                           <span
                             className={`font-medium ${
                               remaining.status === 'overdue'
@@ -821,6 +805,7 @@ export const DashboardTab: React.FC<{
                           </span>
                         </div>
                       </div>
+
                       <div className="flex items-center gap-2 shrink-0">
                         <span
                           className={`text-xs font-mono-num font-bold ${

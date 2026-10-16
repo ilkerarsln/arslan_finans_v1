@@ -12,7 +12,6 @@ import {
   ArrowUpRight,
   Check,
   Sparkles,
-  Info,
 } from 'lucide-react';
 
 export const InstallmentModal: React.FC = () => {
@@ -56,7 +55,7 @@ export const InstallmentModal: React.FC = () => {
       setCariId(installmentModalPrefill?.cariId || '');
       setCategory(
         installmentModalPrefill?.category ||
-          (installmentModalPrefill?.type === 'Gelir' ? 'Taksitli Satış' : 'Taksitli Mal Alımı')
+          (installmentModalPrefill?.type === 'Gelir' ? 'Taksitli Satış' : 'Taksitli Mal Alış')
       );
       setAccountId(installmentModalPrefill?.accountId || accounts[0]?.id || '');
       setDocumentNo(installmentModalPrefill?.documentNo || '');
@@ -110,7 +109,7 @@ export const InstallmentModal: React.FC = () => {
       firstDueDate,
       cariId: cariId || undefined,
       cariName: cariName.trim() || undefined,
-      category: category || (type === 'Gelir' ? 'Taksitli Satış' : 'Taksitli Mal Alımı'),
+      category: category || (type === 'Gelir' ? 'Taksitli Satış' : 'Taksitli Mal Alış'),
       accountId: accountId || accounts[0]?.id,
       documentNo: documentNo.trim() || undefined,
       notes: notes.trim() || undefined,
@@ -192,7 +191,7 @@ export const InstallmentModal: React.FC = () => {
                       : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                   }`}
                 >
-                  {selectedCari.type} · Bakiye: {formatCurrency(selectedCari.balance)}
+                  {selectedCari.type} • Bakiye: {formatCurrency(selectedCari.balance)}
                 </span>
               )}
             </div>
@@ -220,7 +219,7 @@ export const InstallmentModal: React.FC = () => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Toplam Tutar (₺) *
+                  Toplam Tutar (₺)
                 </label>
                 {parsedTotal > 0 && activeCount > 0 && (
                   <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
@@ -248,7 +247,7 @@ export const InstallmentModal: React.FC = () => {
                   <button type="button" onClick={() => setQuickDate(0)} className="text-emerald-600 hover:underline">
                     Bugün
                   </button>
-                  <span>·</span>
+                  <span>•</span>
                   <button type="button" onClick={() => setQuickDate(30)} className="text-emerald-600 hover:underline">
                     +30 Gün
                   </button>
@@ -361,7 +360,7 @@ export const InstallmentModal: React.FC = () => {
               }`}
             >
               <Check className="w-4 h-4" />
-              Taksit Planını Kaydet ({activeCount} Taksit)
+              Taksit Planı Kaydet ({activeCount} Taksit)
             </button>
           </div>
         </form>

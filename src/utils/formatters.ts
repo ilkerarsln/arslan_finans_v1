@@ -59,7 +59,6 @@ export function getDaysRemaining(dateStr: string): { days: number; text: string;
   target.setHours(0, 0, 0, 0);
   const diffTime = target.getTime() - today.getTime();
   const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
   if (diffDays < 0) {
     return { days: Math.abs(diffDays), text: `${Math.abs(diffDays)} gün gecikti`, status: 'overdue' };
   } else if (diffDays === 0) {

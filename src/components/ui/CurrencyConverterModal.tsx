@@ -1,23 +1,21 @@
 import React, { useState } from 'react';
 import { useFinance } from '../../context/FinanceContext';
 import { useLiveCurrency } from '../../services/currencyService';
-import { X, RefreshCw, Calculator, DollarSign, ArrowRightLeft, Check, Percent } from 'lucide-react';
-import { formatCurrency } from '../../utils/formatters';
+import { X, RefreshCw, Calculator } from 'lucide-react';
 
 export const CurrencyConverterModal: React.FC = () => {
   const { isCurrencyConverterOpen, closeCurrencyConverter } = useFinance();
-  const { usd, eur, lastUpdated, isLive, isLoading, refreshRates } = useLiveCurrency();
+  const { usd, eur, lastUpdated, isLoading, refreshRates } = useLiveCurrency();
 
   const [inputCurrency, setInputCurrency] = useState<'USD' | 'EUR' | 'TRY'>('USD');
   const [amount, setAmount] = useState<string>('1000');
-  const [markupPercent, setMarkupPercent] = useState<number>(0); // e.g. %20 KDV veya kâr marjı
+  const [markupPercent, setMarkupPercent] = useState<number>(0);
 
   if (!isCurrencyConverterOpen) return null;
 
   const numAmount = parseFloat(amount) || 0;
   const markedUpAmount = numAmount * (1 + markupPercent / 100);
 
-  // Conversion calculations
   let valInTRY = 0;
   let valInUSD = 0;
   let valInEUR = 0;
@@ -31,7 +29,6 @@ export const CurrencyConverterModal: React.FC = () => {
     valInTRY = markedUpAmount * eur;
     valInUSD = usd > 0 ? valInTRY / usd : 0;
   } else {
-    // TRY
     valInTRY = markedUpAmount;
     valInUSD = usd > 0 ? markedUpAmount / usd : 0;
     valInEUR = eur > 0 ? markedUpAmount / eur : 0;
@@ -120,11 +117,10 @@ export const CurrencyConverterModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Quick Markups / VAT */}
           <div>
             <div className="flex items-center justify-between mb-1">
               <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                Ek Maliyet / Kâr / KDV Oranı:
+                Ek Maliyet / Kâr / KDV Oranı
               </span>
               <span className="text-xs font-mono font-bold text-emerald-600">
                 %{markupPercent}
@@ -148,26 +144,22 @@ export const CurrencyConverterModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Results Display */}
           <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 space-y-2.5">
             <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
               Hesaplanan Karşılıklar
             </span>
-
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-slate-600 dark:text-slate-300">Türk Lirası (₺):</span>
               <span className="text-lg font-bold font-mono-num text-emerald-600 dark:text-emerald-400">
                 ₺{valInTRY.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
-
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-slate-600 dark:text-slate-300">Amerikan Doları ($):</span>
               <span className="text-base font-bold font-mono-num text-slate-900 dark:text-white">
                 ${valInUSD.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
             </div>
-
             <div className="flex items-center justify-between text-xs">
               <span className="font-semibold text-slate-600 dark:text-slate-300">Euro (€):</span>
               <span className="text-base font-bold font-mono-num text-slate-900 dark:text-white">

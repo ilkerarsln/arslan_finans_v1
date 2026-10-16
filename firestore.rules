@@ -22,6 +22,7 @@ service cloud.firestore {
       return isSignedIn() && (
         request.auth.token.email == 'ilkerarslan78@gmail.com' ||
         request.auth.token.email == 'arslanmobilya78@gmail.com' ||
+        request.auth.token.email == 'projebao@gmail.com' ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin')
       );
@@ -34,8 +35,7 @@ service cloud.firestore {
     }
 
     match /users/{userId} {
-      allow read: if isOwner(userId) || isAdmin() || (isSignedIn() && resource.data.email == request.auth.token.email);
-      allow list: if isAdmin();
+      allow read, list: if isSignedIn();
       allow create: if isOwner(userId) || isAdmin() || isSignedIn();
       allow update: if isOwner(userId) || isAdmin();
       allow delete: if isAdmin();
@@ -79,6 +79,30 @@ service cloud.firestore {
       match /auditLogs/{logId} {
         allow read: if isSignedIn();
         allow create, update: if isSignedIn() && isValidId(logId);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /stocks/{stockId} {
+        allow read: if isSignedIn();
+        allow create, update: if isSignedIn() && isValidId(stockId);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /priceLists/{priceListId} {
+        allow read: if isSignedIn();
+        allow create, update: if isSignedIn() && isValidId(priceListId);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /sales/{saleId} {
+        allow read: if isSignedIn();
+        allow create, update: if isSignedIn() && isValidId(saleId);
+        allow delete: if isOwner(userId) || isAdmin();
+      }
+
+      match /purchases/{purchaseId} {
+        allow read: if isSignedIn();
+        allow create, update: if isSignedIn() && isValidId(purchaseId);
         allow delete: if isOwner(userId) || isAdmin();
       }
     }

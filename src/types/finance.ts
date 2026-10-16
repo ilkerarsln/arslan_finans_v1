@@ -1,11 +1,10 @@
-export type TransactionType = 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alımı';
-
+export type TransactionType = 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alış';
 export type TransactionStatus = 'Tamamlandı' | 'Beklemede' | 'İptal';
 
 export interface Transaction {
   id: string;
   date: string; // YYYY-MM-DD
-  dueDate?: string; // Mal alımı ödeme / vade tarihi
+  dueDate?: string; // Mal alım ödeme / vade tarihi
   type: TransactionType;
   category: string;
   cariId?: string;
@@ -20,8 +19,8 @@ export interface Transaction {
   status: TransactionStatus;
   documentNo?: string;
   createdAt: string;
-  createdBy?: string; // İşlemi ekleyen kullanıcı (Kullanıcı adı veya E-posta)
-  createdByName?: string; // Ekleyen personelin adı
+  createdBy?: string;
+  createdByName?: string;
   installmentIndex?: number;
   totalInstallments?: number;
   installmentGroupId?: string;
@@ -51,7 +50,7 @@ export interface Account {
   currency: 'TRY' | 'USD' | 'EUR';
   creditLimit?: number;
   cutOffDay?: number;
-  cutOffDate?: string; // Kredi kartı hesap kesim tarihi
+  cutOffDate?: string;
   color: string;
   icon: string;
 }
@@ -135,7 +134,7 @@ export interface UserProfile {
 }
 
 export interface StaffAccount {
-  id: string; // normalized username
+  id: string;
   username: string;
   displayName: string;
   role: UserRole;
@@ -152,7 +151,7 @@ export interface DeletionRequest {
   targetId: string;
   targetTitle: string;
   amount?: number;
-  requestedBy: string; // username or email
+  requestedBy: string;
   requestedByName: string;
   requestedAt: string;
   reason: string;
@@ -164,7 +163,7 @@ export interface DeletionRequest {
 export interface AuditLogEntry {
   id: string;
   action: 'Ekleme' | 'Güncelleme' | 'Silme Talebi' | 'Silme Onayı' | 'Silme Reddi' | 'Kalıcı Silme';
-  entityType: 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alımı' | 'Cari' | 'Hesap' | 'Personel' | 'Sistem' | 'Satış' | 'Stok';
+  entityType: 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alış' | 'Cari' | 'Hesap' | 'Personel' | 'Sistem' | 'Satış' | 'Stok';
   entityId: string;
   description: string;
   performedBy: string;
@@ -189,14 +188,14 @@ export interface SaleRecord {
   category: string;
   subCategory?: string;
   brand?: string;
-  supplierId?: string; // Ortak Tedarikçi Cari ID
+  supplierId?: string;
   supplierName?: string;
   quantity: number;
   costPrice: number; // Birim alış maliyeti
   totalCost: number; // quantity * costPrice
   saleType: SaleType;
-  installmentsCount?: number; // Senetli satış taksit sayısı (örn: 6, 12, 18, 24)
-  vadeRateMonthly?: number; // Tanımlardan alınan aylık vade farkı oranı (% örn: 3.5)
+  installmentsCount?: number; // Senetli satış taksit sayısı (ör: 6, 12, 18, 24)
+  vadeRateMonthly?: number; // Tanımlardan alınan aylık vade farkı oranı (% ör: 3.5)
   vadeFarkiAmount?: number; // Senetli satış için hesaplanan toplam vade farkı maliyeti
   effectiveCost: number; // Ürün Maliyeti + Vade Farkı Maliyeti
   salePrice: number; // Birim satış fiyatı
@@ -210,7 +209,7 @@ export interface SaleRecord {
   createdBy?: string;
 }
 
-// Mal Alımı & Stok Yönetimi
+// Mal Alış & Stok Yönetimi
 export interface StockItem {
   id: string;
   code?: string;
@@ -218,7 +217,7 @@ export interface StockItem {
   category: string; // e.g. Beyaz Eşya, Mobilya
   subCategory?: string; // e.g. Buzdolabı, Çamaşır Makinesi
   brand?: string; // e.g. Bosch, Altus, Bambi
-  supplierId?: string; // Ortak Tedarikçi
+  supplierId?: string;
   supplierName?: string;
   quantity: number;
   unit: string;
@@ -228,6 +227,7 @@ export interface StockItem {
   minStockLevel?: number;
   lastPurchaseDate?: string;
   notes?: string;
+  kdvRate?: number;
 }
 
 export interface PurchaseItemDetail {
@@ -246,7 +246,7 @@ export interface StockPurchaseRecord {
   id: string;
   date: string; // YYYY-MM-DD
   documentNo: string;
-  supplierId: string; // Ortak Tedarikçi Cari ID
+  supplierId: string;
   supplierName: string;
   items: PurchaseItemDetail[];
   totalAmount: number;
@@ -283,7 +283,7 @@ export interface ProductBrand {
 export interface VadeRateEntry {
   id: string;
   monthKey: string; // YYYY-MM
-  rateMonthly: number; // Aylık Vade Farkı Oranı (%) örn: 3.5
+  rateMonthly: number; // Aylık Vade Farkı Oranı (%) ör: 3.5
   notes?: string;
 }
 

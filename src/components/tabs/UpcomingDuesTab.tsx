@@ -33,15 +33,13 @@ export const UpcomingDuesTab: React.FC = () => {
 
   const [filter, setFilter] = useState<'pending' | 'completed' | 'overdue' | 'installments' | 'all'>('pending');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-
   const [title, setTitle] = useState('');
   const [type, setType] = useState<'Gelir' | 'Gider'>('Gider');
   const [amount, setAmount] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [category, setCategory] = useState('Mal / Stok Alımı');
+  const [category, setCategory] = useState('Mal / Stok Alışı');
   const [cariName, setCariName] = useState('');
   const [recurrence, setRecurrence] = useState<'Tek Seferlik' | 'Aylık' | 'Yıllık'>('Tek Seferlik');
-
   const [isInstallmentMode, setIsInstallmentMode] = useState(false);
   const [installmentCount, setInstallmentCount] = useState<number>(6);
 
@@ -62,6 +60,7 @@ export const UpcomingDuesTab: React.FC = () => {
   const pendingIncome = upcomingDues
     .filter(d => !d.isCompleted && d.type === 'Gelir')
     .reduce((sum, d) => sum + d.amount, 0);
+
   const pendingExpense = upcomingDues
     .filter(d => !d.isCompleted && d.type === 'Gider')
     .reduce((sum, d) => sum + d.amount, 0);
@@ -81,7 +80,7 @@ export const UpcomingDuesTab: React.FC = () => {
         title: title.trim() || undefined,
         cariName: cariName.trim() || undefined,
         cariId: matchedCari?.id,
-        category: category.trim() || (type === 'Gelir' ? 'Taksitli Satış' : 'Taksitli Mal Alımı'),
+        category: category.trim() || (type === 'Gelir' ? 'Taksitli Satış' : 'Taksitli Mal Alış'),
       });
     } else {
       if (!title.trim()) return;
@@ -96,6 +95,7 @@ export const UpcomingDuesTab: React.FC = () => {
         recurrence,
       });
     }
+
     setIsAddModalOpen(false);
     setTitle('');
     setAmount('');
@@ -319,15 +319,15 @@ export const UpcomingDuesTab: React.FC = () => {
                         <span className="font-medium text-slate-600 dark:text-slate-300 font-mono">
                           {formatDate(due.dueDate)}
                         </span>
-                        <span>·</span>
+                        <span>•</span>
                         <span>{due.category}</span>
                         {due.cariName && (
                           <>
-                            <span>·</span>
+                            <span>•</span>
                             <span className="text-slate-500">{due.cariName}</span>
                           </>
                         )}
-                        <span>·</span>
+                        <span>•</span>
                         <span className="text-[11px] text-slate-400">
                           {due.installmentGroupId ? "30 Günlük Periyot" : due.recurrence}
                         </span>
@@ -348,7 +348,7 @@ export const UpcomingDuesTab: React.FC = () => {
                         {formatCurrency(due.amount)}
                       </div>
                       <span className="text-[10px] text-slate-400">
-                        {due.type === 'Gelir' ? 'Tahsilat Bekleniyor' : 'Ödeme Yükü'}
+                        {due.type === 'Gelir' ? 'Tahsilat Bekleniyor' : 'Ödeme Yapılacak'}
                       </span>
                     </div>
 
@@ -517,54 +517,6 @@ export const UpcomingDuesTab: React.FC = () => {
                 </div>
               </div>
 
-              <div className="p-3 bg-indigo-50/60 dark:bg-indigo-950/40 border border-indigo-200/60 dark:border-indigo-800/60 rounded-xl space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isInstallmentMode}
-                      onChange={e => setIsInstallmentMode(e.target.checked)}
-                      className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500"
-                    />
-                    <span className="text-xs font-bold text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
-                      <Layers className="w-3.5 h-3.5 text-indigo-600" />
-                      Otomatik Taksitlendir (30'ar Günlük Periyot)
-                    </span>
-                  </label>
-                  {isInstallmentMode && (
-                    <span className="text-[11px] font-mono-num font-semibold text-indigo-700 dark:text-indigo-300">
-                      {parseFloat(amount) > 0
-                        ? `${formatCurrency(parseFloat(amount) / installmentCount)} / Taksit`
-                        : ''}
-                    </span>
-                  )}
-                </div>
-
-                {isInstallmentMode && (
-                  <div className="pt-2 border-t border-indigo-200/50 dark:border-indigo-800/50 space-y-2">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[11px] text-indigo-900 dark:text-indigo-300 font-medium">
-                        Taksit Sayısı:
-                      </span>
-                      {[2, 3, 4, 6, 9, 12].map(cnt => (
-                        <button
-                          key={cnt}
-                          type="button"
-                          onClick={() => setInstallmentCount(cnt)}
-                          className={`px-2 py-0.5 rounded text-[11px] font-semibold transition ${
-                            installmentCount === cnt
-                              ? 'bg-indigo-600 text-white'
-                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-                          }`}
-                        >
-                          {cnt}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -574,7 +526,7 @@ export const UpcomingDuesTab: React.FC = () => {
                     type="text"
                     value={category}
                     onChange={e => setCategory(e.target.value)}
-                    placeholder="Mal Alımı, Fatura..."
+                    placeholder="Mal Alışı, Fatura..."
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
@@ -607,7 +559,7 @@ export const UpcomingDuesTab: React.FC = () => {
                   type="submit"
                   className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-xs"
                 >
-                  {isInstallmentMode ? `${installmentCount} Taksitli Planı Kaydet` : 'Takvime Ekle'}
+                  Takvime Ekle
                 </button>
               </div>
             </form>

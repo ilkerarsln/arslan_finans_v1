@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useFinance } from '../../context/FinanceContext';
 import { Account, AccountType } from '../../types/finance';
-import { X, Building2, Vault, CreditCard, Landmark, Check } from 'lucide-react';
+import { X, Building2, Check } from 'lucide-react';
 
 interface AccountModalProps {
   isOpen: boolean;

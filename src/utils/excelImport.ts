@@ -14,7 +14,13 @@ function normalizeKey(key: string): string {
   return key
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9 ]/gi, '');
+    .replace(/[^a-z0-9çğıöşü ]/gi, '')
+    .replace(/ç/g, 'c')
+    .replace(/ğ/g, 'g')
+    .replace(/ı/g, 'i')
+    .replace(/ö/g, 'o')
+    .replace(/ş/g, 's')
+    .replace(/ü/g, 'u');
 }
 
 export function parseExcelDate(val: any): string {
@@ -89,7 +95,7 @@ export function parseExcelData(
 
   const sheetName =
     workbook.SheetNames.find(s =>
-      /işlem|hareket|finans|kasa|banka|transaction/i.test(s)
+      /islem|hareket|finans|kasa|banka|transaction/i.test(s)
     ) || workbook.SheetNames[0];
 
   const worksheet = workbook.Sheets[sheetName];
@@ -108,7 +114,6 @@ export function parseExcelData(
   const currentAccounts = [...existingAccounts];
   const newTransactions: Transaction[] = [];
   const addedCaris: Cari[] = [];
-
   const defaultAccount =
     currentAccounts.find(a => a.type === 'Ticari Hesap') || currentAccounts[0];
 
@@ -144,7 +149,7 @@ export function parseExcelData(
         ''
     ).trim().toLowerCase();
 
-    let type: 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alımı' = 'Gider';
+    let type: 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alış' = 'Gider';
     if (
       typeVal.includes('gelir') ||
       typeVal.includes('tahsilat') ||
@@ -153,13 +158,13 @@ export function parseExcelData(
     ) {
       type = 'Gelir';
     } else if (
-      typeVal.includes('mal alımı') ||
+      typeVal.includes('mal al') ||
       typeVal.includes('malalim') ||
-      typeVal.includes('tedarikçi borc') ||
-      typeVal.includes('borçlan') ||
+      typeVal.includes('tedarikci borc') ||
+      typeVal.includes('borclan') ||
       typeVal.includes('purchase')
     ) {
-      type = 'Mal Alımı';
+      type = 'Mal Alış';
     } else if (
       typeVal.includes('transfer') ||
       typeVal.includes('virman')
@@ -251,13 +256,13 @@ export function parseExcelData(
       } else if (existingCari.type === 'Tedarikçi') {
         if (type === 'Gider') {
           existingCari.balance += amount;
-        } else if (type === 'Mal Alımı') {
+        } else if (type === 'Mal Alış') {
           existingCari.balance -= amount;
         }
       }
     }
 
-    if (targetAcc && type !== 'Mal Alımı') {
+    if (targetAcc && type !== 'Mal Alış') {
       if (type === 'Gelir') {
         targetAcc.balance += amount;
       } else if (type === 'Gider') {

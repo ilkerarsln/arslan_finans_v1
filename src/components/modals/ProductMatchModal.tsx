@@ -3,8 +3,6 @@ import { useFinance } from '../../context/FinanceContext';
 import {
   AlertTriangle,
   CheckCircle,
-  Boxes,
-  Plus,
   Link as LinkIcon,
   Search,
   X,
@@ -35,7 +33,6 @@ export const ProductMatchModal: React.FC<ProductMatchModalProps> = ({
   isOpen,
   onClose,
   unmatchedNames,
-  sourceType,
   onComplete,
 }) => {
   const {
@@ -47,13 +44,13 @@ export const ProductMatchModal: React.FC<ProductMatchModalProps> = ({
     showToast,
   } = useFinance();
 
-  // State mapping rawName -> resolution
   const [resolutions, setResolutions] = useState<Record<string, UnmatchedResolution>>(() => {
     const initial: Record<string, UnmatchedResolution> = {};
     unmatchedNames.forEach(rawName => {
-      // Try to find closest match by lowercase containment
       const lower = rawName.toLowerCase();
-      const directMatch = stockItems.find(s => s.name.toLowerCase().includes(lower) || lower.includes(s.name.toLowerCase()));
+      const directMatch = stockItems.find(
+        s => s.name.toLowerCase().includes(lower) || lower.includes(s.name.toLowerCase())
+      );
       
       let defaultCat = 'Beyaz Eşya';
       if (lower.includes('koltuk') || lower.includes('yatak') || lower.includes('dolap') || lower.includes('sehpa')) {
@@ -107,7 +104,6 @@ export const ProductMatchModal: React.FC<ProductMatchModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Verify all items have either matched product or non-zero price
     for (const rawName of unmatchedNames) {
       const res = resolutions[rawName];
       if (!res) continue;
@@ -121,11 +117,9 @@ export const ProductMatchModal: React.FC<ProductMatchModalProps> = ({
       }
     }
 
-    // Process resolutions: if addToStockCatalog is true, register them in stockItems
     unmatchedNames.forEach(rawName => {
       const res = resolutions[rawName];
       if (res && res.action === 'create_new' && res.addToStockCatalog) {
-        // Check if already in stock
         const exists = stockItems.some(s => s.name.toLowerCase() === res.productName.toLowerCase());
         if (!exists) {
           addStockItem({
@@ -135,10 +129,10 @@ export const ProductMatchModal: React.FC<ProductMatchModalProps> = ({
             brand: res.brand,
             purchasePrice: Number(res.costPrice) || 0,
             salePrice: Number(res.salePrice) || 0,
-            quantity: 0, // initially 0 or will be filled by purchase
+            quantity: 0,
             unit: 'Adet',
             totalValue: 0,
-            notes: 'Eksik ürün eşleştirme ile otomatik oluşturuldu',
+            notes: 'Eksik ürün eşleştirme ile anlık tanımlandı',
           });
         }
       }
@@ -160,13 +154,13 @@ export const ProductMatchModal: React.FC<ProductMatchModalProps> = ({
                 <AlertTriangle className="w-5 h-5" />
               </span>
               <h3 className="font-bold text-slate-900 dark:text-white text-base sm:text-lg">
-                Eksik Ürün Eşleştirme ve Fiyat Belirleme Mekanizması
+                Eksik Ürün Eşleştirme ve Fiyat Belirleme
               </h3>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-2xl">
-              Yüklenen Excel dosyasında veya girilen işlemde ana stok/fiyat listesinde doğrudan eşleşmeyen{' '}
+              Yüklenen Excel dosyasında ana stok/fiyat listesinde doğrudan bulunamayan{' '}
               <strong className="text-amber-600 dark:text-amber-400">{unmatchedNames.length} ürün</strong> tespit edildi.
-              Sistem hata vermek yerine mevcut ürünle eşleştirmenize veya anlık fiyat/maliyet tanımlamanıza olanak tanır.
+              Sistem hata vermek yerine mevcut ürünle eşleştirmenize veya anlık fiyat girerek devam etmenize olanak tanır.
             </p>
           </div>
           <button
@@ -192,11 +186,6 @@ export const ProductMatchModal: React.FC<ProductMatchModalProps> = ({
             };
 
             const searchTerm = activeSearchTerms[rawName] || '';
-            const matchingCandidates = stockItems.filter(s =>
-              s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              (s.code && s.code.toLowerCase().includes(searchTerm.toLowerCase())) ||
-              s.brand?.toLowerCase().includes(searchTerm.toLowerCase())
-            ).slice(0, 5);
 
             return (
               <div
@@ -211,7 +200,7 @@ export const ProductMatchModal: React.FC<ProductMatchModalProps> = ({
                     </span>
                     <div>
                       <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-semibold">
-                        Gelen Kayıt:
+                        Gelen Kayıt Adı
                       </span>
                       <span className="font-bold text-sm text-slate-900 dark:text-white">
                         {rawName}
@@ -272,7 +261,7 @@ export const ProductMatchModal: React.FC<ProductMatchModalProps> = ({
                         <option value="">-- Eşleşecek Ürünü Seçin --</option>
                         {stockItems.map(s => (
                           <option key={s.id} value={s.id}>
-                            {s.name} ({s.category} · {s.brand} · Alış: ₺{s.purchasePrice} · Satış: ₺{s.salePrice})
+                            {s.name} ({s.category} • {s.brand} • Alış: ₺{s.purchasePrice} • Satış: ₺{s.salePrice})
                           </option>
                         ))}
                       </select>
@@ -297,7 +286,7 @@ export const ProductMatchModal: React.FC<ProductMatchModalProps> = ({
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
                       <div>
                         <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                          Kayıtlı Ürün Adı
+                          Kayıt Adı
                         </label>
                         <input
                           type="text"
@@ -307,7 +296,6 @@ export const ProductMatchModal: React.FC<ProductMatchModalProps> = ({
                           className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100 outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>
-
                       <div>
                         <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
                           Ana Kategori
@@ -324,7 +312,6 @@ export const ProductMatchModal: React.FC<ProductMatchModalProps> = ({
                           ))}
                         </select>
                       </div>
-
                       <div>
                         <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
                           Marka
@@ -341,7 +328,6 @@ export const ProductMatchModal: React.FC<ProductMatchModalProps> = ({
                           ))}
                         </select>
                       </div>
-
                       <div>
                         <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
                           Alt Kategori
@@ -366,7 +352,7 @@ export const ProductMatchModal: React.FC<ProductMatchModalProps> = ({
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                       <div>
                         <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                          Alış Maliyeti (₺) *
+                          Birim Alış Maliyeti (₺)
                         </label>
                         <input
                           type="number"
@@ -385,10 +371,9 @@ export const ProductMatchModal: React.FC<ProductMatchModalProps> = ({
                           className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-mono-num font-bold outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>
-
                       <div>
                         <label className="block text-[11px] font-semibold text-slate-600 dark:text-slate-400 mb-1">
-                          Satış Fiyatı (₺) *
+                          Birim Satış Fiyatı (₺)
                         </label>
                         <input
                           type="number"
@@ -401,7 +386,6 @@ export const ProductMatchModal: React.FC<ProductMatchModalProps> = ({
                           className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100 font-mono-num font-bold outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                       </div>
-
                       <div className="flex items-center gap-2 pt-5">
                         <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-700 dark:text-slate-300 font-medium">
                           <input

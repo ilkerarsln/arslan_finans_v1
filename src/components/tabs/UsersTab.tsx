@@ -1,597 +1,363 @@
 import React, { useState } from 'react';
 import { useFinance } from '../../context/FinanceContext';
-import { StaffAccount, UserProfile, UserRole } from '../../types/finance';
+import { StaffAccount, UserRole } from '../../types/finance';
+import { formatDate } from '../../utils/formatters';
 import {
   ShieldCheck,
-  Shield,
-  UserCheck,
+  ShieldAlert,
+  UserPlus,
   Users,
-  Plus,
-  Trash2,
-  Edit,
   KeyRound,
+  Lock,
+  Trash2,
+  Edit2,
+  Check,
+  X,
   Eye,
   EyeOff,
-  Mail,
-  User,
-  CheckCircle,
-  AlertCircle,
   Sparkles,
-  Lock,
-  Layers,
-  ArrowRight,
+  Shield,
+  Info,
 } from 'lucide-react';
 
 export const UsersTab: React.FC = () => {
   const {
-    staffAccounts,
-    allUsers,
     userProfile,
     isAdmin,
-    userRole,
-    isRoleSimulated,
-    toggleRoleSimulation,
+    allUsers,
+    staffAccounts,
     createStaffAccount,
     updateStaffAccount,
     removeStaffAccount,
     updateUserRole,
-    preAssignUserRole,
-    deleteUserInvitation,
+    isRoleSimulated,
+    toggleRoleSimulation,
     showToast,
   } = useFinance();
 
-  const [activeSubTab, setActiveSubTab] = useState<'staff' | 'all' | 'permissions'>('staff');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [displayName, setDisplayName] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<UserRole>('Standart');
+  const [showPassword, setShowPassword] = useState(false);
 
-  // Add/Edit Staff Modal
-  const [isStaffModalOpen, setIsStaffModalOpen] = useState(false);
-  const [editingStaffUsername, setEditingStaffUsername] = useState<string | null>(null);
-  const [staffForm, setStaffForm] = useState<{
-    username: string;
-    displayName: string;
-    role: UserRole;
-    password?: string;
-  }>({
-    username: '',
-    displayName: '',
-    role: 'Standart',
-    password: '',
-  });
+  // Edit State
+  const [editingStaff, setEditingStaff] = useState<StaffAccount | null>(null);
 
-  // Pre-assign user by email modal
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteName, setInviteName] = useState('');
-  const [inviteRole, setInviteRole] = useState<UserRole>('Standart');
-
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleOpenNewStaff = () => {
-    setEditingStaffUsername(null);
-    setStaffForm({
-      username: '',
-      displayName: '',
-      role: 'Standart',
-      password: '',
-    });
-    setIsStaffModalOpen(true);
-  };
-
-  const handleOpenEditStaff = (staff: StaffAccount) => {
-    setEditingStaffUsername(staff.username);
-    setStaffForm({
-      username: staff.username,
-      displayName: staff.displayName,
-      role: staff.role,
-      password: staff.password || '',
-    });
-    setIsStaffModalOpen(true);
-  };
-
-  const handleSaveStaff = async (e: React.FormEvent) => {
+  const handleCreateStaff = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!staffForm.username.trim() || !staffForm.displayName.trim()) {
-      showToast('Kullanıcı adı ve personel adı zorunludur.', 'error');
+    if (!displayName.trim() || !username.trim() || !password.trim()) {
+      showToast('Lütfen tüm zorunlu alanları doldurunuz.', 'error');
       return;
     }
 
-    try {
-      setIsSubmitting(true);
-      if (editingStaffUsername) {
-        await updateStaffAccount({
-          id: editingStaffUsername.toLowerCase(),
-          username: editingStaffUsername,
-          displayName: staffForm.displayName,
-          role: staffForm.role,
-          password: staffForm.password,
-          createdAt: new Date().toISOString(),
-        });
-        showToast('Personel hesabı güncellendi.', 'success');
-      } else {
-        await createStaffAccount({
-          id: staffForm.username.toLowerCase(),
-          username: staffForm.username,
-          displayName: staffForm.displayName,
-          role: staffForm.role,
-          password: staffForm.password || '123456',
-          createdAt: new Date().toISOString(),
-        });
-        showToast('Yeni personel hesabı oluşturuldu.', 'success');
-      }
-      setIsStaffModalOpen(false);
-    } catch (err: any) {
-      showToast(err?.message || 'İşlem başarısız.', 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    const cleanUsername = username.trim().toLowerCase();
 
-  const handleRemoveStaff = async (username: string) => {
-    if (username.toLowerCase() === 'admin' || username.toLowerCase() === 'ilkerarslan78') {
-      showToast('Ana yönetici hesabı silinemez.', 'error');
+    // Check if fixed admin username or already taken
+    if (cleanUsername === 'ilkerarslan78@gmail' || cleanUsername === 'admin') {
+      showToast('Bu kullanıcı adı sistem varsayılan yöneticisi için ayrılmıştır.', 'error');
       return;
     }
-    if (!window.confirm(`"${username}" personel hesabını silmek istediğinize emin misiniz?`)) return;
 
-    try {
-      await removeStaffAccount(username);
-      showToast(`"${username}" personeli silindi.`, 'info');
-    } catch (err: any) {
-      showToast(err?.message || 'Silme başarısız.', 'error');
+    const exists = staffAccounts.some(s => s.username.toLowerCase() === cleanUsername);
+    if (exists) {
+      showToast('Bu kullanıcı adı zaten kullanımda.', 'error');
+      return;
     }
+
+    await createStaffAccount({
+      id: 'staff-' + Date.now(),
+      username: cleanUsername,
+      displayName: displayName.trim(),
+      password: password.trim(),
+      role: role,
+      createdAt: new Date().toISOString(),
+    });
+
+    setIsAddModalOpen(false);
+    setDisplayName('');
+    setUsername('');
+    setPassword('');
+    setRole('Standart');
+    showToast('Yeni personel başarıyla oluşturuldu.', 'success');
   };
 
-  const handleInviteUser = async (e: React.FormEvent) => {
+  const handleUpdateStaff = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inviteEmail.trim() || !inviteEmail.includes('@')) {
-      showToast('Geçerli bir e-posta adresi girin.', 'error');
+    if (!editingStaff) return;
+
+    await updateStaffAccount(editingStaff);
+    setEditingStaff(null);
+    showToast('Kullanıcı yetkileri güncellendi.', 'success');
+  };
+
+  const handleDeleteStaff = async (staffUsername: string, staffName: string) => {
+    if (staffUsername === 'ilkerarslan78@gmail' || staffUsername === 'admin') {
+      showToast('Varsayılan yönetici hesabı sistemden silinemez!', 'error');
       return;
     }
-    try {
-      setIsSubmitting(true);
-      await preAssignUserRole(inviteEmail.trim(), inviteRole, inviteName.trim());
-      showToast(`"${inviteEmail}" için rol yetkisi tanımlandı.`, 'success');
-      setIsInviteModalOpen(false);
-      setInviteEmail('');
-      setInviteName('');
-    } catch (err: any) {
-      showToast(err?.message || 'Yetki atama başarısız.', 'error');
-    } finally {
-      setIsSubmitting(false);
+
+    if (window.confirm(`"${staffName}" isimli personelin sistem erişimini silmek istediğinize emin misiniz?`)) {
+      await removeStaffAccount(staffUsername);
+      showToast('Personel hesabı kaldırıldı.', 'info');
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Top Banner */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-xl">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">
-                Personel & Yetki Yönetimi (RBAC)
-              </h2>
-              <p className="text-xs text-slate-400">
-                Personel hesapları açın, yetkileri yapılandırın ve kullanıcı rol simülasyonunu test edin.
-              </p>
-            </div>
-          </div>
+          <h2 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+            <ShieldCheck className="w-6 h-6 text-amber-500" />
+            Personel & Rol Yetkilendirme Paneli
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Sistem kullanıcılarını yönetin, yeni personel hesapları açın ve yetki tanımlayın.
+          </p>
         </div>
 
-        {/* Role Simulation Switch */}
-        <div className="flex items-center gap-3 bg-slate-950/80 border border-slate-800 px-4 py-2.5 rounded-xl">
-          <div className="text-right">
-            <div className="text-xs font-bold text-white flex items-center gap-1 justify-end">
-              <span>Personel Görünümü Simülasyonu</span>
-              <Sparkles className="w-3 h-3 text-amber-400" />
-            </div>
-            <div className="text-[10px] text-slate-400">
-              {isRoleSimulated ? 'Standart Personel Modundasınız' : 'Yönetici (Admin) Modundasınız'}
-            </div>
-          </div>
+        <div className="flex items-center gap-3">
           <button
-            onClick={toggleRoleSimulation}
-            className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-300 ${
-              isRoleSimulated ? 'bg-amber-500' : 'bg-slate-700'
-            }`}
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 text-xs sm:text-sm font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl transition-colors shadow-xs"
           >
-            <div
-              className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300 ${
-                isRoleSimulated ? 'translate-x-5' : 'translate-x-0'
-              }`}
-            />
+            <UserPlus className="w-4 h-4" />
+            <span>Yeni Personel Ekle</span>
           </button>
         </div>
       </div>
 
-      {/* Sub Tabs */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setActiveSubTab('staff')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeSubTab === 'staff'
-                ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
-                : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800'
-            }`}
-          >
-            <KeyRound className="w-3.5 h-3.5" />
-            <span>Kullanıcı Adı / Şifreli Personeller</span>
-            <span className="text-[10px] opacity-80 font-mono">({staffAccounts.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveSubTab('all')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeSubTab === 'all'
-                ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
-                : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800'
-            }`}
-          >
-            <Users className="w-3.5 h-3.5" />
-            <span>Tüm Kullanıcılar & E-posta Davetleri</span>
-            <span className="text-[10px] opacity-80 font-mono">({allUsers.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveSubTab('permissions')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-              activeSubTab === 'permissions'
-                ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20'
-                : 'bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800'
-            }`}
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Yetki Matrisi</span>
-          </button>
+      {/* Security Info Banner */}
+      <div className="p-4 rounded-2xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/60 flex items-start gap-3">
+        <Info className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+        <div className="text-xs sm:text-sm text-amber-900 dark:text-amber-200">
+          <p className="font-semibold">Kritik Güvenlik Protokolü & Sabit Yönetici Bilgisi</p>
+          <p className="text-xs text-amber-800/80 dark:text-amber-300/80 mt-0.5">
+            Sistem ana yöneticisi <code className="bg-amber-100 dark:bg-amber-900/50 px-1.5 py-0.5 rounded font-mono font-bold">ilkerarslan78@gmail</code> (Şifre: <code className="bg-amber-100 dark:bg-amber-900/50 px-1.5 py-0.5 rounded font-mono font-bold">140514</code>) sabit Süper Admin olarak tanımlıdır ve silinemez. Buradan işletmeniz için ek satış personelleri veya alt yöneticiler oluşturabilirsiniz.
+          </p>
         </div>
-
-        {activeSubTab === 'staff' && (
-          <button
-            onClick={handleOpenNewStaff}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition-all shadow-md shadow-emerald-500/15"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Yeni Personel Tanımla</span>
-          </button>
-        )}
-
-        {activeSubTab === 'all' && (
-          <button
-            onClick={() => setIsInviteModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold transition-all shadow-md shadow-blue-500/15"
-          >
-            <Mail className="w-4 h-4" />
-            <span>E-posta ile Yetki Ata</span>
-          </button>
-        )}
       </div>
 
-      {/* Sub Tab: Staff Accounts */}
-      {activeSubTab === 'staff' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {staffAccounts.map(staff => {
-            const isRootAdmin =
-              staff.username.toLowerCase() === 'admin' ||
-              staff.username.toLowerCase() === 'ilkerarslan78';
-            return (
-              <div
-                key={staff.id || staff.username}
-                className="bg-slate-900 border border-slate-800 rounded-2xl p-5 hover:border-slate-700 transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-emerald-400">
-                        {staff.displayName.slice(0, 2).toUpperCase()}
-                      </div>
-                      <div>
-                        <h4 className="text-white font-bold text-sm tracking-tight">
-                          {staff.displayName}
-                        </h4>
-                        <div className="text-slate-400 font-mono text-xs">
-                          @{staff.username}
-                        </div>
-                      </div>
-                    </div>
-                    <span
-                      className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold ${
-                        staff.role === 'Admin'
-                          ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                          : 'bg-blue-500/15 text-blue-300 border border-blue-500/30'
-                      }`}
-                    >
-                      {staff.role}
-                    </span>
-                  </div>
-
-                  <div className="bg-slate-950/70 p-3 rounded-xl border border-slate-800 text-xs space-y-1.5 mb-4">
-                    <div className="flex items-center justify-between text-slate-400">
-                      <span>Giriş Türü:</span>
-                      <span className="text-slate-200 font-medium">Kullanıcı Adı / Şifre</span>
-                    </div>
-                    <div className="flex items-center justify-between text-slate-400">
-                      <span>Şifre:</span>
-                      <span className="text-slate-300 font-mono font-medium">
-                        {staff.password ? '••••••••' : 'Belirtilmedi'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
-                  <button
-                    onClick={() => handleOpenEditStaff(staff)}
-                    className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors text-xs font-semibold flex items-center gap-1.5"
-                    title="Düzenle"
-                  >
-                    <Edit className="w-3.5 h-3.5" />
-                    <span>Düzenle</span>
-                  </button>
-
-                  {!isRootAdmin && (
-                    <button
-                      onClick={() => handleRemoveStaff(staff.username)}
-                      className="p-2 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 hover:text-rose-300 transition-colors text-xs font-semibold flex items-center gap-1.5 border border-rose-500/20"
-                      title="Sil"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Sil</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Sub Tab: All Users & Invites */}
-      {activeSubTab === 'all' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="bg-slate-950/80 text-slate-400 border-b border-slate-800">
-                  <th className="py-3 px-4 font-semibold">Kullanıcı / E-posta</th>
-                  <th className="py-3 px-4 font-semibold">Görünen Ad</th>
-                  <th className="py-3 px-4 font-semibold">Giriş Şekli</th>
-                  <th className="py-3 px-4 font-semibold">Mevcut Rol</th>
-                  <th className="py-3 px-4 font-semibold text-right">İşlemler</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {allUsers.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-8 text-center text-slate-500">
-                      Henüz kayıtlı başka bir kullanıcı hesabı bulunmuyor.
-                    </td>
-                  </tr>
-                ) : (
-                  allUsers.map(u => {
-                    const isRoot =
-                      u.email.toLowerCase() === 'ilkerarslan78@gmail.com' ||
-                      u.username === 'admin';
-                    return (
-                      <tr key={u.uid} className="hover:bg-slate-800/40 transition-colors">
-                        <td className="py-3 px-4 font-medium text-white">
-                          <div className="flex items-center gap-2">
-                            {u.photoURL ? (
-                              <img
-                                src={u.photoURL}
-                                alt={u.displayName}
-                                className="w-6 h-6 rounded-full"
-                              />
-                            ) : (
-                              <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-[10px] text-emerald-400">
-                                {u.displayName.charAt(0)}
-                              </div>
-                            )}
-                            <div>
-                              <div className="font-semibold text-slate-200">
-                                {u.email || u.username}
-                              </div>
-                              {u.isPreAssigned && (
-                                <span className="text-[10px] text-amber-400">
-                                  (Henüz ilk girişi bekleniyor)
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-slate-300">{u.displayName}</td>
-                        <td className="py-3 px-4 text-slate-400">
-                          {u.isStaff ? 'Personel Hesabı' : 'Google Hesabı'}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span
-                            className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
-                              u.role === 'Admin'
-                                ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30'
-                                : 'bg-blue-500/15 text-blue-300 border border-blue-500/30'
-                            }`}
-                          >
-                            {u.role}
-                          </span>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          {!isRoot && (
-                            <div className="flex items-center justify-end gap-2">
-                              <button
-                                onClick={() =>
-                                  updateUserRole(
-                                    u.uid,
-                                    u.role === 'Admin' ? 'Standart' : 'Admin'
-                                  )
-                                }
-                                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold transition-colors"
-                              >
-                                Rolü Değiştir ({u.role === 'Admin' ? 'Standart Yap' : 'Admin Yap'})
-                              </button>
-                              {u.isPreAssigned && (
-                                <button
-                                  onClick={() => deleteUserInvitation(u.uid)}
-                                  className="p-1 text-rose-400 hover:text-rose-300"
-                                  title="Daveti İptal Et"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Sub Tab: Permissions Matrix */}
-      {activeSubTab === 'permissions' && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6">
-          <h3 className="text-sm font-bold text-white mb-4 flex items-center gap-2">
-            <Shield className="w-4 h-4 text-emerald-400" />
-            <span>Rol ve Yetki Seviyeleri Karşılaştırma Matrisi</span>
+      {/* Main Users List */}
+      <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-xs overflow-hidden">
+        <div className="p-4 sm:p-5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+          <h3 className="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+            <Users className="w-4 h-4 text-sky-500" />
+            Kayıtlı Sistem Kullanıcıları & Personel ({1 + staffAccounts.length})
           </h3>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border border-slate-800 rounded-xl overflow-hidden">
-              <thead>
-                <tr className="bg-slate-950 text-slate-400 border-b border-slate-800">
-                  <th className="py-3 px-4 font-semibold">Yetki & İşlem Türü</th>
-                  <th className="py-3 px-4 font-semibold text-center w-36">Standart Personel</th>
-                  <th className="py-3 px-4 font-semibold text-center w-36 text-amber-400">Yönetici (Admin)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                <tr>
-                  <td className="py-3 px-4 text-slate-300">Gelir / Gider ve Satış Ekleme</td>
-                  <td className="py-3 px-4 text-center text-emerald-400 font-bold">✓ Evet</td>
-                  <td className="py-3 px-4 text-center text-emerald-400 font-bold">✓ Evet</td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-4 text-slate-300">Stok Girişi ve Sayım Güncelleme</td>
-                  <td className="py-3 px-4 text-center text-emerald-400 font-bold">✓ Evet</td>
-                  <td className="py-3 px-4 text-center text-emerald-400 font-bold">✓ Evet</td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-4 text-slate-300">Kayıt Silme (Doğrudan Silme)</td>
-                  <td className="py-3 px-4 text-center text-rose-400 font-semibold">✗ Hayır (Onaya Gider)</td>
-                  <td className="py-3 px-4 text-center text-emerald-400 font-bold">✓ Doğrudan Silebilir</td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-4 text-slate-300">Silme Taleplerini İnceleme ve Onaylama</td>
-                  <td className="py-3 px-4 text-center text-rose-400 font-semibold">✗ Yetkisiz</td>
-                  <td className="py-3 px-4 text-center text-emerald-400 font-bold">✓ Evet (Çift Onay)</td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-4 text-slate-300">Personel Ekleme / Şifre Değiştirme</td>
-                  <td className="py-3 px-4 text-center text-rose-400 font-semibold">✗ Yetkisiz</td>
-                  <td className="py-3 px-4 text-center text-emerald-400 font-bold">✓ Tam Yetki</td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-4 text-slate-300">Kasa / Banka Hesabı Silme</td>
-                  <td className="py-3 px-4 text-center text-rose-400 font-semibold">✗ Yetkisiz</td>
-                  <td className="py-3 px-4 text-center text-emerald-400 font-bold">✓ Silebilir</td>
-                </tr>
-                <tr>
-                  <td className="py-3 px-4 text-slate-300">Denetim Günlüğü (Audit Log) İnceleme</td>
-                  <td className="py-3 px-4 text-center text-rose-400 font-semibold">✗ Gizli</td>
-                  <td className="py-3 px-4 text-center text-emerald-400 font-bold">✓ Tüm Hareketler</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
         </div>
-      )}
 
-      {/* Modal: Create/Edit Staff Account */}
-      {isStaffModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl">
-            <h3 className="text-base font-bold text-white mb-4 flex items-center gap-2">
-              <KeyRound className="w-5 h-5 text-emerald-400" />
-              <span>{editingStaffUsername ? 'Personel Hesabını Düzenle' : 'Yeni Personel Hesabı Oluştur'}</span>
-            </h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs sm:text-sm">
+            <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 font-semibold uppercase text-xs border-b border-slate-200 dark:border-slate-700">
+              <tr>
+                <th className="py-3 px-4">Kullanıcı / Personel</th>
+                <th className="py-3 px-4">Giriş Kimliği</th>
+                <th className="py-3 px-4">Yetki Rolü</th>
+                <th className="py-3 px-4">Kayıt Tarihi</th>
+                <th className="py-3 px-4 text-right">İşlemler</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
+              {/* FIXED ADMIN ROW */}
+              <tr className="bg-amber-50/30 dark:bg-amber-950/10">
+                <td className="py-3.5 px-4 font-bold text-slate-800 dark:text-white flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center font-bold text-xs shadow-xs">
+                    İA
+                  </div>
+                  <div>
+                    <div>İlker Arslan (Süper Admin)</div>
+                    <div className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">Sistem Sahibi & Ana Yönetici</div>
+                  </div>
+                </td>
+                <td className="py-3.5 px-4 font-mono text-xs text-slate-700 dark:text-slate-300">
+                  ilkerarslan78@gmail
+                </td>
+                <td className="py-3.5 px-4">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                    <Shield className="w-3 h-3" />
+                    Süper Admin (Sabit)
+                  </span>
+                </td>
+                <td className="py-3.5 px-4 text-slate-500 text-xs">
+                  Sistem Kurulumu
+                </td>
+                <td className="py-3.5 px-4 text-right">
+                  <span className="text-[11px] font-semibold text-slate-400 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-md">
+                    Korumalı Hesap
+                  </span>
+                </td>
+              </tr>
 
-            <form onSubmit={handleSaveStaff} className="space-y-4">
+              {/* STAFF ACCOUNTS */}
+              {staffAccounts.map(staff => (
+                <tr key={staff.id || staff.username} className="hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                  <td className="py-3.5 px-4 font-semibold text-slate-800 dark:text-white flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 flex items-center justify-center font-bold text-xs">
+                      {staff.displayName.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <div>{staff.displayName}</div>
+                      <div className="text-[11px] text-slate-400">Personel Hesabı</div>
+                    </div>
+                  </td>
+                  <td className="py-3.5 px-4 font-mono text-xs text-slate-700 dark:text-slate-300">
+                    {staff.username}
+                  </td>
+                  <td className="py-3.5 px-4">
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                      staff.role === 'Admin'
+                        ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                        : 'bg-slate-100 text-slate-800 dark:bg-slate-700 dark:text-slate-300'
+                    }`}>
+                      {staff.role === 'Admin' ? 'Yönetici (Admin)' : 'Standart Personel'}
+                    </span>
+                  </td>
+                  <td className="py-3.5 px-4 text-slate-500 text-xs">
+                    {formatDate(staff.createdAt)}
+                  </td>
+                  <td className="py-3.5 px-4 text-right">
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button
+                        onClick={() => setEditingStaff(staff)}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-sky-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                        title="Yetki Düzenle"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteStaff(staff.username, staff.displayName)}
+                        className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                        title="Personeli Kaldır"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* CREATE STAFF MODAL */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-slate-800 dark:text-white text-base flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-sky-500" />
+                Yeni Personel Hesabı Oluştur
+              </h3>
+              <button
+                onClick={() => setIsAddModalOpen(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateStaff} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Kullanıcı Adı
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Ad Soyad
                 </label>
                 <input
                   type="text"
-                  value={staffForm.username}
-                  onChange={e => setStaffForm({ ...staffForm, username: e.target.value.toLowerCase().replace(/\s+/g, '') })}
-                  disabled={Boolean(editingStaffUsername)}
-                  placeholder="Örn: ahmet, mehmet, arslan1"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50 font-mono"
                   required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Personel Adı Soyadı
-                </label>
-                <input
-                  type="text"
-                  value={staffForm.displayName}
-                  onChange={e => setStaffForm({ ...staffForm, displayName: e.target.value })}
                   placeholder="Örn: Ahmet Yılmaz"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  required
+                  value={displayName}
+                  onChange={e => setDisplayName(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-sky-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Giriş Kullanıcı Adı / E-posta
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Örn: ahmetyilmaz veya ahmet@arslan.com"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-sky-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
                   Giriş Şifresi
                 </label>
-                <input
-                  type="text"
-                  value={staffForm.password || ''}
-                  onChange={e => setStaffForm({ ...staffForm, password: e.target.value })}
-                  placeholder="Personelin giriş şifresi (Örn: 123456)"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 font-mono"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    placeholder="En az 4 karakter"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-sky-500 pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Yetki Seviyesi (Rol)
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Yetki Rolü
                 </label>
-                <select
-                  value={staffForm.role}
-                  onChange={e => setStaffForm({ ...staffForm, role: e.target.value as UserRole })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  <option value="Standart">Standart Personel (Kayıt ekler, silme yönetici onayına gider)</option>
-                  <option value="Admin">Yönetici / Admin (Tam yetkili, onay verebilir)</option>
-                </select>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setRole('Standart')}
+                    className={`p-3 rounded-xl border text-left transition-colors ${
+                      role === 'Standart'
+                        ? 'border-sky-500 bg-sky-50/50 dark:bg-sky-950/30'
+                        : 'border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <div className="font-bold text-xs text-slate-800 dark:text-white">Standart Personel</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">Satış ve kayıt girer, silme onaya düşer</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setRole('Admin')}
+                    className={`p-3 rounded-xl border text-left transition-colors ${
+                      role === 'Admin'
+                        ? 'border-amber-500 bg-amber-50/50 dark:bg-amber-950/30'
+                        : 'border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    <div className="font-bold text-xs text-slate-800 dark:text-white">Yönetici (Admin)</div>
+                    <div className="text-[10px] text-slate-500 mt-0.5">Tam yetki, silme onaylar, raporları görür</div>
+                  </button>
+                </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="pt-2 flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsStaffModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 transition-colors"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors"
                 >
                   İptal
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition-all shadow-md shadow-emerald-500/20 disabled:opacity-50"
+                  className="px-4 py-2 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl transition-colors shadow-xs"
                 >
-                  {isSubmitting ? 'Kaydediliyor...' : 'Kaydet'}
+                  Personeli Kaydet
                 </button>
               </div>
             </form>
@@ -599,74 +365,79 @@ export const UsersTab: React.FC = () => {
         </div>
       )}
 
-      {/* Modal: Invite / Pre-assign by Email */}
-      {isInviteModalOpen && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl">
-            <h3 className="text-base font-bold text-white mb-2 flex items-center gap-2">
-              <Mail className="w-5 h-5 text-blue-400" />
-              <span>E-posta ile Rol Ön Atama</span>
-            </h3>
-            <p className="text-xs text-slate-400 mb-4">
-              Belirttiğiniz e-posta adresi Google ile giriş yaptığında otomatik olarak bu rol atanır.
-            </p>
+      {/* EDIT STAFF MODAL */}
+      {editingStaff && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 max-w-md w-full p-6 shadow-2xl">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-slate-800 dark:text-white text-base">
+                Personel Yetkilerini Düzenle
+              </h3>
+              <button
+                onClick={() => setEditingStaff(null)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-            <form onSubmit={handleInviteUser} className="space-y-4">
+            <form onSubmit={handleUpdateStaff} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  E-posta Adresi
-                </label>
-                <input
-                  type="email"
-                  value={inviteEmail}
-                  onChange={e => setInviteEmail(e.target.value)}
-                  placeholder="kullanici@example.com"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Ad Soyad (Opsiyonel)
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Ad Soyad
                 </label>
                 <input
                   type="text"
-                  value={inviteName}
-                  onChange={e => setInviteName(e.target.value)}
-                  placeholder="Örn: Ayşe Demir"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  required
+                  value={editingStaff.displayName}
+                  onChange={e => setEditingStaff({ ...editingStaff, displayName: e.target.value })}
+                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-hidden"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Yetki Seviyesi
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Yeni Şifre (Değiştirmek istemiyorsanız boş bırakın)
+                </label>
+                <input
+                  type="password"
+                  placeholder="Mevcut şifreyi koru..."
+                  onChange={e => {
+                    if (e.target.value.trim()) {
+                      setEditingStaff({ ...editingStaff, password: e.target.value.trim() });
+                    }
+                  }}
+                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1">
+                  Yetki Rolü
                 </label>
                 <select
-                  value={inviteRole}
-                  onChange={e => setInviteRole(e.target.value as UserRole)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={editingStaff.role}
+                  onChange={e => setEditingStaff({ ...editingStaff, role: e.target.value as UserRole })}
+                  className="w-full px-3 py-2 text-sm bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-hidden"
                 >
-                  <option value="Standart">Standart Kullanıcı</option>
+                  <option value="Standart">Standart Personel</option>
                   <option value="Admin">Yönetici (Admin)</option>
                 </select>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2">
+              <div className="pt-2 flex justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setIsInviteModalOpen(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 text-xs font-bold hover:bg-slate-700 transition-colors"
+                  onClick={() => setEditingStaff(null)}
+                  className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition-colors"
                 >
-                  İptal
+                  Vazgeç
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="px-4 py-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold transition-all shadow-md shadow-blue-500/20 disabled:opacity-50"
+                  className="px-4 py-2 text-xs font-bold text-white bg-sky-600 hover:bg-sky-700 rounded-xl transition-colors shadow-xs"
                 >
-                  Yetkiyi Kaydet
+                  Güncelle
                 </button>
               </div>
             </form>

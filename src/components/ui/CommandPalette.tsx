@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useFinance } from '../../context/FinanceContext';
 import {
   Search,
-  Plus,
   ArrowDownRight,
   ArrowUpRight,
   ArrowRightLeft,
@@ -22,7 +21,6 @@ import {
   Sun,
   Coins,
   ArrowRight,
-  Command,
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -55,7 +53,6 @@ export const CommandPalette: React.FC = () => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Focus input when opened
   useEffect(() => {
     if (isCommandPaletteOpen) {
       setQuery('');
@@ -64,7 +61,6 @@ export const CommandPalette: React.FC = () => {
     }
   }, [isCommandPaletteOpen]);
 
-  // Global key listener for Ctrl+K, Cmd+K, Escape
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
@@ -72,7 +68,6 @@ export const CommandPalette: React.FC = () => {
         if (isCommandPaletteOpen) {
           closeCommandPalette();
         } else {
-          // open command palette
           const event = new CustomEvent('open-command-palette');
           window.dispatchEvent(event);
         }
@@ -82,7 +77,6 @@ export const CommandPalette: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isCommandPaletteOpen, closeCommandPalette]);
 
-  // Items definition
   const allItems: PaletteItem[] = useMemo(() => {
     const actions: PaletteItem[] = [
       {
@@ -110,12 +104,12 @@ export const CommandPalette: React.FC = () => {
       {
         id: 'act-purchase',
         category: 'Hızlı Eylemler',
-        title: 'Yeni Mal Alımı (Stok & Tedarikçi Borcu)',
+        title: 'Yeni Mal Alışı (Stok & Tedarikçi Borcu)',
         subtitle: 'Kasadan düşmeden vadeli tedarikçi borçlandırması',
         icon: <ShoppingBag className="w-4 h-4 text-amber-500" />,
         action: () => {
           closeCommandPalette();
-          openTransactionModal({ type: 'Mal Alımı' });
+          openTransactionModal({ type: 'Mal Alış' });
         },
       },
       {
@@ -210,7 +204,7 @@ export const CommandPalette: React.FC = () => {
       {
         id: 'nav-stock',
         category: 'Modüllere Git',
-        title: 'Mal Alımı & Stok Yönetimi',
+        title: 'Mal Alış & Stok Yönetimi',
         icon: <Boxes className="w-4 h-4 text-sky-400" />,
         action: () => {
           setActiveTab('stock');
@@ -303,7 +297,7 @@ export const CommandPalette: React.FC = () => {
       id: `cari-${c.id}`,
       category: 'Cari Hesaplar',
       title: c.name,
-      subtitle: `${c.type} · ${c.city || 'Şehir yok'} · Bakiye: ${formatCurrency(c.balance)}`,
+      subtitle: `${c.type} • ${c.city || 'Şehir yok'} • Bakiye: ${formatCurrency(c.balance)}`,
       icon: <Users className="w-4 h-4 text-blue-500" />,
       action: () => {
         setActiveTab('currents');
@@ -315,7 +309,7 @@ export const CommandPalette: React.FC = () => {
       id: `stock-${s.id}`,
       category: 'Stok Ürünleri',
       title: s.name,
-      subtitle: `${s.category} · ${s.brand || 'Genel'} · Stok: ${s.quantity} Adet · Satış: ${formatCurrency(s.salePrice)}`,
+      subtitle: `${s.category} • ${s.brand || 'Genel'} • Stok: ${s.quantity} Adet • Satış: ${formatCurrency(s.salePrice)}`,
       icon: <Boxes className="w-4 h-4 text-sky-500" />,
       action: () => {
         setActiveTab('stock');
@@ -327,7 +321,7 @@ export const CommandPalette: React.FC = () => {
       id: `acc-${a.id}`,
       category: 'Bankalar & Kasalar',
       title: a.name,
-      subtitle: `${a.type} · Bakiye: ${formatCurrency(a.balance, a.currency)}`,
+      subtitle: `${a.type} • Bakiye: ${formatCurrency(a.balance, a.currency)}`,
       icon: <Building2 className="w-4 h-4 text-emerald-500" />,
       action: () => {
         setActiveTab('accounts');
@@ -350,7 +344,6 @@ export const CommandPalette: React.FC = () => {
     toggleDarkMode,
   ]);
 
-  // Filter items based on query
   const filteredItems = useMemo(() => {
     if (!query.trim()) {
       return allItems.filter(i => i.category === 'Hızlı Eylemler' || i.category === 'Modüllere Git');
@@ -364,7 +357,6 @@ export const CommandPalette: React.FC = () => {
     ).slice(0, 20);
   }, [allItems, query]);
 
-  // Handle keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -417,7 +409,7 @@ export const CommandPalette: React.FC = () => {
         <div className="max-h-[380px] overflow-y-auto p-2 space-y-1">
           {filteredItems.length === 0 ? (
             <div className="py-8 text-center text-xs text-slate-400">
-              "{query}" ile eşleşen işlem veya kayıt bulunamadı.
+              "{query}" ile eşleşen işlem veya kayıt bulunamadı
             </div>
           ) : (
             filteredItems.map((item, idx) => {

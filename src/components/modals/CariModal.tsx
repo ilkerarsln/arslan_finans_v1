@@ -54,6 +54,7 @@ export const CariModal: React.FC<CariModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const numBalance = parseFloat(balance) || 0;
+
     if (editingCari) {
       updateCari({
         ...editingCari,
@@ -136,7 +137,7 @@ export const CariModal: React.FC<CariModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Firma / Şahıs Ünvanı *
+              Firma / Unvan Adı
             </label>
             <input
               type="text"

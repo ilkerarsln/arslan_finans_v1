@@ -10,7 +10,6 @@ import {
   FileBarChart2,
   Wallet,
   X,
-  CreditCard,
   ShieldCheck,
   ShieldAlert,
   Shield,
@@ -22,7 +21,8 @@ import {
   Monitor,
   RefreshCw,
   Search,
-  Command,
+  FileSpreadsheet,
+  Sparkles,
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -39,7 +39,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     upcomingDues,
     accounts,
     isAdmin,
-    userRole,
     allUsers,
     deletionRequests,
     user,
@@ -48,6 +47,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     sales,
     isCloudSyncing,
     openCommandPalette,
+    openDataImporter,
+    openSmartSales,
   } = useFinance();
 
   const navItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: number | string }[] = [
@@ -64,7 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     },
     {
       id: 'stock',
-      label: 'Mal Alımı & Stok',
+      label: 'Mal Alış & Stok',
       icon: <Boxes className="w-4 h-4 text-sky-400" />,
       badge: stockItems.length > 0 ? stockItems.length : undefined,
     },
@@ -180,7 +181,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* Quick Command Launcher button inside Sidebar */}
+        {/* Quick Search in Sidebar */}
         <div className="px-3 pt-3">
           <button
             onClick={openCommandPalette}
@@ -196,7 +197,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* Quick Balance Mini-Card: Net Likit Varlık */}
+        {/* Net Likit Mini-Card */}
         <div className="mx-3.5 my-2.5 p-2.5 bg-slate-900/80 rounded-xl border border-slate-800/80">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
@@ -257,11 +258,39 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               </button>
             );
           })}
+
+          {/* Quick ERP Tools Strip */}
+          <div className="pt-2 mt-2 border-t border-slate-800/80 space-y-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3">
+              Veri & Eşleştirme Sihirbazları
+            </span>
+            <button
+              onClick={() => {
+                openDataImporter('stok');
+                onClose();
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-sky-400 hover:text-white hover:bg-sky-950/40 border border-sky-500/20 transition group"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-sky-400 group-hover:scale-110 transition-transform" />
+              <span className="truncate">Data Importer (Excel/CSV)</span>
+            </button>
+
+            <button
+              onClick={() => {
+                openSmartSales();
+                onClose();
+              }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold text-amber-300 hover:text-white hover:bg-emerald-950/40 border border-emerald-500/30 transition group"
+            >
+              <Sparkles className="w-4 h-4 text-amber-400 group-hover:scale-110 transition-transform" />
+              <span className="truncate">Akıllı Satış Eşleştirme</span>
+            </button>
+          </div>
         </nav>
 
         {/* Sidebar Footer */}
         <div className="p-3 border-t border-slate-800/80 text-xs text-slate-500 flex flex-col gap-2">
-          {/* OFİS - MOBİL Bulut Entegrasyon / Senkronizasyon Göstergesi */}
+          {/* OFİS - MOBİL Bulut Entegrasyon Göstergesi (Sol altta kullanıcı profilinin hemen üzerinde) */}
           <div className="bg-gradient-to-r from-emerald-950/70 via-slate-900 to-slate-900 border border-emerald-500/30 rounded-xl p-2.5 shadow-inner">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-1.5">
@@ -283,7 +312,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 <Monitor className="w-3 h-3 text-emerald-400" />
                 <span>Ofis PC</span>
               </span>
-              <span className="text-emerald-400 font-bold">↔</span>
+              <span className="text-emerald-400 font-bold">⇄</span>
               <span className="flex items-center gap-1">
                 <Smartphone className="w-3 h-3 text-emerald-400" />
                 <span>Cep Telefonu</span>
@@ -291,11 +320,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             </div>
             <div className="text-[9px] text-slate-400 mt-1.5 flex items-center justify-between pt-1 border-t border-slate-800/80">
               <span>Bulut Entegrasyonu:</span>
-              <span className="text-emerald-300 font-medium font-mono">Aktif · 7/24</span>
+              <span className="text-emerald-300 font-medium font-mono">Aktif • 7/24</span>
             </div>
           </div>
 
-          {/* Kullanıcı Profili Kutusu */}
+          {/* Kullanıcı Profili */}
           {user && (
             <div className="bg-slate-900/90 rounded-xl p-2.5 border border-slate-800 flex items-center justify-between">
               <div className="min-w-0 pr-2">

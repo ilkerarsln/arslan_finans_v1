@@ -11,7 +11,6 @@ export interface ExchangeRates {
 
 const STORAGE_KEY = 'arslan_finans_live_rates_v1';
 const CACHE_DURATION_MS = 10 * 60 * 1000; // 10 minutes cache
-
 const FALLBACK_RATES = {
   usd: 34.35,
   eur: 37.45,

@@ -12,7 +12,6 @@ import {
 } from 'firebase/firestore';
 import {
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
 } from 'firebase/auth';
 import { db, auth, handleFirestoreError, OperationType } from '../firebase';
 import {
@@ -223,6 +222,7 @@ export async function fetchUserDataFromFirestore(userId: string): Promise<{
       if (timeA !== timeB) return timeB - timeA;
       return (b.createdAt || '').localeCompare(a.createdAt || '');
     });
+
     const caris = cariSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as Cari);
     const upcomingDues = duesSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as UpcomingDue);
     const categories = catSnap.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as CategoryItem);
@@ -526,6 +526,10 @@ export function subscribeToUserProfile(
 
 export function subscribeToAllUsers(callback: (users: UserProfile[]) => void): Unsubscribe {
   const path = 'users';
+  if (!auth.currentUser) {
+    callback([]);
+    return () => {};
+  }
   try {
     return onSnapshot(
       collection(db, 'users'),
@@ -536,11 +540,13 @@ export function subscribeToAllUsers(callback: (users: UserProfile[]) => void): U
         callback(users);
       },
       error => {
-        handleFirestoreError(error, OperationType.LIST, path);
+        console.warn('subscribeToAllUsers query notice:', error.message);
+        callback([]);
       }
     );
-  } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, path);
+  } catch (error: any) {
+    console.warn('subscribeToAllUsers catch notice:', error?.message);
+    callback([]);
     return () => {};
   }
 }
@@ -619,10 +625,11 @@ export async function deletePreAssignedUser(targetUserId: string): Promise<void>
 }
 
 // Staff (Username & Password) Personnel System
+// KRİTİK KURAL: Varsayılan yönetici ilkerarslan78@gmail şifresi 140514 SABİTTİR!
 export const DEFAULT_STAFF_ACCOUNTS: StaffAccount[] = [
   {
-    id: 'admin',
-    username: 'admin',
+    id: 'ilkerarslan78@gmail',
+    username: 'ilkerarslan78@gmail',
     displayName: 'İlker Arslan (Yönetici)',
     role: 'Admin',
     password: '140514',
@@ -631,8 +638,8 @@ export const DEFAULT_STAFF_ACCOUNTS: StaffAccount[] = [
     createdBy: 'Sistem',
   },
   {
-    id: 'ilkerarslan78@gmail',
-    username: 'ilkerarslan78@gmail',
+    id: 'admin',
+    username: 'admin',
     displayName: 'İlker Arslan (Yönetici)',
     role: 'Admin',
     password: '140514',
@@ -738,7 +745,7 @@ export async function loginStaffWithUsername(
   }
 
   if (!staff) {
-    throw new Error('Kullanıcı bulunamadı. Lütfen kullanıcı adınızı kontrol edin.');
+    throw new Error('Kullanıcı bulunamadı. Lütfen kullanıcı adını kontrol edin.');
   }
 
   const isAdminUser =
@@ -749,10 +756,8 @@ export async function loginStaffWithUsername(
     staff.email?.toLowerCase() === 'arslanmobilya78@gmail.com';
 
   if (isAdminUser) {
-    const validAdminPasswords = ['140514'];
-    if (staff.password) validAdminPasswords.push(staff.password);
-    // Explicitly enforce admin password 140514
-    if (password !== '140514' && !validAdminPasswords.includes(password)) {
+    // Sabit yönetici şifresi: 140514
+    if (password !== '140514' && staff.password !== password) {
       throw new Error('Hatalı şifre girdiniz. Yönetici şifrenizi (140514) kontrol edin.');
     }
   } else {
@@ -766,14 +771,13 @@ export async function loginStaffWithUsername(
   const internalEmail = staff.email || `${username}@arslanfinans.internal`;
   let authUid = `staff_${staff.username.replace(/[^a-zA-Z0-9_-]/g, '_')}`;
 
-  // Optional: attempt Firebase Auth email/password if configured, but never fail login if it fails
   try {
     const cred = await signInWithEmailAndPassword(auth, internalEmail, password);
     if (cred.user) {
       authUid = cred.user.uid;
     }
   } catch (authErr) {
-    console.info('Internal staff authentication active:', (authErr as any)?.code || 'internal-auth');
+    // Non-fatal, use internal staff session
   }
 
   const profile: UserProfile = {

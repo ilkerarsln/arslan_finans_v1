@@ -20,7 +20,7 @@ import {
   Check,
   Edit2,
   FileSpreadsheet,
-  AlertTriangle,
+  Sparkles,
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { SaleRecord, SaleType } from '../../types/finance';
@@ -44,6 +44,8 @@ export const ProfitTab: React.FC = () => {
     userProfile,
     saleModalPrefillProduct,
     setSaleModalPrefillProduct,
+    openSmartSales,
+    openDataImporter,
     showToast,
   } = useFinance();
 
@@ -154,13 +156,18 @@ export const ProfitTab: React.FC = () => {
     setDocumentNo(`FAT-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
     setCustomerName('');
     setSelectedCustomerId('');
-    setSelectedProductId('');
+    setSelectedProductId(stockItems[0]?.id || '');
+    if (stockItems[0]) {
+      setCostPrice(stockItems[0].purchasePrice);
+      setSalePrice(stockItems[0].salePrice);
+    } else {
+      setCostPrice(0);
+      setSalePrice(0);
+    }
     setCustomProductName('');
     setCustomCategory('Beyaz Eşya');
     setCustomBrand('Bosch');
     setQuantity(1);
-    setCostPrice(0);
-    setSalePrice(0);
     setSaleType('Peşin');
     setInstallmentsCount(12);
     setSalesPerson(userProfile?.displayName || userProfile?.username || 'İlker Arslan');
@@ -201,7 +208,7 @@ export const ProfitTab: React.FC = () => {
     const prodSupplierName = prod ? prod.supplierName : undefined;
 
     if (!finalProdName) {
-      showToast('Lütfen satışı yapılan ürünün adını belirleyin.', 'error');
+      showToast('Lütfen satış yapılan ürün adını belirleyin.', 'error');
       return;
     }
 
@@ -277,6 +284,7 @@ export const ProfitTab: React.FC = () => {
   const handleExcelSaleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const reader = new FileReader();
     reader.onload = evt => {
       try {
@@ -284,6 +292,7 @@ export const ProfitTab: React.FC = () => {
         const workbook = XLSX.read(data, { type: 'binary' });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(sheet) as any[];
+
         if (!rows || rows.length === 0) {
           showToast('Excel dosyasında okunabilecek kayıt bulunamadı.', 'error');
           return;
@@ -294,6 +303,7 @@ export const ProfitTab: React.FC = () => {
           const rawProdName = String(
             r['Ürün Adı'] || r['Urun Adi'] || r['Ürün'] || r['Name'] || r['Model'] || ''
           ).trim();
+
           const matchInStock = stockItems.find(
             s => s.name.toLowerCase() === rawProdName.toLowerCase() ||
                  (s.code && s.code.toLowerCase() === rawProdName.toLowerCase())
@@ -381,7 +391,6 @@ export const ProfitTab: React.FC = () => {
               notes: row.notes,
             };
           });
-
           importSalesBulk(newSalesToImport);
         }
       } catch (err: any) {
@@ -397,7 +406,6 @@ export const ProfitTab: React.FC = () => {
     const newSalesToImport: Array<Omit<SaleRecord, 'id' | 'createdAt'>> = pendingParsedSales.map(row => {
       const res = resolutions[row.rawProdName];
       const matchInStock = row.matchInStock || stockItems.find(s => s.id === res?.matchedProductId);
-
       const finalName = res ? res.productName : (matchInStock ? matchInStock.name : row.rawProdName);
       const finalCat = res ? res.category : (matchInStock ? matchInStock.category : 'Beyaz Eşya');
       const finalSub = res?.subCategory || matchInStock?.subCategory;
@@ -453,6 +461,7 @@ export const ProfitTab: React.FC = () => {
       alert('Dışa aktarılacak satış kaydı bulunamadı.');
       return;
     }
+
     const headers = [
       'Tarih',
       'Belge No',
@@ -470,6 +479,7 @@ export const ProfitTab: React.FC = () => {
       'Kâr Marjı (%)',
       'Satış Personeli',
     ];
+
     const rows = filteredSales.map(s => [
       s.date,
       `"${s.documentNo || '-'}"`,
@@ -487,6 +497,7 @@ export const ProfitTab: React.FC = () => {
       s.profitMargin.toFixed(1),
       `"${s.salesPerson}"`,
     ]);
+
     const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -511,18 +522,42 @@ export const ProfitTab: React.FC = () => {
             Peşin, kredi kartı ve senetli satışların ürün bazlı maliyet ve kârlılık takibi. Senetli satışlarda Tanımlamalar sekmesindeki aylık vade farkı oranı taksit sayısına göre otomatik hesaplanır.
           </p>
         </div>
+
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+          <input
+            type="file"
+            ref={excelSaleInputRef}
+            onChange={handleExcelSaleUpload}
+            accept=".xlsx, .xls, .csv"
+            className="hidden"
+          />
+          <button
+            onClick={openSmartSales}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-sky-600 hover:from-emerald-500 hover:to-sky-500 text-white text-xs font-bold transition shadow-lg shadow-emerald-500/20 active:scale-95"
+            title="Sistemde olmayan eksik ürünleri tespit et, eşleştir veya anında fiyat gir"
+          >
+            <Sparkles className="w-4 h-4 text-amber-300 animate-spin-slow" />
+            <span>Akıllı Satış & Eşleştirme</span>
+          </button>
+          <button
+            onClick={() => excelSaleInputRef.current?.click()}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition active:scale-95"
+            title="Excel dosyasından toplu satış yükle (Eksik ürünler otomatik eşleştirilir)"
+          >
+            <Upload className="w-4 h-4 text-emerald-400" />
+            <span>Excel Satış Yükle</span>
+          </button>
           <button
             onClick={() => setActiveTab('stock')}
             className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition active:scale-95"
-            title="Tedarikçi Mal Alımı & Stok Ekranına Git"
+            title="Tedarikçi Mal Alış & Stok Ekranına Git"
           >
             <Boxes className="w-4 h-4 text-sky-400" />
-            <span>Mal Alımı Yap</span>
+            <span>Mal Alışı Yap</span>
             <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
           </button>
           <button
-            onClick={() => setIsSaleModalOpen(true)}
+            onClick={handleOpenNewSale}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition shadow-lg shadow-emerald-600/20 active:scale-95"
           >
             <Plus className="w-4 h-4" />
@@ -817,15 +852,24 @@ export const ProfitTab: React.FC = () => {
                       </div>
                     </td>
                     <td className="py-3 px-3 text-center whitespace-nowrap">
-                      {isAdmin && (
+                      <div className="flex items-center justify-center gap-1">
                         <button
-                          onClick={() => deleteSaleRecord(sale.id)}
-                          title="Satışı Sil (Yönetici)"
-                          className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
+                          onClick={() => handleOpenEditSale(sale)}
+                          title="Satışı Düzenle"
+                          className="p-1 text-slate-400 hover:text-emerald-600 rounded transition"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Edit2 className="w-3.5 h-3.5" />
                         </button>
-                      )}
+                        {isAdmin && (
+                          <button
+                            onClick={() => deleteSaleRecord(sale.id)}
+                            title="Satışı Sil (Yönetici)"
+                            className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -835,7 +879,7 @@ export const ProfitTab: React.FC = () => {
         )}
       </div>
 
-      {/* NEW SALE MODAL */}
+      {/* NEW / EDIT SALE MODAL */}
       {isSaleModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-xl w-full p-6 shadow-2xl space-y-4 text-slate-800 dark:text-slate-100 max-h-[92vh] overflow-y-auto">
@@ -846,10 +890,10 @@ export const ProfitTab: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                    Yeni Satış ve Kârlılık Kaydı
+                    {editingSaleId ? 'Satış Kaydını Düzenle' : 'Yeni Satış ve Kârlılık Kaydı'}
                   </h3>
                   <p className="text-xs text-slate-400">
-                    Satış şeklini seçin; senet vade farkı ve net kâr anlık hesaplanır
+                    Satış şeklini seçin; senet vade farkı ve net kâr anlık hesaplanır.
                   </p>
                 </div>
               </div>
@@ -929,22 +973,74 @@ export const ProfitTab: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Satılan Ürün (Stoktan Seç) *
-                </label>
-                <select
-                  required
-                  value={selectedProductId}
-                  onChange={e => handleSelectProduct(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
-                >
-                  <option value="">Ürün seçin (Stoktaki mevcut ürünler)...</option>
-                  {stockItems.map(stk => (
-                    <option key={stk.id} value={stk.id}>
-                      {stk.name} [{stk.brand || stk.category}] — Mevcut Stok: {stk.quantity} {stk.unit} · Maliyet: ₺{stk.purchasePrice.toLocaleString('tr-TR')}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
+                    Satılan Ürün (Stoktan Seç veya Yeni Belirt) *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedProductId('');
+                      setCustomProductName('');
+                      setCostPrice(0);
+                      setSalePrice(0);
+                    }}
+                    className="text-[11px] text-emerald-600 dark:text-emerald-400 hover:underline"
+                  >
+                    Özel / Eksik Ürün Gir
+                  </button>
+                </div>
+                {selectedProductId !== '' ? (
+                  <select
+                    required
+                    value={selectedProductId}
+                    onChange={e => {
+                      if (e.target.value === 'custom') {
+                        setSelectedProductId('');
+                      } else {
+                        handleSelectProduct(e.target.value);
+                      }
+                    }}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                  >
+                    <option value="">Ürün seçin (Stoktaki mevcut ürünler)...</option>
+                    {stockItems.map(stk => (
+                      <option key={stk.id} value={stk.id}>
+                        {stk.name} [{stk.brand || stk.category}] — Mevcut Stok: {stk.quantity} {stk.unit} — Maliyet: ₺{stk.purchasePrice.toLocaleString('tr-TR')}
+                      </option>
+                    ))}
+                    <option value="custom">★ Listede Olmayan Ürün (Manuel Tanımla)</option>
+                  </select>
+                ) : (
+                  <div className="space-y-2 p-3 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-700">
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ürün adı ve modelini yazın..."
+                      value={customProductName}
+                      onChange={e => setCustomProductName(e.target.value)}
+                      className="w-full px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <select
+                        value={customCategory}
+                        onChange={e => setCustomCategory(e.target.value)}
+                        className="px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                      >
+                        {productCategories.map(c => (
+                          <option key={c.id} value={c.name}>{c.name}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="text"
+                        placeholder="Marka (Bosch, Bambi vb.)"
+                        value={customBrand}
+                        onChange={e => setCustomBrand(e.target.value)}
+                        className="px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-3 gap-3">
@@ -976,7 +1072,7 @@ export const ProfitTab: React.FC = () => {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">
-                    Birim Satış (₺) *
+                    Birim Satış (₺)
                   </label>
                   <input
                     type="number"
@@ -1045,7 +1141,6 @@ export const ProfitTab: React.FC = () => {
                         </button>
                       ))}
                     </div>
-
                     <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs space-y-1">
                       <div className="flex justify-between text-slate-700 dark:text-slate-300">
                         <span>Aylık Vade Farkı:</span>
@@ -1097,7 +1192,7 @@ export const ProfitTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* Kâr Önizleme */}
+              {/* Kârlılık Önizleme */}
               <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-between text-xs font-medium">
                 <div>
                   <span className="text-slate-500 dark:text-slate-400 block text-[11px]">Toplam Satış Cirosu:</span>
@@ -1126,13 +1221,22 @@ export const ProfitTab: React.FC = () => {
                   className="px-4 py-2 text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl flex items-center gap-1.5 shadow-sm active:scale-95"
                 >
                   <Check className="w-4 h-4" />
-                  <span>Satışı Tamamla & Stoğu Düş</span>
+                  <span>{editingSaleId ? 'Değişiklikleri Kaydet' : 'Satışı Tamamla & Stoktan Düş'}</span>
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* PRODUCT MATCHING MODAL FOR SALES EXCEL */}
+      <ProductMatchModal
+        isOpen={isMatchModalOpen}
+        onClose={() => setIsMatchModalOpen(false)}
+        unmatchedNames={unmatchedNamesForSale}
+        sourceType="sale"
+        onComplete={handleProductMatchComplete}
+      />
     </div>
   );
 };

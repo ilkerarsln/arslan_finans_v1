@@ -13,7 +13,6 @@ import {
   Download,
   Upload,
   RefreshCw,
-  Tag,
   Save,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -40,11 +39,9 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
   } = useFinance();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-
   const [items, setItems] = useState<PriceListItem[]>(() => {
     return priceList?.items || [];
   });
-
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCatFilter, setSelectedCatFilter] = useState('ALL');
 
@@ -101,6 +98,7 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
   const handleAddItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemName.trim()) return;
+
     const newItem: PriceListItem = {
       id: `pli-${Date.now()}`,
       code: newItemCode.trim() || undefined,
@@ -111,6 +109,7 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
       salePrice: Number(newItemSalePrice) || 0,
       notes: newItemNotes.trim() || undefined,
     };
+
     setItems(prev => [newItem, ...prev]);
     setIsAddingItem(false);
     setNewItemName('');
@@ -169,7 +168,6 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
       'Kâr Marjı (%)': item.salePrice > 0 ? +(((item.salePrice - item.costPrice) / item.salePrice) * 100).toFixed(1) : 0,
       'Notlar': item.notes || '',
     }));
-
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Fiyat Listesi');
@@ -180,6 +178,7 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
   const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
     const reader = new FileReader();
     reader.onload = evt => {
       try {
@@ -187,6 +186,7 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
         const workbook = XLSX.read(data, { type: 'binary' });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(sheet) as any[];
+
         if (!rows || rows.length === 0) {
           alert('Excel dosyasında okunabilecek kayıt bulunamadı.');
           return;
@@ -243,7 +243,7 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
               </span>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              Bu fiyat listesindeki ürün kalemlerini arayüzden anlık olarak düzenleyebilir, Excel ile dışa/içe aktarabilir ve tek tıkla ana stok fiyatlarıyla eşitleyebilirsiniz.
+              Bu fiyat listesindeki ürün kalemlerini arayüzden anlık olarak düzenleyebilir, Excel ile dışa aktarabilir ve tek tıkla ana stok fiyatlarıyla eşitleyebilirsiniz.
             </p>
           </div>
 
@@ -316,7 +316,6 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
               ))}
             </select>
           </div>
-
           <button
             onClick={() => setIsAddingItem(!isAddingItem)}
             className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition self-start sm:self-auto"
@@ -434,7 +433,6 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
                 filteredItems.map(item => {
                   const isEditing = editingItemId === item.id;
                   const margin = item.salePrice > 0 ? ((item.salePrice - item.costPrice) / item.salePrice) * 100 : 0;
-
                   return (
                     <tr
                       key={item.id}
@@ -462,7 +460,6 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
                           )}
                         </div>
                       </td>
-
                       <td className="py-2.5 px-3 text-right">
                         {isEditing ? (
                           <input
@@ -478,7 +475,6 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
                           </span>
                         )}
                       </td>
-
                       <td className="py-2.5 px-3 text-right">
                         {isEditing ? (
                           <input
@@ -494,7 +490,6 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
                           </span>
                         )}
                       </td>
-
                       <td className="py-2.5 px-3 text-right">
                         <span
                           className={`font-mono-num font-semibold ${
@@ -508,7 +503,6 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
                           %{margin.toFixed(1)}
                         </span>
                       </td>
-
                       <td className="py-2.5 px-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           {isEditing ? (
@@ -548,7 +542,7 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
         {/* Footer */}
         <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800 shrink-0">
           <div className="text-xs text-slate-500">
-            Toplam <strong>{items.length} ürün kalemi</strong> kayıtlı.
+            Toplam <strong>{items.length} ürün kalemi</strong> kayıtlı
           </div>
           <div className="flex items-center gap-2">
             <button

@@ -10,7 +10,6 @@ import {
   Shield,
   UserCheck,
   Eye,
-  Command,
   Sun,
   Moon,
   Coins,
@@ -33,7 +32,7 @@ const TAB_TITLES: Record<ActiveTab, { title: string; subtitle: string }> = {
     subtitle: 'Peşin, kredi kartı ve senetli satış takibi, vade farkı maliyetleri ve personel performansı',
   },
   stock: {
-    title: 'Mal Alımı & Stok Yönetimi',
+    title: 'Mal Alış & Stok Yönetimi',
     subtitle: 'Tedarikçi borçlandırması, ürün stok girişleri ve toplu Excel alım entegrasyonu',
   },
   transactions: {
@@ -77,7 +76,6 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
     upcomingDues,
     setActiveTab,
     user,
-    userProfile,
     isAdmin,
     isRoleSimulated,
     toggleRoleSimulation,
@@ -90,9 +88,8 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
     toggleDarkMode,
   } = useFinance();
 
-  const { usd, eur, lastUpdated, isLoading: isRatesLoading, refreshRates } = useLiveCurrency();
+  const { usd, eur } = useLiveCurrency();
 
-  // Listen to keyboard shortcut "N" to quickly open transaction modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -132,7 +129,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         >
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider hidden sm:inline">
-              Arslan Finans
+              Arslan Mobilya ERP
             </span>
             <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">/</span>
             <h1 className="text-sm md:text-base font-bold text-slate-900 dark:text-white leading-tight group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
@@ -145,12 +142,12 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         </div>
       </div>
 
-      {/* Center: Command Palette Launch Bar (Quick Productivity Tool) */}
+      {/* Center: Quick Search */}
       <div className="hidden md:flex items-center">
         <button
           onClick={openCommandPalette}
           className="flex items-center gap-2.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-500 dark:text-slate-400 transition shadow-xs group"
-          title="Hızlı Komut Paleti (Ctrl+K / Cmd+K)"
+          title="Hızlı Komut Paleti (Ctrl+K)"
         >
           <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-500 transition-colors" />
           <span className="text-slate-600 dark:text-slate-300">Hızlı işlem veya arama yap...</span>
@@ -160,13 +157,13 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         </button>
       </div>
 
-      {/* Right: Currency Rates, Theme Switcher, Cloud Sync & Actions */}
+      {/* Right: Currency Rates, Theme Switcher, Cloud Sync & Primary Action */}
       <div className="flex items-center gap-2 md:gap-2.5">
-        {/* Live Currency Rates Button / Modal Trigger */}
+        {/* Live Currency Rates */}
         <button
           onClick={openCurrencyConverter}
           className="hidden sm:flex items-center gap-2 px-2.5 py-1 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-[11px] font-mono font-medium text-slate-700 dark:text-slate-300 shadow-2xs transition"
-          title={`Canlı Döviz: USD ₺${usd.toFixed(2)} | EUR ₺${eur.toFixed(2)}. Tıklayarak çeviriciyi açın.`}
+          title={`Canlı Döviz: USD ₺${usd.toFixed(2)} | EUR ₺${eur.toFixed(2)}`}
         >
           <Coins className="w-3.5 h-3.5 text-amber-500 shrink-0" />
           <div className="flex items-center gap-1">
@@ -180,7 +177,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           </div>
         </button>
 
-        {/* Dark / Light Mode Switcher */}
+        {/* Theme Toggle */}
         <button
           onClick={toggleDarkMode}
           className="p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
@@ -190,7 +187,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
         </button>
 
-        {/* Notifications / Pending Alert button */}
+        {/* Pending Alerts */}
         <button
           onClick={() => setActiveTab('upcoming')}
           className="relative p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
@@ -202,7 +199,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           )}
         </button>
 
-        {/* Cloud Sync Status / User Badge */}
+        {/* User / Sync Badge */}
         {user ? (
           <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl px-2 py-1 text-xs text-emerald-800 dark:text-emerald-300">
             <div className="flex items-center gap-1.5">
@@ -214,14 +211,13 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
               {isCloudSyncing && <RefreshCw className="w-3 h-3 animate-spin text-emerald-600" />}
             </div>
 
-            {/* Role Badge in Header */}
             {isRoleSimulated ? (
               <button
                 onClick={toggleRoleSimulation}
                 className="flex items-center gap-1 text-[10px] font-bold bg-purple-600 hover:bg-purple-500 text-white px-2 py-0.5 rounded-full transition shadow-xs"
-                title="Standart kullanıcı simülasyonunu sonlandır ve Yöneticiye dön"
+                title="Standart kullanıcı simülasyonunu sonlandır"
               >
-                <Eye className="w-3 h-3" /> Test Modu
+                <Eye className="w-3 h-3" /> Test
               </button>
             ) : isAdmin ? (
               <button
@@ -234,7 +230,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             ) : (
               <span
                 className="flex items-center gap-1 text-[10px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 border border-blue-300 dark:border-blue-700 px-2 py-0.5 rounded-full"
-                title="Normal Personel"
+                title="Personel"
               >
                 <UserCheck className="w-3 h-3 text-blue-500" /> Standart
               </span>
@@ -251,22 +247,19 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         ) : (
           <button
             onClick={loginWithGoogle}
-            className="flex items-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition shadow-xs active:scale-95"
+            className="flex items-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition shadow-xs active:scale-95"
           >
-            <span className="font-semibold whitespace-nowrap">Giriş Yap</span>
+            <span>Giriş Yap</span>
           </button>
         )}
 
-        {/* Primary Action Button: Yeni İşlem Ekle */}
+        {/* Primary Action Button */}
         <button
           onClick={() => openTransactionModal()}
           className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 md:py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm active:scale-95 shrink-0"
         >
           <Plus className="w-4 h-4" />
           <span>Yeni İşlem</span>
-          <kbd className="hidden lg:inline-block px-1.5 py-0.5 text-[10px] bg-emerald-700/60 rounded font-mono text-emerald-200">
-            N
-          </kbd>
         </button>
       </div>
     </header>
