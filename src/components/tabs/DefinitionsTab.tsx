@@ -340,84 +340,84 @@ export const DefinitionsTab: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-850 to-emerald-950 p-5 rounded-2xl border border-slate-800 shadow-sm text-white">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/70 backdrop-blur-md p-5 rounded-2xl border border-slate-800 shadow-sm text-white">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="p-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-400">
               <SlidersHorizontal className="w-5 h-5" />
             </span>
-            <h2 className="text-xl font-bold tracking-tight">Tanımlamalar & 3 Seviyeli Kategori Yönetimi</h2>
+            <h2 className="text-xl font-bold tracking-tight text-white">Tanımlamalar & 3 Seviyeli Kategori Yönetimi</h2>
           </div>
           <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
-            Sistem ekrandan yönetilebilen tam 3 seviyeli zorunlu hiyerarşik yapıya (<code className="text-emerald-300 font-semibold font-mono">Ana Kategori</code> → <code className="text-emerald-300 font-semibold font-mono">Alt Kategori</code> → <code className="text-emerald-300 font-semibold font-mono">Ürün Grubu</code>) sahiptir. Fiyat listeleri, stok kartları ve satışlar bu hiyerarşiyle entegredir.
+            Sistem ekrandan yönetilebilen tam 3 seviyeli hiyerarşik yapıya (<span className="text-emerald-400 font-semibold font-mono">Ana Kategori</span> → <span className="text-sky-400 font-semibold font-mono">Alt Kategori</span> → <span className="text-indigo-400 font-semibold font-mono">Ürün Grubu</span>) sahiptir. Stok kartları, fiyat listeleri ve mal alımları bu hiyerarşiyle entegredir.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => openDataImporter('stok')}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-sky-600 to-emerald-600 hover:from-sky-500 hover:to-emerald-500 text-white text-xs font-bold transition shadow-xs"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600/90 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-xs border border-indigo-500/30 active:scale-95"
           >
-            <FileSpreadsheet className="w-4 h-4" />
+            <FileSpreadsheet className="w-4 h-4 text-indigo-200" />
             <span>Yalın Mal Alımı Yap</span>
           </button>
         </div>
       </div>
 
       {/* Navigation Sub-Tabs */}
-      <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700/80 text-xs font-semibold">
+      <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-900/70 backdrop-blur-md rounded-2xl border border-slate-800 text-xs font-semibold">
         <button
           onClick={() => setActiveSection('hierarchy')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
             activeSection === 'hierarchy'
-              ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-xs font-bold'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent'
           }`}
         >
-          <FolderTree className="w-4 h-4 text-emerald-500" />
+          <FolderTree className="w-4 h-4 text-emerald-400" />
           <span>3 Seviyeli Kategori Hiyerarşisi ({categoryHierarchy.length})</span>
         </button>
         <button
           onClick={() => setActiveSection('pricelists')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
             activeSection === 'pricelists'
-              ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              ? 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 shadow-xs font-bold'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent'
           }`}
         >
-          <FileSpreadsheet className="w-4 h-4 text-indigo-500" />
+          <FileSpreadsheet className="w-4 h-4 text-indigo-400" />
           <span>Fiyat Listeleri ({priceLists.length})</span>
         </button>
         <button
           onClick={() => setActiveSection('brands')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
             activeSection === 'brands'
-              ? 'bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              ? 'bg-purple-500/15 text-purple-300 border border-purple-500/30 shadow-xs font-bold'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent'
           }`}
         >
-          <Tag className="w-4 h-4 text-purple-500" />
+          <Tag className="w-4 h-4 text-purple-400" />
           <span>Markalar ({productBrands.length})</span>
         </button>
         <button
           onClick={() => setActiveSection('suppliers')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
             activeSection === 'suppliers'
-              ? 'bg-white dark:bg-slate-700 text-amber-700 dark:text-amber-300 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-xs font-bold'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent'
           }`}
         >
-          <Building className="w-4 h-4 text-amber-500" />
+          <Building className="w-4 h-4 text-amber-400" />
           <span>Ortak Tedarikçiler ({suppliers.length})</span>
         </button>
         <button
           onClick={() => setActiveSection('vaderates')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
             activeSection === 'vaderates'
-              ? 'bg-white dark:bg-slate-700 text-rose-700 dark:text-rose-300 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+              ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30 shadow-xs font-bold'
+              : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent'
           }`}
         >
-          <Percent className="w-4 h-4 text-rose-500" />
+          <Percent className="w-4 h-4 text-rose-400" />
           <span>Aylık Vade Oranları ({vadeRates.length})</span>
         </button>
       </div>
@@ -426,13 +426,13 @@ export const DefinitionsTab: React.FC = () => {
       {activeSection === 'hierarchy' && (
         <div className="space-y-4">
           {/* Top Control Bar for Hierarchy */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-800 shadow-sm">
             <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                Kayıtlı Grup Sayısı: <strong className="text-emerald-600 dark:text-emerald-400 font-mono">{categoryHierarchy.length}</strong>
+              <span className="text-xs font-bold text-slate-200">
+                Kayıtlı Grup Sayısı: <strong className="text-emerald-400 font-mono">{categoryHierarchy.length}</strong>
               </span>
-              <span className="text-slate-300 dark:text-slate-700">|</span>
-              <span className="text-xs text-slate-500">
+              <span className="text-slate-700">|</span>
+              <span className="text-xs text-slate-400">
                 {uniqueAnaList.length} Ana Kategori · {getUniqueAltKategoriler(categoryHierarchy).length} Alt Kategori
               </span>
             </div>
@@ -451,7 +451,7 @@ export const DefinitionsTab: React.FC = () => {
                       resetCategoryHierarchy();
                     }
                   }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-medium transition"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl text-xs font-medium transition"
                   title="Varsayılan 13 Hiyerarşi Grubuna Sıfırla"
                 >
                   <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
@@ -465,17 +465,17 @@ export const DefinitionsTab: React.FC = () => {
           {isAddingHierarchy && (
             <form
               onSubmit={handleAddHierarchyItem}
-              className="p-5 bg-emerald-50/50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-2xl space-y-4 animate-in fade-in duration-200"
+              className="p-5 bg-slate-900/90 border border-emerald-500/30 rounded-2xl space-y-4 animate-in fade-in duration-200 shadow-xl"
             >
               <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-emerald-950 dark:text-emerald-200 uppercase tracking-wider flex items-center gap-1.5">
-                  <Plus className="w-4 h-4 text-emerald-600" />
+                <h4 className="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <Plus className="w-4 h-4 text-emerald-400" />
                   <span>Yeni 3 Seviyeli Hiyerarşi Grubu Oluştur</span>
                 </h4>
                 <button
                   type="button"
                   onClick={() => setIsAddingHierarchy(false)}
-                  className="text-slate-400 hover:text-slate-600"
+                  className="text-slate-400 hover:text-white"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -483,20 +483,20 @@ export const DefinitionsTab: React.FC = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">
                     1. Ana Kategori *
                   </label>
                   <select
                     value={newAnaKategori}
                     onChange={e => setNewAnaKategori(e.target.value)}
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-emerald-500"
+                    className="w-full bg-slate-950/80 border border-slate-700/80 text-white rounded-xl px-3 py-2 text-xs font-semibold focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
                   >
                     <option value="MOBİLYA">MOBİLYA</option>
                     <option value="BEYAZ EŞYA">BEYAZ EŞYA</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">
                     2. Alt Kategori *
                   </label>
                   <input
@@ -506,7 +506,7 @@ export const DefinitionsTab: React.FC = () => {
                     value={newAltKategori}
                     onChange={e => setNewAltKategori(e.target.value.toUpperCase())}
                     placeholder="Örn: BAMBİ, ALTUS, MEDİSA..."
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-emerald-500"
+                    className="w-full bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 rounded-xl px-3 py-2 text-xs font-semibold focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
                   />
                   <datalist id="new-alt-options">
                     {getUniqueAltKategoriler(categoryHierarchy, newAnaKategori).map(alt => (
@@ -515,7 +515,7 @@ export const DefinitionsTab: React.FC = () => {
                   </datalist>
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  <label className="block text-[11px] font-bold text-slate-300 mb-1">
                     3. Ürün Grubu *
                   </label>
                   <input
@@ -524,7 +524,7 @@ export const DefinitionsTab: React.FC = () => {
                     value={newUrunGrubu}
                     onChange={e => setNewUrunGrubu(e.target.value.toUpperCase())}
                     placeholder="Örn: BAMBİ YATAK, ALTUS FIRINLAR..."
-                    className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-semibold focus:ring-2 focus:ring-emerald-500"
+                    className="w-full bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 rounded-xl px-3 py-2 text-xs font-semibold focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
                   />
                 </div>
               </div>
@@ -533,7 +533,7 @@ export const DefinitionsTab: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsAddingHierarchy(false)}
-                  className="px-3 py-1.5 text-xs text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 rounded-xl"
+                  className="px-3.5 py-1.5 text-xs text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition"
                 >
                   Vazgeç
                 </button>
@@ -550,11 +550,11 @@ export const DefinitionsTab: React.FC = () => {
           {/* 2-Column Layout: Left: Tree Accordion, Right: Data Grid Table */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
             {/* SOL: KADEMELİ AĞAÇ (TREE VIEW) */}
-            <div className="lg:col-span-5 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+            <div className="lg:col-span-5 bg-slate-900/60 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                 <div className="flex items-center gap-2">
-                  <FolderTree className="w-4 h-4 text-emerald-500" />
-                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                  <FolderTree className="w-4 h-4 text-emerald-400" />
+                  <h3 className="font-bold text-sm text-white">
                     Hiyerarşik Ağaç Görünümü
                   </h3>
                 </div>
@@ -571,33 +571,33 @@ export const DefinitionsTab: React.FC = () => {
                   return (
                     <div
                       key={anaName}
-                      className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-slate-50/50 dark:bg-slate-850/50"
+                      className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/40"
                     >
                       {/* Ana Kategori Başlığı */}
                       <button
                         type="button"
                         onClick={() => toggleAnaExpand(anaName)}
-                        className="w-full px-3.5 py-2.5 flex items-center justify-between text-left hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                        className="w-full px-3.5 py-2.5 flex items-center justify-between text-left hover:bg-slate-800/60 transition"
                       >
                         <div className="flex items-center gap-2">
                           {isAnaExpanded ? (
-                            <ChevronDown className="w-4 h-4 text-emerald-500" />
+                            <ChevronDown className="w-4 h-4 text-emerald-400" />
                           ) : (
                             <ChevronRight className="w-4 h-4 text-slate-400" />
                           )}
-                          <Layers className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                          <span className="font-bold text-xs text-slate-900 dark:text-white">
+                          <Layers className="w-3.5 h-3.5 text-emerald-400" />
+                          <span className="font-bold text-xs text-white">
                             {anaName}
                           </span>
                         </div>
-                        <span className="font-mono text-[10px] text-slate-400 bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                        <span className="font-mono text-[10px] text-slate-300 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
                           {totalItemsInAna} grup
                         </span>
                       </button>
 
                       {/* Alt Kategoriler Listesi */}
                       {isAnaExpanded && (
-                        <div className="pl-6 pr-3 py-2 space-y-2 border-t border-slate-100 dark:border-slate-800">
+                        <div className="pl-6 pr-3 py-2 space-y-2 border-t border-slate-800/80">
                           {Object.entries(altGroup).map(([altName, groupItems]) => {
                             const altKey = `${anaName}__${altName}`;
                             const isAltExpanded = expandedAlt[altKey] ?? false;
@@ -605,7 +605,7 @@ export const DefinitionsTab: React.FC = () => {
                             return (
                               <div
                                 key={altKey}
-                                className="border-l-2 border-slate-200 dark:border-slate-700 pl-3 py-1 space-y-1"
+                                className="border-l-2 border-slate-750 pl-3 py-1 space-y-1"
                               >
                                 <button
                                   type="button"
@@ -614,11 +614,11 @@ export const DefinitionsTab: React.FC = () => {
                                 >
                                   <div className="flex items-center gap-1.5">
                                     {isAltExpanded ? (
-                                      <ChevronDown className="w-3.5 h-3.5 text-sky-500" />
+                                      <ChevronDown className="w-3.5 h-3.5 text-sky-400" />
                                     ) : (
-                                      <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-sky-500" />
+                                      <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-sky-400" />
                                     )}
-                                    <span className="text-xs font-semibold text-slate-800 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-sky-400">
+                                    <span className="text-xs font-semibold text-slate-200 group-hover:text-sky-400 transition-colors">
                                       {altName}
                                     </span>
                                   </div>
@@ -636,7 +636,7 @@ export const DefinitionsTab: React.FC = () => {
                                         onClick={() => {
                                           setHierarchySearch(g.urunGrubu);
                                         }}
-                                        className="flex items-center justify-between text-[11px] text-slate-600 dark:text-slate-400 hover:text-emerald-500 cursor-pointer py-0.5 group/item"
+                                        className="flex items-center justify-between text-[11px] text-slate-400 hover:text-emerald-300 cursor-pointer py-1 group/item"
                                       >
                                         <span className="truncate max-w-[200px]">
                                           · {g.urunGrubu}
@@ -648,7 +648,7 @@ export const DefinitionsTab: React.FC = () => {
                                               e.stopPropagation();
                                               deleteCategoryHierarchyItem(g.id);
                                             }}
-                                            className="opacity-0 group-hover/item:opacity-100 text-slate-400 hover:text-rose-500 transition"
+                                            className="opacity-0 group-hover/item:opacity-100 text-slate-500 hover:text-rose-400 transition"
                                             title="Sil"
                                           >
                                             <Trash2 className="w-3 h-3" />
@@ -670,21 +670,21 @@ export const DefinitionsTab: React.FC = () => {
             </div>
 
             {/* SAĞ: ARAMA FİLTRELİ HİYERARŞİ TABLOSU & CRUD */}
-            <div className="lg:col-span-7 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+            <div className="lg:col-span-7 bg-slate-900/60 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="relative flex-1">
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     value={hierarchySearch}
                     onChange={e => setHierarchySearch(e.target.value)}
                     placeholder="Ana, alt kategori veya ürün grubu ara..."
-                    className="w-full pl-8 pr-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-100"
+                    className="w-full pl-8 pr-8 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-emerald-500 text-white placeholder-slate-500"
                   />
                   {hierarchySearch && (
                     <button
                       onClick={() => setHierarchySearch('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -698,7 +698,7 @@ export const DefinitionsTab: React.FC = () => {
                       setHierarchyAnaFilter(e.target.value);
                       setHierarchyAltFilter('ALL');
                     }}
-                    className="px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 outline-none"
+                    className="px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs font-semibold text-slate-200 outline-none focus:border-emerald-500"
                   >
                     <option value="ALL">Tüm Ana</option>
                     {uniqueAnaList.map(a => (
@@ -711,7 +711,7 @@ export const DefinitionsTab: React.FC = () => {
                   <select
                     value={hierarchyAltFilter}
                     onChange={e => setHierarchyAltFilter(e.target.value)}
-                    className="px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 outline-none"
+                    className="px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs font-semibold text-slate-200 outline-none focus:border-emerald-500"
                   >
                     <option value="ALL">Tüm Alt</option>
                     {uniqueAltList.map(alt => (
@@ -724,9 +724,9 @@ export const DefinitionsTab: React.FC = () => {
               </div>
 
               {/* Data Table */}
-              <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl max-h-[560px] overflow-y-auto">
+              <div className="overflow-x-auto border border-slate-800 rounded-xl max-h-[560px] overflow-y-auto">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10 backdrop-blur-xs font-semibold uppercase text-[10px]">
+                  <thead className="bg-slate-950/90 text-slate-400 border-b border-slate-800 sticky top-0 z-10 backdrop-blur-xs font-semibold uppercase text-[10px]">
                     <tr>
                       <th className="py-2.5 px-3">Ana Kategori</th>
                       <th className="py-2.5 px-3">Alt Kategori</th>
@@ -735,7 +735,7 @@ export const DefinitionsTab: React.FC = () => {
                       <th className="py-2.5 px-3 text-right w-24">İşlem</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody className="divide-y divide-slate-800/60">
                     {filteredHierarchy.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="py-8 text-center text-slate-400">
@@ -752,7 +752,7 @@ export const DefinitionsTab: React.FC = () => {
                         return (
                           <tr
                             key={item.id}
-                            className="hover:bg-slate-50/70 dark:hover:bg-slate-850/50 transition group"
+                            className="hover:bg-slate-800/40 transition group"
                           >
                             {/* Ana Kategori */}
                             <td className="py-2.5 px-3 whitespace-nowrap">
@@ -760,16 +760,16 @@ export const DefinitionsTab: React.FC = () => {
                                 <select
                                   value={editAnaKategori}
                                   onChange={e => setEditAnaKategori(e.target.value)}
-                                  className="px-2 py-1 bg-white dark:bg-slate-800 border rounded text-xs font-semibold"
+                                  className="px-2 py-1 bg-slate-950 border border-slate-700 rounded text-xs font-semibold text-white outline-none focus:border-emerald-500"
                                 >
                                   <option value="MOBİLYA">MOBİLYA</option>
                                   <option value="BEYAZ EŞYA">BEYAZ EŞYA</option>
                                 </select>
                               ) : (
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
                                   item.anaKategori === 'MOBİLYA'
-                                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300'
-                                    : 'bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300'
+                                    ? 'bg-emerald-950/80 text-emerald-400 border-emerald-800/60'
+                                    : 'bg-sky-950/80 text-sky-400 border-sky-800/60'
                                 }`}>
                                   {item.anaKategori}
                                 </span>
@@ -777,13 +777,13 @@ export const DefinitionsTab: React.FC = () => {
                             </td>
 
                             {/* Alt Kategori */}
-                            <td className="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                            <td className="py-2.5 px-3 font-semibold text-slate-200 whitespace-nowrap">
                               {isEditing ? (
                                 <input
                                   type="text"
                                   value={editAltKategori}
                                   onChange={e => setEditAltKategori(e.target.value.toUpperCase())}
-                                  className="px-2 py-1 bg-white dark:bg-slate-800 border rounded text-xs font-semibold w-28"
+                                  className="px-2 py-1 bg-slate-950 border border-slate-700 rounded text-xs font-semibold text-white outline-none focus:border-emerald-500 w-28"
                                 />
                               ) : (
                                 <span>{item.altKategori}</span>
@@ -791,13 +791,13 @@ export const DefinitionsTab: React.FC = () => {
                             </td>
 
                             {/* Ürün Grubu */}
-                            <td className="py-2.5 px-3 font-medium text-slate-900 dark:text-white">
+                            <td className="py-2.5 px-3 font-medium text-white">
                               {isEditing ? (
                                 <input
                                   type="text"
                                   value={editUrunGrubu}
                                   onChange={e => setEditUrunGrubu(e.target.value.toUpperCase())}
-                                  className="px-2 py-1 bg-white dark:bg-slate-800 border border-emerald-500 rounded text-xs font-medium w-full"
+                                  className="px-2 py-1 bg-slate-950 border border-emerald-500 rounded text-xs font-medium text-white outline-none w-full"
                                 />
                               ) : (
                                 <span>{item.urunGrubu}</span>
@@ -807,11 +807,11 @@ export const DefinitionsTab: React.FC = () => {
                             {/* Stoktaki Kayıt Adedi */}
                             <td className="py-2.5 px-3 text-center font-mono">
                               {matchingStockCount > 0 ? (
-                                <span className="font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded text-[11px]">
+                                <span className="font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800/50 px-2 py-0.5 rounded text-[11px]">
                                   {matchingStockCount} ürün
                                 </span>
                               ) : (
-                                <span className="text-slate-400 text-[10px]">-</span>
+                                <span className="text-slate-500 text-[10px]">-</span>
                               )}
                             </td>
 
@@ -821,7 +821,7 @@ export const DefinitionsTab: React.FC = () => {
                                 {isEditing ? (
                                   <button
                                     onClick={() => handleSaveEditHierarchy(item.id)}
-                                    className="p-1 rounded bg-emerald-500 text-white hover:bg-emerald-600 transition"
+                                    className="p-1 rounded bg-emerald-600 text-white hover:bg-emerald-500 transition"
                                     title="Kaydet"
                                   >
                                     <Check className="w-3.5 h-3.5" />
@@ -829,7 +829,7 @@ export const DefinitionsTab: React.FC = () => {
                                 ) : (
                                   <button
                                     onClick={() => handleStartEditHierarchy(item)}
-                                    className="p-1 text-slate-400 hover:text-emerald-600 rounded transition"
+                                    className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition"
                                     title="Düzenle"
                                   >
                                     <Edit2 className="w-3.5 h-3.5" />
@@ -838,7 +838,7 @@ export const DefinitionsTab: React.FC = () => {
                                 {isAdmin && (
                                   <button
                                     onClick={() => deleteCategoryHierarchyItem(item.id)}
-                                    className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
+                                    className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition"
                                     title="Hiyerarşiden Sil"
                                   >
                                     <Trash2 className="w-3.5 h-3.5" />
@@ -861,27 +861,27 @@ export const DefinitionsTab: React.FC = () => {
       {/* SECTION 2: FİYAT LİSTELERİ */}
       {activeSection === 'pricelists' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-            <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-              <Plus className="w-4 h-4 text-indigo-600" />
+          <div className="lg:col-span-4 bg-slate-900/60 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
+            <h3 className="font-bold text-white text-sm flex items-center gap-2">
+              <Plus className="w-4 h-4 text-indigo-400" />
               Yeni Fiyat Listesi Oluştur
             </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-slate-400">
               Listenin türü (Toptan veya Perakende) ve varsa bağlı olduğu tedarikçi firmayı belirleyiniz.
             </p>
             <form onSubmit={handleAddPriceList} className="space-y-3 pt-2">
               <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                <label className="block text-xs font-bold text-slate-300 mb-1.5">
                   Fiyat Listesi Türü
                 </label>
-                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-950 rounded-xl border border-slate-800">
                   <button
                     type="button"
                     onClick={() => setPriceListType('Toptan')}
                     className={`py-2 px-2 text-xs font-bold rounded-lg transition ${
                       priceListType === 'Toptan'
                         ? 'bg-amber-600 text-white shadow-xs'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                        : 'text-slate-400 hover:text-white'
                     }`}
                   >
                     Toptan Fiyat Listesi
@@ -892,7 +892,7 @@ export const DefinitionsTab: React.FC = () => {
                     className={`py-2 px-2 text-xs font-bold rounded-lg transition ${
                       priceListType === 'Perakende'
                         ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                        : 'text-slate-400 hover:text-white'
                     }`}
                   >
                     Perakende Fiyat Listesi
@@ -900,7 +900,7 @@ export const DefinitionsTab: React.FC = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Uygulama Dönemi (YYYY-MM) *
                 </label>
                 <input
@@ -908,11 +908,11 @@ export const DefinitionsTab: React.FC = () => {
                   required
                   value={priceListMonth}
                   onChange={e => setPriceListMonth(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100 font-semibold"
+                  className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-indigo-500 text-white font-semibold"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Liste Başlığı *
                 </label>
                 <input
@@ -921,17 +921,17 @@ export const DefinitionsTab: React.FC = () => {
                   value={priceListTitle}
                   onChange={e => setPriceListTitle(e.target.value)}
                   placeholder="Ör: Ekim 2026 Bosch Toptan Fiyat Listesi"
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
+                  className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-indigo-500 text-white"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Tedarikçi / Firma (Opsiyonel)
                 </label>
                 <select
                   value={priceListSupplierId}
                   onChange={e => setPriceListSupplierId(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
+                  className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-indigo-500 text-white"
                 >
                   <option value="">Firma Bağımsız / Genel</option>
                   {suppliers.map(s => (
@@ -942,13 +942,13 @@ export const DefinitionsTab: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Kategori Kapsamı
                 </label>
                 <select
                   value={priceListCategory}
                   onChange={e => setPriceListCategory(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
+                  className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-indigo-500 text-white"
                 >
                   <option value="Tüm Kategoriler">Tüm Kategoriler</option>
                   <option value="MOBİLYA">MOBİLYA</option>
@@ -964,21 +964,21 @@ export const DefinitionsTab: React.FC = () => {
             </form>
           </div>
 
-          <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+          <div className="lg:col-span-8 bg-slate-900/60 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                <h3 className="font-bold text-white text-sm">
                   Kayıtlı Fiyat Listeleri ({filteredPriceLists.length})
                 </h3>
               </div>
               <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-semibold">
+                <div className="flex items-center gap-1 p-1 bg-slate-950 rounded-xl border border-slate-800 text-xs font-semibold">
                   <button
                     onClick={() => setPriceListFilterType('ALL')}
                     className={`px-2.5 py-1 rounded-lg transition ${
                       priceListFilterType === 'ALL'
-                        ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
-                        : 'text-slate-500 hover:text-slate-900'
+                        ? 'bg-slate-800 text-white shadow-xs'
+                        : 'text-slate-400 hover:text-white'
                     }`}
                   >
                     Tümü
@@ -987,8 +987,8 @@ export const DefinitionsTab: React.FC = () => {
                     onClick={() => setPriceListFilterType('Toptan')}
                     className={`px-2.5 py-1 rounded-lg transition ${
                       priceListFilterType === 'Toptan'
-                        ? 'bg-amber-500 text-white shadow-xs'
-                        : 'text-slate-500 hover:text-slate-900'
+                        ? 'bg-amber-600 text-white shadow-xs'
+                        : 'text-slate-400 hover:text-white'
                     }`}
                   >
                     Toptan
@@ -997,8 +997,8 @@ export const DefinitionsTab: React.FC = () => {
                     onClick={() => setPriceListFilterType('Perakende')}
                     className={`px-2.5 py-1 rounded-lg transition ${
                       priceListFilterType === 'Perakende'
-                        ? 'bg-emerald-500 text-white shadow-xs'
-                        : 'text-slate-500 hover:text-slate-900'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-400 hover:text-white'
                     }`}
                   >
                     Perakende
@@ -1024,7 +1024,7 @@ export const DefinitionsTab: React.FC = () => {
 
             <div className="space-y-3">
               {filteredPriceLists.length === 0 ? (
-                <div className="p-8 text-center text-slate-400 text-xs">
+                <div className="p-8 text-center text-slate-500 text-xs">
                   Bu filtrede fiyat listesi bulunamadı.
                 </div>
               ) : (
@@ -1033,15 +1033,15 @@ export const DefinitionsTab: React.FC = () => {
                   return (
                     <div
                       key={pl.id}
-                      className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-300 dark:hover:border-slate-700 transition"
+                      className="p-4 rounded-xl border border-slate-800 bg-slate-950/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-750 transition"
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span
                             className={`font-mono text-xs font-bold px-2.5 py-0.5 rounded-full border ${
                               isToptan
-                                ? 'bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700'
-                                : 'bg-emerald-50 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                                ? 'bg-amber-950/80 text-amber-300 border-amber-800/80'
+                                : 'bg-emerald-950/80 text-emerald-300 border-emerald-800/80'
                             }`}
                           >
                             {pl.listType} Fiyat Listesi
@@ -1049,14 +1049,14 @@ export const DefinitionsTab: React.FC = () => {
                           <span className="font-mono text-xs font-semibold text-slate-400">
                             {pl.monthKey}
                           </span>
-                          <h4 className="font-bold text-sm text-slate-900 dark:text-white">
+                          <h4 className="font-bold text-sm text-white">
                             {pl.title}
                           </h4>
                         </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-500 flex-wrap">
+                        <div className="flex items-center gap-2 text-xs text-slate-400 flex-wrap">
                           {pl.supplierName && (
                             <>
-                              <span>Firma: <strong className="text-slate-700 dark:text-slate-300">{pl.supplierName}</strong></span>
+                              <span>Firma: <strong className="text-slate-200">{pl.supplierName}</strong></span>
                               <span>·</span>
                             </>
                           )}
@@ -1069,7 +1069,7 @@ export const DefinitionsTab: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setSelectedPriceListForDetail(pl)}
-                          className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/70 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+                          className="px-3 py-1.5 bg-indigo-950/70 hover:bg-indigo-900/80 text-indigo-300 border border-indigo-800/80 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           <span>Kalemleri İncele</span>
@@ -1077,7 +1077,7 @@ export const DefinitionsTab: React.FC = () => {
                         {isAdmin && (
                           <button
                             onClick={() => deletePriceList(pl.id)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 rounded transition"
+                            className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition"
                             title="Listeyi Kaldır"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -1096,14 +1096,14 @@ export const DefinitionsTab: React.FC = () => {
       {/* SECTION 3: MARKALAR */}
       {activeSection === 'brands' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-            <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-              <Plus className="w-4 h-4 text-purple-600" />
+          <div className="lg:col-span-4 bg-slate-900/60 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
+            <h3 className="font-bold text-white text-sm flex items-center gap-2">
+              <Plus className="w-4 h-4 text-purple-400" />
               Yeni Marka Ekle
             </h3>
             <form onSubmit={handleAddBrand} className="space-y-3 pt-2">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Marka Adı
                 </label>
                 <input
@@ -1112,7 +1112,7 @@ export const DefinitionsTab: React.FC = () => {
                   value={newBrandName}
                   onChange={e => setNewBrandName(e.target.value.toUpperCase())}
                   placeholder="Ör: BOSCH, BAMBI, ALTUS..."
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-100"
+                  className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-purple-500 text-white placeholder-slate-500"
                 />
               </div>
               <button
@@ -1124,24 +1124,24 @@ export const DefinitionsTab: React.FC = () => {
             </form>
           </div>
 
-          <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-            <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+          <div className="lg:col-span-8 bg-slate-900/60 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
+            <h3 className="font-bold text-white text-sm">
               Tanımlı Markalar ({productBrands.length})
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {productBrands.map(b => (
                 <div
                   key={b.id}
-                  className="p-3 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-start justify-between"
+                  className="p-3 rounded-xl border border-slate-800 bg-slate-950/50 flex items-center justify-between"
                 >
-                  <h4 className="font-bold text-xs text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <Tag className="w-3.5 h-3.5 text-purple-500" />
+                  <h4 className="font-bold text-xs text-white flex items-center gap-2">
+                    <Tag className="w-3.5 h-3.5 text-purple-400" />
                     {b.name}
                   </h4>
                   {isAdmin && (
                     <button
                       onClick={() => deleteProductBrand(b.id)}
-                      className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
+                      className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition"
                       title="Markayı Sil"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -1156,14 +1156,14 @@ export const DefinitionsTab: React.FC = () => {
 
       {/* SECTION 4: TEDARİKÇİLER */}
       {activeSection === 'suppliers' && (
-        <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+        <div className="bg-slate-900/60 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-                <Building className="w-4 h-4 text-amber-500" />
+              <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                <Building className="w-4 h-4 text-amber-400" />
                 Ortak Tedarikçi Carileri ({suppliers.length})
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-slate-400">
                 Finans, Mal Alımı ve Fiyat Listeleri bu ortak tedarikçi tablosunu kullanır.
               </p>
             </div>
@@ -1177,36 +1177,36 @@ export const DefinitionsTab: React.FC = () => {
               </button>
               <button
                 onClick={() => setActiveTab('currents')}
-                className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold transition"
+                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition"
               >
                 Cari Kartlara Git →
               </button>
             </div>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto border border-slate-800 rounded-xl">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+              <thead className="bg-slate-950/90 text-slate-400 border-b border-slate-800 uppercase text-[10px] font-semibold">
                 <tr>
-                  <th className="py-2.5 px-3 font-semibold">Tedarikçi Firma</th>
-                  <th className="py-2.5 px-3 font-semibold">Şehir</th>
-                  <th className="py-2.5 px-3 font-semibold">Telefon</th>
-                  <th className="py-2.5 px-3 font-semibold">E-posta</th>
-                  <th className="py-2.5 px-3 font-semibold text-right">Güncel Cari Borcumuz</th>
-                  <th className="py-2.5 px-3 font-semibold">Notlar</th>
+                  <th className="py-2.5 px-3">Tedarikçi Firma</th>
+                  <th className="py-2.5 px-3">Şehir</th>
+                  <th className="py-2.5 px-3">Telefon</th>
+                  <th className="py-2.5 px-3">E-posta</th>
+                  <th className="py-2.5 px-3 text-right">Güncel Cari Borcumuz</th>
+                  <th className="py-2.5 px-3">Notlar</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              <tbody className="divide-y divide-slate-800/60">
                 {suppliers.map(sup => (
-                  <tr key={sup.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
-                    <td className="py-3 px-3 font-bold text-slate-900 dark:text-slate-100">{sup.name}</td>
-                    <td className="py-3 px-3 text-slate-600 dark:text-slate-400">{sup.city || '-'}</td>
-                    <td className="py-3 px-3 font-mono text-[11px] text-slate-600 dark:text-slate-400">{sup.phone || '-'}</td>
-                    <td className="py-3 px-3 text-slate-500">{sup.email || '-'}</td>
-                    <td className="py-3 px-3 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                  <tr key={sup.id} className="hover:bg-slate-800/40 transition">
+                    <td className="py-3 px-3 font-bold text-white">{sup.name}</td>
+                    <td className="py-3 px-3 text-slate-300">{sup.city || '-'}</td>
+                    <td className="py-3 px-3 font-mono text-[11px] text-slate-400">{sup.phone || '-'}</td>
+                    <td className="py-3 px-3 text-slate-400">{sup.email || '-'}</td>
+                    <td className="py-3 px-3 text-right font-mono font-bold text-rose-400">
                       {formatCurrency(Math.abs(sup.balance))} (Borç)
                     </td>
-                    <td className="py-3 px-3 text-slate-500 max-w-[200px] truncate">{sup.notes || '-'}</td>
+                    <td className="py-3 px-3 text-slate-400 max-w-[200px] truncate">{sup.notes || '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1218,14 +1218,14 @@ export const DefinitionsTab: React.FC = () => {
       {/* SECTION 5: VADE ORANLARI */}
       {activeSection === 'vaderates' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-            <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-              <Percent className="w-4 h-4 text-rose-600" />
+          <div className="lg:col-span-4 bg-slate-900/60 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
+            <h3 className="font-bold text-white text-sm flex items-center gap-2">
+              <Percent className="w-4 h-4 text-rose-400" />
               Aylık Vade Farkı Oranı Belirle
             </h3>
             <form onSubmit={handleSaveVadeRate} className="space-y-3 pt-2">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Uygulanacak Ay (YYYY-MM)
                 </label>
                 <input
@@ -1233,11 +1233,11 @@ export const DefinitionsTab: React.FC = () => {
                   required
                   value={vadeMonth}
                   onChange={e => setVadeMonth(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 dark:text-slate-100"
+                  className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-rose-500 text-white"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Aylık Vade Farkı Oranı (%)
                 </label>
                 <div className="relative">
@@ -1249,7 +1249,7 @@ export const DefinitionsTab: React.FC = () => {
                     required
                     value={vadeRateVal}
                     onChange={e => setVadeRateVal(Number(e.target.value))}
-                    className="w-full pl-3 pr-8 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 dark:text-slate-100 font-mono font-bold"
+                    className="w-full pl-3 pr-8 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-rose-500 text-white font-mono font-bold"
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">%</span>
                 </div>
@@ -1263,27 +1263,27 @@ export const DefinitionsTab: React.FC = () => {
             </form>
           </div>
 
-          <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-            <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+          <div className="lg:col-span-8 bg-slate-900/60 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
+            <h3 className="font-bold text-white text-sm">
               Kayıtlı Aylık Vade Farkı Oranları ({vadeRates.length})
             </h3>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto border border-slate-800 rounded-xl">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                <thead className="bg-slate-950/90 text-slate-400 border-b border-slate-800 uppercase text-[10px] font-semibold">
                   <tr>
-                    <th className="py-2.5 px-3 font-semibold">Dönem (Ay)</th>
-                    <th className="py-2.5 px-3 font-semibold text-right">Aylık Oran (%)</th>
-                    <th className="py-2.5 px-3 font-semibold text-right">12 Ay Senet Yükü</th>
-                    <th className="py-2.5 px-3 font-semibold">Notlar</th>
+                    <th className="py-2.5 px-3">Dönem (Ay)</th>
+                    <th className="py-2.5 px-3 text-right">Aylık Oran (%)</th>
+                    <th className="py-2.5 px-3 text-right">12 Ay Senet Yükü</th>
+                    <th className="py-2.5 px-3">Notlar</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <tbody className="divide-y divide-slate-800/60">
                   {vadeRates.map(vr => (
-                    <tr key={vr.id} className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition">
-                      <td className="py-3 px-3 font-bold font-mono text-slate-900 dark:text-white">{vr.monthKey}</td>
-                      <td className="py-3 px-3 text-right font-mono font-bold text-rose-600 dark:text-rose-400 text-sm">%{vr.rateMonthly}</td>
-                      <td className="py-3 px-3 text-right font-mono font-medium text-slate-700 dark:text-slate-300">%{(12 * vr.rateMonthly).toFixed(1)}</td>
-                      <td className="py-3 px-3 text-slate-500">{vr.notes || '-'}</td>
+                    <tr key={vr.id} className="hover:bg-slate-800/40 transition">
+                      <td className="py-3 px-3 font-bold font-mono text-white">{vr.monthKey}</td>
+                      <td className="py-3 px-3 text-right font-mono font-bold text-rose-400 text-sm">%{vr.rateMonthly}</td>
+                      <td className="py-3 px-3 text-right font-mono font-medium text-slate-300">%{(12 * vr.rateMonthly).toFixed(1)}</td>
+                      <td className="py-3 px-3 text-slate-400">{vr.notes || '-'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1295,23 +1295,23 @@ export const DefinitionsTab: React.FC = () => {
 
       {/* Supplier Modal */}
       {isSupplierModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h3 className="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
-                <Building className="w-5 h-5 text-amber-500" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in">
+          <div className="bg-slate-900 rounded-2xl border border-slate-800 max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <h3 className="font-bold text-white text-base flex items-center gap-2">
+                <Building className="w-5 h-5 text-amber-400" />
                 Yeni Tedarikçi Firma Ekle
               </h3>
               <button
                 onClick={() => setIsSupplierModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg"
+                className="p-1 text-slate-400 hover:text-white rounded-lg"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
             <form onSubmit={handleAddSupplier} className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
                   Tedarikçi Firma Adı *
                 </label>
                 <input
@@ -1320,36 +1320,36 @@ export const DefinitionsTab: React.FC = () => {
                   value={supplierName}
                   onChange={e => setSupplierName(e.target.value)}
                   placeholder="Ör: Bosch Ev Aletleri A.Ş."
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500 text-slate-800 dark:text-slate-100"
+                  className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-amber-500 text-white placeholder-slate-500"
                 />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Telefon</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Telefon</label>
                   <input
                     type="text"
                     value={supplierPhone}
                     onChange={e => setSupplierPhone(e.target.value)}
                     placeholder="0212..."
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500 text-slate-800 dark:text-slate-100"
+                    className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-amber-500 text-white placeholder-slate-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Şehir</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Şehir</label>
                   <input
                     type="text"
                     value={supplierCity}
                     onChange={e => setSupplierCity(e.target.value)}
                     placeholder="İstanbul"
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500 text-slate-800 dark:text-slate-100"
+                    className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-amber-500 text-white placeholder-slate-500"
                   />
                 </div>
               </div>
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
                 <button
                   type="button"
                   onClick={() => setIsSupplierModalOpen(false)}
-                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold transition"
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition"
                 >
                   Vazgeç
                 </button>

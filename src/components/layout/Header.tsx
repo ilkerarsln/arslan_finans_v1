@@ -45,12 +45,12 @@ const TAB_TITLES: Record<ActiveTab, { title: string; subtitle: string }> = {
     subtitle: 'Kasa, banka ve POS hesapları dönemsel hareket ekstreleri ve transferler',
   },
   currents: {
-    title: 'Cari Hesap Yönetimi',
-    subtitle: 'Ortak müşteri ve tedarikçi borç/alacak takibi ve ekstreler',
+    title: 'Cari Hesaplar',
+    subtitle: 'Müşteri ve tedarikçi cari hesap bakiyeleri ve hareket ekstreleri',
   },
   definitions: {
-    title: 'Tanımlamalar & 3 Seviyeli Kategori',
-    subtitle: 'Ana Kategori > Alt Kategori > Ürün Grubu hiyerarşisi, markalar ve fiyat listeleri',
+    title: 'Tanımlamalar',
+    subtitle: '3 Seviyeli kategori hiyerarşisi, markalar, fiyat listeleri ve vade oranları',
   },
   upcoming: {
     title: 'Vade & Ödeme Takvimi',
@@ -114,12 +114,12 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const pendingDuesCount = upcomingDues.filter(d => !d.isCompleted).length;
 
   return (
-    <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 md:px-6 py-2.5 flex items-center justify-between sticky top-0 z-30 shadow-xs backdrop-blur-md">
+    <header className="bg-slate-950/90 backdrop-blur-md border-b border-slate-850 px-4 md:px-6 py-2.5 flex items-center justify-between sticky top-0 z-30 shadow-xs">
       {/* Left: Mobile hamburger & Dynamic Title */}
       <div className="flex items-center gap-3">
         <button
           onClick={onToggleSidebar}
-          className="md:hidden text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700"
+          className="md:hidden text-slate-400 hover:text-white p-1.5 rounded-xl border border-slate-800 bg-slate-900/60 transition"
           aria-label="Menü"
         >
           <Menu className="w-5 h-5" />
@@ -130,11 +130,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
           title="Ana Özet Panele Dön"
         >
           <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider hidden sm:inline">
+            <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider hidden sm:inline">
               Arslan Mobilya ERP
             </span>
-            <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">/</span>
-            <h1 className="text-sm md:text-base font-bold text-slate-900 dark:text-white leading-tight group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+            <span className="text-slate-700 hidden sm:inline">/</span>
+            <h1 className="text-sm md:text-base font-bold text-white leading-tight group-hover:text-emerald-400 transition-colors">
               {TAB_TITLES[activeTab].title}
             </h1>
           </div>
@@ -148,12 +148,12 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
       <div className="hidden md:flex items-center">
         <button
           onClick={openCommandPalette}
-          className="flex items-center gap-2.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-500 dark:text-slate-400 transition shadow-xs group"
+          className="flex items-center gap-2.5 px-3 py-1.5 bg-slate-900/80 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-xl text-xs text-slate-400 transition shadow-xs group"
           title="Hızlı Komut Paleti (Ctrl+K)"
         >
-          <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-emerald-500 transition-colors" />
-          <span className="text-slate-600 dark:text-slate-300">Hızlı işlem veya arama yap...</span>
-          <kbd className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 rounded border border-slate-200 dark:border-slate-700 shadow-2xs">
+          <Search className="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-400 transition-colors" />
+          <span className="text-slate-300">Hızlı işlem veya arama yap...</span>
+          <kbd className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-slate-950 text-slate-400 rounded border border-slate-800 shadow-2xs">
             Ctrl K
           </kbd>
         </button>
@@ -164,50 +164,50 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         {/* Live Currency Rates */}
         <button
           onClick={openCurrencyConverter}
-          className="hidden sm:flex items-center gap-2 px-2.5 py-1 bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/80 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-[11px] font-mono font-medium text-slate-700 dark:text-slate-300 shadow-2xs transition"
+          className="hidden sm:flex items-center gap-2 px-2.5 py-1 bg-slate-900/80 hover:bg-slate-850 border border-slate-800 rounded-xl text-[11px] font-mono font-medium text-slate-300 shadow-2xs transition"
           title={`Canlı Döviz: USD ₺${usd.toFixed(2)} | EUR ₺${eur.toFixed(2)}`}
         >
-          <Coins className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+          <Coins className="w-3.5 h-3.5 text-amber-400 shrink-0" />
           <div className="flex items-center gap-1">
-            <span className="text-slate-400">USD:</span>
-            <span className="font-bold text-slate-900 dark:text-white">₺{usd.toFixed(2)}</span>
+            <span className="text-slate-500">USD:</span>
+            <span className="font-bold text-white">₺{usd.toFixed(2)}</span>
           </div>
-          <span className="text-slate-300 dark:text-slate-700">|</span>
+          <span className="text-slate-750">|</span>
           <div className="flex items-center gap-1">
-            <span className="text-slate-400">EUR:</span>
-            <span className="font-bold text-slate-900 dark:text-white">₺{eur.toFixed(2)}</span>
+            <span className="text-slate-500">EUR:</span>
+            <span className="font-bold text-white">₺{eur.toFixed(2)}</span>
           </div>
         </button>
 
         {/* Theme Toggle */}
         <button
           onClick={toggleDarkMode}
-          className="p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+          className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-850 border border-transparent hover:border-slate-800 transition"
           title={isDarkMode ? 'Açık Temaya Geç' : 'Koyu Temaya Geç'}
           aria-label="Tema Değiştir"
         >
-          {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+          {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-400" />}
         </button>
 
         {/* Pending Alerts */}
         <button
           onClick={() => setActiveTab('upcoming')}
-          className="relative p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+          className="relative p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-850 border border-transparent hover:border-slate-800 transition"
           title={`${pendingDuesCount} bekleyen ödeme veya tahsilat`}
         >
           <Bell className="w-4 h-4" />
           {pendingDuesCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900" />
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-slate-950" />
           )}
         </button>
 
         {/* User / Sync Badge */}
         {user ? (
-          <div className="flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl px-2 py-1 text-xs text-emerald-800 dark:text-emerald-300">
+          <div className="flex items-center gap-1.5 bg-slate-900/90 border border-emerald-500/30 rounded-xl px-2 py-1 text-xs text-emerald-300 shadow-xs">
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-              <Smartphone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 hidden sm:inline" />
-              {isCloudSyncing && <RefreshCw className="w-3 h-3 animate-spin text-emerald-600" />}
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <Smartphone className="w-3.5 h-3.5 text-emerald-400 hidden sm:inline" />
+              {isCloudSyncing && <RefreshCw className="w-3 h-3 animate-spin text-emerald-400" />}
             </div>
             {isRoleSimulated ? (
               <button
@@ -220,23 +220,23 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             ) : isAdmin ? (
               <button
                 onClick={() => setActiveTab('users')}
-                className="flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-700 px-2 py-0.5 rounded-full hover:bg-amber-200 transition"
+                className="flex items-center gap-1 text-[10px] font-bold text-amber-300 bg-amber-950/80 border border-amber-800/80 px-2 py-0.5 rounded-full hover:bg-amber-900 transition"
                 title="Sistem Yöneticisi"
               >
-                <Shield className="w-3 h-3 text-amber-500" /> Admin
+                <Shield className="w-3 h-3 text-amber-400" /> Admin
               </button>
             ) : (
               <span
-                className="flex items-center gap-1 text-[10px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 border border-blue-300 dark:border-blue-700 px-2 py-0.5 rounded-full"
+                className="flex items-center gap-1 text-[10px] font-bold text-sky-300 bg-sky-950/80 border border-sky-800/80 px-2 py-0.5 rounded-full"
                 title="Personel"
               >
-                <UserCheck className="w-3 h-3 text-blue-500" /> Standart
+                <UserCheck className="w-3 h-3 text-sky-400" /> Standart
               </span>
             )}
             <button
               onClick={logout}
               title="Oturumu Kapat"
-              className="text-emerald-700 hover:text-rose-600 dark:text-emerald-400 dark:hover:text-rose-400 p-0.5 rounded transition ml-1"
+              className="text-slate-400 hover:text-rose-400 p-0.5 rounded transition ml-1"
             >
               <LogOut className="w-3.5 h-3.5" />
             </button>
@@ -244,7 +244,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         ) : (
           <button
             onClick={loginWithGoogle}
-            className="flex items-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition shadow-xs active:scale-95"
+            className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-850 border border-slate-700 text-slate-100 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition shadow-xs active:scale-95"
           >
             <span>Giriş Yap</span>
           </button>
@@ -253,7 +253,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         {/* Primary Action Button: Data Importer */}
         <button
           onClick={() => openDataImporter('stok')}
-          className="bg-sky-600 hover:bg-sky-500 text-white px-3 py-1.5 md:py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm active:scale-95 shrink-0"
+          className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 md:py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm active:scale-95 shrink-0 border border-indigo-500/30"
           title="Yalın Excel Mal Alımı ve Fiyat Listesi Eşleştirme"
         >
           <FileSpreadsheet className="w-4 h-4" />
@@ -263,7 +263,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         {/* Yeni İşlem Ekle */}
         <button
           onClick={() => openTransactionModal()}
-          className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 md:py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm active:scale-95 shrink-0"
+          className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 md:py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm active:scale-95 shrink-0 border border-emerald-500/30"
         >
           <Plus className="w-4 h-4" />
           <span className="hidden sm:inline">Yeni İşlem</span>

@@ -50,7 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     openDataImporter,
   } = useFinance();
 
-  const navItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: number | string }[] = [
+  const navItems: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
     {
       id: 'dashboard',
       label: 'Genel Bakış',
@@ -60,36 +60,31 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       id: 'profit',
       label: 'Kâr Takip (Satışlar)',
       icon: <TrendingUp className="w-4 h-4 text-emerald-400" />,
-      badge: sales.length > 0 ? sales.length : undefined,
     },
     {
       id: 'stock',
       label: 'Mal Alımı & Stok',
       icon: <Boxes className="w-4 h-4 text-sky-400" />,
-      badge: stockItems.length > 0 ? stockItems.length : undefined,
     },
     {
       id: 'transactions',
       label: 'Gelir / Gider (Kasa)',
       icon: <ArrowLeftRight className="w-4 h-4" />,
-      badge: transactions.length,
     },
     {
       id: 'accounts',
       label: 'Bankalar & Kasalar',
       icon: <Building2 className="w-4 h-4" />,
-      badge: accounts.length,
     },
     {
       id: 'currents',
-      label: 'Cari Hesaplar & Tedarikçiler',
+      label: 'Cari Hesaplar',
       icon: <Users className="w-4 h-4" />,
     },
     {
       id: 'definitions',
-      label: 'Tanımlamalar & 3 Seviyeli Kategori',
+      label: 'Tanımlamalar',
       icon: <SlidersHorizontal className="w-4 h-4 text-amber-400" />,
-      badge: categoryHierarchy.length > 0 ? categoryHierarchy.length : undefined,
     },
     {
       id: 'reports',
@@ -100,7 +95,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       id: 'upcoming',
       label: 'Vade Takvimi',
       icon: <CalendarDays className="w-4 h-4" />,
-      badge: upcomingDues.filter(d => !d.isCompleted).length || undefined,
     },
     ...(isAdmin
       ? [
@@ -108,16 +102,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             id: 'audit' as ActiveTab,
             label: 'Denetim & Onaylar',
             icon: <ShieldAlert className="w-4 h-4 text-emerald-400" />,
-            badge:
-              deletionRequests.filter(r => r.status === 'pending').length > 0
-                ? `${deletionRequests.filter(r => r.status === 'pending').length} Onay`
-                : undefined,
           },
           {
             id: 'users' as ActiveTab,
             label: 'Personel & Roller',
             icon: <ShieldCheck className="w-4 h-4 text-amber-400" />,
-            badge: allUsers.length > 0 ? allUsers.length : undefined,
           },
         ]
       : []),
@@ -226,35 +215,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               <button
                 key={item.id}
                 onClick={() => handleSelectTab(item.id)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition group ${
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all group ${
                   isActive
-                    ? 'bg-emerald-600 text-white shadow-sm'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-900'
+                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold shadow-xs'
+                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-900/80 border border-transparent'
                 }`}
               >
-                <div className="flex items-center gap-2.5">
-                  <span
-                    className={
-                      isActive
-                        ? 'text-white'
-                        : 'text-slate-400 group-hover:text-emerald-400 transition-colors'
-                    }
-                  >
-                    {item.icon}
-                  </span>
-                  <span className="truncate">{item.label}</span>
-                </div>
-                {item.badge !== undefined && (
-                  <span
-                    className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-medium shrink-0 ${
-                      isActive
-                        ? 'bg-emerald-700/80 text-white'
-                        : 'bg-slate-800 text-slate-400'
-                    }`}
-                  >
-                    {item.badge}
-                  </span>
-                )}
+                <span
+                  className={
+                    isActive
+                      ? 'text-emerald-400 shrink-0'
+                      : 'text-slate-400 group-hover:text-emerald-400 transition-colors shrink-0'
+                  }
+                >
+                  {item.icon}
+                </span>
+                <span className="truncate">{item.label}</span>
               </button>
             );
           })}
