@@ -20,11 +20,13 @@ import {
   ArrowDownRight,
   Sparkles,
   ShoppingBag,
+  Upload,
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import { CIRO_MONTHS, CIRO_ROW_DEFINITIONS } from '../../data/initialCiroMatrix';
 import { calculateCiroMatrix, ComputedRowData, ComputedCellData } from '../../utils/ciroCalculations';
 import { exportCiroMatrixToExcel } from '../../utils/ciroExcelExport';
+import { CiroDataImporter } from '../importer/CiroDataImporter';
 
 export const CiroMatrixModule: React.FC = () => {
   const {
@@ -48,6 +50,9 @@ export const CiroMatrixModule: React.FC = () => {
   // New Year modal
   const [isAddYearModalOpen, setIsAddYearModalOpen] = useState(false);
   const [newYearInput, setNewYearInput] = useState('');
+
+  // Ciro Importer Modal
+  const [isImporterOpen, setIsImporterOpen] = useState(false);
 
   // Cell Edit Modal State
   const [editingCell, setEditingCell] = useState<{
@@ -192,6 +197,15 @@ export const CiroMatrixModule: React.FC = () => {
         </div>
 
         <div className="flex items-center flex-wrap gap-2.5">
+          <button
+            onClick={() => setIsImporterOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-900/30 transition-all cursor-pointer"
+            title="Ciro Excel Dosyasını Sisteme Aktar"
+          >
+            <Upload className="w-4 h-4" />
+            Ciro Excel İçe Aktar
+          </button>
+
           <button
             onClick={() => exportCiroMatrixToExcel(matrixResult)}
             className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-emerald-900/20 transition-all cursor-pointer"
@@ -760,6 +774,18 @@ export const CiroMatrixModule: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Ciro Excel Importer Modal */}
+      {isImporterOpen && (
+        <CiroDataImporter
+          defaultYear={selectedYear}
+          onClose={() => setIsImporterOpen(false)}
+          onImportComplete={(year) => {
+            setSelectedYear(year);
+            setIsImporterOpen(false);
+          }}
+        />
       )}
     </div>
   );

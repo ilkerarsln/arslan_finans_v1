@@ -35,12 +35,13 @@ import {
   getUniqueAltKategoriler,
   getUniqueUrunGruplari,
 } from '../../data/initialCategories';
+import { CiroDataImporter } from './CiroDataImporter';
 
 export const DataImporter: React.FC<{
   onClose?: () => void;
-  defaultTemplate?: 'stok' | 'fiyatListesi' | 'cari';
+  defaultTemplate?: 'stok' | 'fiyatListesi' | 'cari' | 'ciro';
   onImportComplete?: (count: number) => void;
-}> = ({ onClose, onImportComplete }) => {
+}> = ({ onClose, defaultTemplate, onImportComplete }) => {
   const {
     priceLists,
     caris,
@@ -54,6 +55,11 @@ export const DataImporter: React.FC<{
   const now = new Date();
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const defaultDueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+  // Importer Mode: 'malAlimi' or 'ciro'
+  const [importerMode, setImporterMode] = useState<'malAlimi' | 'ciro'>(
+    defaultTemplate === 'ciro' ? 'ciro' : 'malAlimi'
+  );
 
   // Wizard Steps: 1: Parameters & File Upload, 2: Preview & Approval, 3: Success Result
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -523,6 +529,17 @@ export const DataImporter: React.FC<{
     setResultSummary(null);
   };
 
+  if (importerMode === 'ciro') {
+    return (
+      <CiroDataImporter
+        onClose={onClose}
+        onImportComplete={(year, count) => {
+          if (onImportComplete) onImportComplete(count);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden max-w-6xl w-full mx-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[92vh]">
       {/* HEADER */}
@@ -540,14 +557,25 @@ export const DataImporter: React.FC<{
             </p>
           </div>
         </div>
-        {onClose && (
+        <div className="flex items-center gap-2">
           <button
-            onClick={onClose}
-            className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+            type="button"
+            onClick={() => setImporterMode('ciro')}
+            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white text-xs font-semibold shadow-md shadow-indigo-950/30 transition-all cursor-pointer"
+            title="Ciro Verilerini İçe Aktar moduna geç"
           >
-            <X className="w-5 h-5" />
+            <FileSpreadsheet className="w-4 h-4" />
+            Ciro Matrisi İçe Aktar
           </button>
-        )}
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* STEP 1: PARAMETRELER VE DOSYA YÜKLEME */}

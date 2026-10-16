@@ -31,6 +31,7 @@ const MainLayout: React.FC = () => {
     closeProductEditModal,
     editingProduct,
     isDataImporterOpen,
+    dataImporterTemplate,
     closeDataImporter,
     isAuthLoading,
   } = useFinance();
@@ -93,7 +94,12 @@ const MainLayout: React.FC = () => {
         onClose={closeProductEditModal}
         product={editingProduct}
       />
-      {isDataImporterOpen && <DataImporter onClose={closeDataImporter} />}
+      {isDataImporterOpen && (
+        <DataImporter
+          onClose={closeDataImporter}
+          defaultTemplate={dataImporterTemplate}
+        />
+      )}
       <CommandPalette />
       <CurrencyConverterModal />
       <Toast />

@@ -179,8 +179,8 @@ interface FinanceContextType {
 
   // Data Importer Wizard Modal
   isDataImporterOpen: boolean;
-  dataImporterTemplate: 'stok' | 'fiyatListesi' | 'cari';
-  openDataImporter: (template?: 'stok' | 'fiyatListesi' | 'cari') => void;
+  dataImporterTemplate: 'stok' | 'fiyatListesi' | 'cari' | 'ciro';
+  openDataImporter: (template?: 'stok' | 'fiyatListesi' | 'cari' | 'ciro') => void;
   closeDataImporter: () => void;
 
   // Theme (Dark / Light)
@@ -273,6 +273,14 @@ interface FinanceContextType {
   updateCiroRowMargin: (year: string, rowId: string, margin: number) => void;
   addNewCiroYear: (year: string) => void;
   resetCiroMatrixToDefault: () => void;
+  importCiroMatrixYearData: (
+    year: string,
+    importedRows: {
+      rowId: string;
+      profitMargin?: number;
+      months: Record<number, number>;
+    }[]
+  ) => void;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -707,6 +715,56 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     showToast('Ciro matrisi fabrika başlangıç ayarlarına döndürüldü.', 'info');
   };
 
+  const importCiroMatrixYearData = (
+    year: string,
+    importedRows: {
+      rowId: string;
+      profitMargin?: number;
+      months: Record<number, number>;
+    }[]
+  ) => {
+    const trimmedYear = year.trim();
+    if (!trimmedYear) return;
+
+    setCiroMatrixData(prev => {
+      const existingYearConfig = prev[trimmedYear] || { rowMargins: {}, cells: {} };
+      const updatedRowMargins = { ...(existingYearConfig.rowMargins || {}) };
+      const updatedCells = { ...(existingYearConfig.cells || {}) };
+
+      importedRows.forEach(row => {
+        if (row.profitMargin !== undefined && row.profitMargin !== null && !isNaN(row.profitMargin)) {
+          updatedRowMargins[row.rowId] = row.profitMargin;
+        }
+
+        const existingRowCells = updatedCells[row.rowId] || {};
+        const newRowCells = { ...existingRowCells };
+
+        Object.entries(row.months).forEach(([monthStr, amount]) => {
+          const monthNum = parseInt(monthStr, 10);
+          if (monthNum >= 1 && monthNum <= 12) {
+            newRowCells[monthNum] = {
+              ...(newRowCells[monthNum] || {}),
+              manualAmount: Number(amount) || 0,
+              updatedAt: new Date().toISOString(),
+            };
+          }
+        });
+
+        updatedCells[row.rowId] = newRowCells;
+      });
+
+      return {
+        ...prev,
+        [trimmedYear]: {
+          rowMargins: updatedRowMargins,
+          cells: updatedCells,
+        },
+      };
+    });
+
+    showToast(`${trimmedYear} yılı Ciro Excel verileri başarıyla sisteme aktarıldı!`, 'success');
+  };
+
   // Kapsamlı Düzenleme Modal State
   const [isProductEditModalOpen, setIsProductEditModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<StockItem | null>(null);
@@ -738,9 +796,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isInstallmentModalOpen, setIsInstallmentModalOpen] = useState(false);
   const [installmentModalPrefill, setInstallmentModalPrefill] = useState<Partial<InstallmentPlanRequest> | null>(null);
   const [isDataImporterOpen, setIsDataImporterOpen] = useState(false);
-  const [dataImporterTemplate, setDataImporterTemplate] = useState<'stok' | 'fiyatListesi' | 'cari'>('stok');
+  const [dataImporterTemplate, setDataImporterTemplate] = useState<'stok' | 'fiyatListesi' | 'cari' | 'ciro'>('stok');
 
-  const openDataImporter = (template?: 'stok' | 'fiyatListesi' | 'cari') => {
+  const openDataImporter = (template?: 'stok' | 'fiyatListesi' | 'cari' | 'ciro') => {
     if (template) setDataImporterTemplate(template);
     setIsDataImporterOpen(true);
   };
@@ -2496,6 +2554,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         updateCiroRowMargin,
         addNewCiroYear,
         resetCiroMatrixToDefault,
+        importCiroMatrixYearData,
       }}
     >
       {children}
