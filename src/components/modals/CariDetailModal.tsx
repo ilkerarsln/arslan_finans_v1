@@ -12,7 +12,6 @@ import {
   Receipt,
   FileSpreadsheet,
   Layers,
-  Calendar,
   Trash2,
   AlertTriangle,
   MessageCircle,
@@ -32,7 +31,6 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
 }) => {
   const {
     transactions,
-    upcomingDues,
     openTransactionModal,
     openInstallmentModal,
     isAdmin,
@@ -48,12 +46,6 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
       (tx.isPosOffset && tx.supplierCariId === cari.id) ||
       (tx.cariName && tx.cariName.toLowerCase().includes(cari.name.toLowerCase())) ||
       (tx.isPosOffset && tx.supplierCariName && tx.supplierCariName.toLowerCase().includes(cari.name.toLowerCase()))
-  );
-
-  const cariUpcomingDues = upcomingDues.filter(
-    d =>
-      d.cariId === cari.id ||
-      (d.cariName && d.cariName.toLowerCase().includes(cari.name.toLowerCase()))
   );
 
   const totalIncomeFromCari = cariTransactions
@@ -138,7 +130,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
             {isAdmin ? (
               <button
                 onClick={() => {
-                  if (window.confirm(`"${cari.name}" cari kartı silmek istediğinize emin misiniz?`)) {
+                  if (window.confirm(`"${cari.name}" cari kartını silmek istediğinize emin misiniz?`)) {
                     deleteCari(cari.id);
                     onClose();
                   }
@@ -153,7 +145,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
               <button
                 onClick={() => {
                   const reason = window.prompt(
-                    `"${cari.name}" cari kartı silmek için Yönetici (Admin) onayına gerekçe iletiniz:`,
+                    `"${cari.name}" cari kartını silmek için Yönetici (Admin) onayına gerekçe iletiniz:`,
                     'Cari kapatıldı / mükerrer kayıt'
                   );
                   if (reason !== null && reason.trim()) {
@@ -199,7 +191,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
                 ? 'Alacağımız Var'
                 : cari.balance < 0
                 ? 'Borcumuz Var'
-                : 'Bakiye Kapalı (₺0.00)'}
+                : 'Bakiye Kapalı (0.00)'}
             </span>
           </div>
 
@@ -242,7 +234,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
               }}
               className="w-full py-1.5 px-3 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center justify-center gap-1.5 transition shadow-xs"
             >
-              <Layers className="w-3.5 h-3.5" /> Taksit Planı
+              <Layers className="w-3.5 h-3.5" /> Taksit Planla
             </button>
           </div>
         </div>
@@ -277,12 +269,9 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
             <span className="text-slate-400 flex items-center gap-1 mb-1">
               <Mail className="w-3 h-3" /> E-posta
             </span>
-            <a
-              href={cari.email ? `mailto:${cari.email}` : undefined}
-              className="font-medium text-slate-800 dark:text-slate-200 hover:text-blue-600 truncate block"
-            >
+            <span className="font-medium text-slate-800 dark:text-slate-200 truncate block">
               {cari.email || '-'}
-            </a>
+            </span>
           </div>
           <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800">
             <span className="text-slate-400 flex items-center gap-1 mb-1">
@@ -317,7 +306,6 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
               <span>Ekstreyi Excel İndir</span>
             </button>
           </div>
-
           <div className="border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden max-h-60 overflow-y-auto">
             {cariTransactions.length === 0 ? (
               <div className="p-6 text-center text-xs text-slate-400">
@@ -336,71 +324,45 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {cariTransactions.map(tx => {
-                    const isSupplierPosOffset = tx.isPosOffset && tx.supplierCariId === cari.id;
-                    return (
-                      <tr
-                        key={tx.id}
-                        className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
-                      >
-                        <td className="py-2.5 px-3 text-slate-500 whitespace-nowrap">{formatDate(tx.date)}</td>
-                        <td className="py-2.5 px-3 whitespace-nowrap">
-                          {isSupplierPosOffset ? (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
-                              POS Mahsup
-                            </span>
-                          ) : (
-                            <span
-                              className={`font-semibold ${
-                                tx.type === 'Gelir'
-                                  ? 'text-emerald-600 dark:text-emerald-400'
-                                  : 'text-rose-600 dark:text-rose-400'
-                              }`}
-                            >
-                              {tx.type}
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300">
-                          <div>{tx.desc || tx.category}</div>
-                          {isSupplierPosOffset && (
-                            <span className="text-[10px] text-teal-600 dark:text-teal-400 font-medium">
-                              POS Tahsilatından Tedarikçi Borcuna Mahsup Edildi
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-2.5 px-3 whitespace-nowrap">
-                          <span
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                              tx.status === 'Tamamlandı'
-                                ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400'
-                                : tx.status === 'Beklemede'
-                                ? 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400'
-                                : 'bg-slate-100 text-slate-600'
-                            }`}
-                          >
-                            {tx.status}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500">
-                          {tx.documentNo || '-'}
-                        </td>
-                        <td
-                          className={`py-2.5 px-3 text-right font-mono font-bold whitespace-nowrap ${
-                            isSupplierPosOffset
-                              ? 'text-teal-600 dark:text-teal-400'
-                              : tx.type === 'Gelir'
+                  {cariTransactions.map(tx => (
+                    <tr
+                      key={tx.id}
+                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
+                    >
+                      <td className="py-2.5 px-3 text-slate-500 whitespace-nowrap">{formatDate(tx.date)}</td>
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <span
+                          className={`font-semibold ${
+                            tx.type === 'Gelir'
                               ? 'text-emerald-600 dark:text-emerald-400'
                               : 'text-rose-600 dark:text-rose-400'
                           }`}
                         >
-                          {isSupplierPosOffset
-                            ? `+${formatCurrency(tx.amount)} (Mahsup)`
-                            : `${tx.type === 'Gelir' ? '+' : '-'}${formatCurrency(tx.amount)}`}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                          {tx.type}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300">
+                        {tx.desc || tx.category}
+                      </td>
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <span className="px-1.5 py-0.5 rounded text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">
+                          {tx.status}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500">
+                        {tx.documentNo || '-'}
+                      </td>
+                      <td
+                        className={`py-2.5 px-3 text-right font-mono font-bold whitespace-nowrap ${
+                          tx.type === 'Gelir'
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : 'text-rose-600 dark:text-rose-400'
+                        }`}
+                      >
+                        {tx.type === 'Gelir' ? '+' : '-'}{formatCurrency(tx.amount)}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             )}

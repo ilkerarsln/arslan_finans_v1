@@ -4,12 +4,9 @@ import {
   TrendingUp,
   Plus,
   Search,
-  Download,
   Calendar,
   User,
   ShoppingBag,
-  CreditCard,
-  Boxes,
   Trash2,
   DollarSign,
   Percent,
@@ -29,7 +26,6 @@ export const ProfitTab: React.FC = () => {
     stockItems,
     caris,
     accounts,
-    productCategories,
     addSaleRecord,
     updateSaleRecord,
     deleteSaleRecord,
@@ -40,6 +36,7 @@ export const ProfitTab: React.FC = () => {
     saleModalPrefillProduct,
     setSaleModalPrefillProduct,
     openDataImporter,
+    categoryHierarchy,
     showToast,
   } = useFinance();
 
@@ -61,8 +58,8 @@ export const ProfitTab: React.FC = () => {
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [selectedProductId, setSelectedProductId] = useState('');
   const [customProductName, setCustomProductName] = useState('');
-  const [customCategory, setCustomCategory] = useState('Beyaz Eşya');
-  const [customBrand, setCustomBrand] = useState('Bosch');
+  const [customCategory, setCustomCategory] = useState('MOBİLYA');
+  const [customBrand, setCustomBrand] = useState('BAMBI');
   const [quantity, setQuantity] = useState<number>(1);
   const [costPrice, setCostPrice] = useState<number>(0);
   const [salePrice, setSalePrice] = useState<number>(0);
@@ -153,8 +150,8 @@ export const ProfitTab: React.FC = () => {
       setSalePrice(0);
     }
     setCustomProductName('');
-    setCustomCategory('Beyaz Eşya');
-    setCustomBrand('Bosch');
+    setCustomCategory('MOBİLYA');
+    setCustomBrand('BAMBI');
     setQuantity(1);
     setSaleType('Peşin');
     setInstallmentsCount(12);
@@ -173,7 +170,7 @@ export const ProfitTab: React.FC = () => {
     setSelectedProductId(sale.productId || '');
     setCustomProductName(sale.productName);
     setCustomCategory(sale.category);
-    setCustomBrand(sale.brand || 'Bosch');
+    setCustomBrand(sale.brand || 'BAMBI');
     setQuantity(sale.quantity);
     setCostPrice(sale.costPrice);
     setSalePrice(sale.salePrice);
@@ -286,18 +283,9 @@ export const ProfitTab: React.FC = () => {
         </div>
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
           <button
-            onClick={() => openDataImporter('stok')}
-            className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition active:scale-95"
-            title="Yalın Excel Mal Alımı ve Fiyat Listesi Eşleştirme"
-          >
-            <FileSpreadsheet className="w-4 h-4 text-sky-400" />
-            <span>Yalın Mal Alımı</span>
-          </button>
-          <button
             onClick={() => setActiveTab('stock')}
             className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition active:scale-95"
           >
-            <Boxes className="w-4 h-4 text-sky-400" />
             <span>Depo & Stoklar</span>
             <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
           </button>
@@ -325,10 +313,11 @@ export const ProfitTab: React.FC = () => {
             {filteredSales.length} adet tamamlanan satış
           </span>
         </div>
+
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
             <span>Ürün Alış Maliyeti</span>
-            <Boxes className="w-4 h-4 text-blue-500" />
+            <Calculator className="w-4 h-4 text-blue-500" />
           </div>
           <div className="text-2xl font-bold font-mono text-slate-700 dark:text-slate-300 mt-2">
             {formatCurrency(totalCost)}
@@ -337,6 +326,7 @@ export const ProfitTab: React.FC = () => {
             Satılan ürünlerin depo maliyeti
           </span>
         </div>
+
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
             <span>Vade Farkı Maliyeti</span>
@@ -349,6 +339,7 @@ export const ProfitTab: React.FC = () => {
             Senetli satış vade maliyet yükü
           </span>
         </div>
+
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-emerald-500/30 dark:border-emerald-500/20 bg-emerald-50/20 dark:bg-emerald-950/20 shadow-xs">
           <div className="flex items-center justify-between text-xs font-semibold text-emerald-700 dark:text-emerald-400">
             <span>Elde Edilen Net Kâr</span>
@@ -361,6 +352,7 @@ export const ProfitTab: React.FC = () => {
             Ciro - (Maliyet + Vade Farkı)
           </span>
         </div>
+
         <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs">
           <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
             <span>Ortalama Kâr Marjı</span>
@@ -388,40 +380,6 @@ export const ProfitTab: React.FC = () => {
               className="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-100 placeholder-slate-400 outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
-          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs">
-            <Calendar className="w-3.5 h-3.5 text-slate-400" />
-            <select
-              value={selectedMonth}
-              onChange={e => setSelectedMonth(e.target.value)}
-              className="bg-transparent font-medium text-slate-700 dark:text-slate-200 outline-none cursor-pointer"
-            >
-              <option value="ALL">Tüm Aylar</option>
-              <option value="01">Ocak</option>
-              <option value="02">Şubat</option>
-              <option value="03">Mart</option>
-              <option value="04">Nisan</option>
-              <option value="05">Mayıs</option>
-              <option value="06">Haziran</option>
-              <option value="07">Temmuz</option>
-              <option value="08">Ağustos</option>
-              <option value="09">Eylül</option>
-              <option value="10">Ekim</option>
-              <option value="11">Kasım</option>
-              <option value="12">Aralık</option>
-            </select>
-          </div>
-          <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-xs">
-            <select
-              value={selectedYear}
-              onChange={e => setSelectedYear(e.target.value)}
-              className="bg-transparent font-medium text-slate-700 dark:text-slate-200 outline-none cursor-pointer"
-            >
-              <option value="ALL">Tüm Yıllar</option>
-              <option value="2026">2026</option>
-              <option value="2025">2025</option>
-              <option value="2024">2024</option>
-            </select>
-          </div>
           <select
             value={selectedSaleType}
             onChange={e => setSelectedSaleType(e.target.value)}
@@ -431,18 +389,6 @@ export const ProfitTab: React.FC = () => {
             <option value="Peşin">Yalnızca Peşin</option>
             <option value="Kredi Kartı">Kredi Kartı</option>
             <option value="Senetli Satış">Senetli Satış (Vadeli)</option>
-          </select>
-          <select
-            value={selectedCategory}
-            onChange={e => setSelectedCategory(e.target.value)}
-            className="px-3 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-medium text-slate-700 dark:text-slate-300 outline-none focus:ring-2 focus:ring-emerald-500"
-          >
-            <option value="ALL">Tüm Kategoriler</option>
-            {productCategories.map(cat => (
-              <option key={cat.id} value={cat.name}>
-                {cat.name}
-              </option>
-            ))}
           </select>
         </div>
       </div>
@@ -455,19 +401,20 @@ export const ProfitTab: React.FC = () => {
             Satış ve Kârlılık Tablosu ({filteredSales.length})
           </h3>
         </div>
+
         {filteredSales.length === 0 ? (
           <div className="p-12 text-center space-y-3">
             <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
               <ShoppingBag className="w-6 h-6" />
             </div>
             <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-              Seçilen kriterlere uygun satış kaydı bulunamadı
+              Seçilen kriterlere uygun satış kaydı bulunamadı.
             </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-semibold">
+              <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-semibold text-[10px] uppercase">
                 <tr>
                   <th className="py-3 px-3.5">Tarih</th>
                   <th className="py-3 px-3.5">Müşteri</th>
@@ -707,7 +654,7 @@ export const ProfitTab: React.FC = () => {
                   <option value="">Ürün seçin (Stoktaki mevcut ürünler)...</option>
                   {stockItems.map(stk => (
                     <option key={stk.id} value={stk.id}>
-                      {stk.name} [{stk.brand || stk.category}] · Mevcut: {stk.quantity} {stk.unit} · Maliyet: ₺{stk.purchasePrice.toLocaleString('tr-TR')} · Satış: ₺{stk.salePrice.toLocaleString('tr-TR')}
+                      {stk.name} [{stk.anaKategori} &gt; {stk.altKategori}] - Stok: {stk.quantity} {stk.unit} - Maliyet: ₺{stk.purchasePrice.toLocaleString('tr-TR')} - Satış: ₺{stk.salePrice.toLocaleString('tr-TR')}
                     </option>
                   ))}
                 </select>
@@ -843,7 +790,6 @@ export const ProfitTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* Kâr Önizleme */}
               <div className="p-3 bg-emerald-50 dark:bg-emerald-950/40 rounded-xl border border-emerald-200 dark:border-emerald-800/60 flex items-center justify-between text-xs font-medium">
                 <div>
                   <span className="text-slate-500 dark:text-slate-400 block text-[11px]">Toplam Satış Cirosu:</span>

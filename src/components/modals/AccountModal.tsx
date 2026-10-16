@@ -66,7 +66,6 @@ export const AccountModal: React.FC<AccountModalProps> = ({
         : type === 'Şirket Kredi Kartı'
         ? 'CreditCard'
         : 'Building2';
-
     const derivedDay = cutOffDay
       ? parseInt(cutOffDay, 10)
       : cutOffDate
@@ -153,7 +152,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
               required
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="ör: Garanti Ticari Hesap, Merkez Kasa"
+              placeholder="Ör: Garanti Ticari Hesap, Merkez Kasa"
               className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
@@ -167,7 +166,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
                 type="text"
                 value={bankName}
                 onChange={e => setBankName(e.target.value)}
-                placeholder="ör: Garanti BBVA, Yapı Kredi"
+                placeholder="Ör: Garanti BBVA, Yapı Kredi"
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>

@@ -14,9 +14,9 @@ import {
   Upload,
   RefreshCw,
   Save,
-  Tag,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { getUniqueAnaKategoriler, getUniqueAltKategoriler, getUniqueUrunGruplari } from '../../data/initialCategories';
 
 interface PriceListDetailModalProps {
   isOpen: boolean;
@@ -33,8 +33,7 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
     updatePriceList,
     stockItems,
     updateStockItem,
-    productCategories,
-    productBrands,
+    categoryHierarchy,
     showToast,
     isAdmin,
   } = useFinance();
@@ -50,10 +49,11 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [newItemCode, setNewItemCode] = useState('');
   const [newItemName, setNewItemName] = useState('');
-  const [newItemCategory, setNewItemCategory] = useState('Beyaz Eşya');
-  const [newItemBrand, setNewItemBrand] = useState('Bosch');
+  const [newAnaKategori, setNewAnaKategori] = useState('MOBİLYA');
+  const [newAltKategori, setNewAltKategori] = useState('BAMBİ');
+  const [newUrunGrubu, setNewUrunGrubu] = useState('BAMBİ YATAK');
+  const [newItemBrand, setNewItemBrand] = useState('BAMBI');
   const [newItemPrice, setNewItemPrice] = useState<number>(0);
-  const [newItemNotes, setNewItemNotes] = useState('');
 
   // Editing Item
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -64,13 +64,14 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
   const isToptan = priceList.listType === 'Toptan';
 
   const filteredItems = items.filter(item => {
-    if (selectedCatFilter !== 'ALL' && item.category !== selectedCatFilter) return false;
+    if (selectedCatFilter !== 'ALL' && item.anaKategori !== selectedCatFilter && item.category !== selectedCatFilter) return false;
     if (searchTerm.trim()) {
       const q = searchTerm.toLowerCase();
       const mName = (item.urunAdi || item.name || '').toLowerCase().includes(q);
       const mCode = (item.stokKodu || item.code || '').toLowerCase().includes(q);
       const mBrand = (item.brand || '').toLowerCase().includes(q);
-      if (!mName && !mCode && !mBrand) return false;
+      const mGrup = (item.urunGrubu || '').toLowerCase().includes(q);
+      if (!mName && !mCode && !mBrand && !mGrup) return false;
     }
     return true;
   });
@@ -116,6 +117,7 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
   const handleAddItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemName.trim() || !newItemCode.trim()) return;
+
     const numPrice = Number(newItemPrice) || 0;
     const newItem: PriceListItem = {
       id: `pli-${Date.now()}`,
@@ -123,20 +125,23 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
       code: newItemCode.trim(),
       urunAdi: newItemName.trim(),
       name: newItemName.trim(),
-      category: newItemCategory,
+      anaKategori: newAnaKategori,
+      altKategori: newAltKategori,
+      urunGrubu: newUrunGrubu,
+      category: newAnaKategori,
+      subCategory: newAltKategori,
       brand: newItemBrand || undefined,
       toptanFiyat: isToptan ? numPrice : undefined,
       perakendeFiyat: !isToptan ? numPrice : undefined,
       costPrice: isToptan ? numPrice : undefined,
       salePrice: !isToptan ? numPrice : undefined,
-      notes: newItemNotes.trim() || undefined,
     };
+
     setItems(prev => [newItem, ...prev]);
     setIsAddingItem(false);
     setNewItemName('');
     setNewItemCode('');
     setNewItemPrice(0);
-    setNewItemNotes('');
     showToast(`"${newItem.name}" fiyat listesine eklendi`, 'success');
   };
 
@@ -172,11 +177,17 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
             ...match,
             purchasePrice: itemP,
             totalValue: +(match.quantity * itemP).toFixed(2),
+            anaKategori: pItem.anaKategori || match.anaKategori,
+            altKategori: pItem.altKategori || match.altKategori,
+            urunGrubu: pItem.urunGrubu || match.urunGrubu,
           });
         } else {
           updateStockItem({
             ...match,
             salePrice: itemP,
+            anaKategori: pItem.anaKategori || match.anaKategori,
+            altKategori: pItem.altKategori || match.altKategori,
+            urunGrubu: pItem.urunGrubu || match.urunGrubu,
           });
         }
         updatedCount++;
@@ -189,77 +200,17 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
     const dataToExport = items.map(item => ({
       'stokKodu': item.stokKodu || item.code || '',
       'urunAdi': item.urunAdi || item.name,
-      'Kategori': item.category || '',
+      'Ana Kategori': item.anaKategori || item.category || '',
+      'Alt Kategori': item.altKategori || item.subCategory || '',
+      'Ürün Grubu': item.urunGrubu || '',
       'Marka': item.brand || '',
       [isToptan ? 'toptanFiyat' : 'perakendeFiyat']: getItemPrice(item),
-      'Notlar': item.notes || '',
     }));
     const worksheet = XLSX.utils.json_to_sheet(dataToExport);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Fiyat Listesi');
     XLSX.writeFile(workbook, `${priceList.title.replace(/[^a-zA-Z0-9_-]/g, '_')}_${priceList.monthKey}.xlsx`);
     showToast('Excel dosyası başarıyla indirildi', 'success');
-  };
-
-  const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = evt => {
-      try {
-        const data = evt.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(sheet) as any[];
-        if (!rows || rows.length === 0) {
-          alert('Excel dosyasında okunabilecek kayıt bulunamadı.');
-          return;
-        }
-        const newItems: PriceListItem[] = [];
-        rows.forEach((r, idx) => {
-          const rawCode = r['stokKodu'] || r['stok_kodu'] || r['Stok Kodu'] || r['kod'] || r['code'] || '';
-          const rawName = r['urunAdi'] || r['urun_adi'] || r['Ürün Adı'] || r['Urun Adi'] || r['name'] || rawCode;
-          const rawPrice = Number(
-            r[isToptan ? 'toptanFiyat' : 'perakendeFiyat'] ||
-            r['toptanFiyat'] ||
-            r['perakendeFiyat'] ||
-            r['fiyat'] ||
-            r['Fiyat'] ||
-            r['Toptan Fiyat'] ||
-            r['Perakende Fiyat'] ||
-            0
-          );
-
-          if (rawCode || rawName) {
-            newItems.push({
-              id: `pli-imp-${Date.now()}-${idx}`,
-              stokKodu: String(rawCode || '').trim(),
-              code: String(rawCode || '').trim(),
-              urunAdi: String(rawName).trim(),
-              name: String(rawName).trim(),
-              category: r['Kategori'] ? String(r['Kategori']).trim() : 'Beyaz Eşya',
-              brand: r['Marka'] ? String(r['Marka']).trim() : 'Genel',
-              toptanFiyat: isToptan ? rawPrice : undefined,
-              perakendeFiyat: !isToptan ? rawPrice : undefined,
-              costPrice: isToptan ? rawPrice : undefined,
-              salePrice: !isToptan ? rawPrice : undefined,
-              notes: r['Notlar'] ? String(r['Notlar']).trim() : undefined,
-            });
-          }
-        });
-        if (newItems.length > 0) {
-          setItems(prev => [...newItems, ...prev]);
-          showToast(`${newItems.length} adet ürün fiyat listesine aktarıldı!`, 'success');
-        } else {
-          alert('Excel dosyasında "stokKodu" veya "urunAdi" sütunları tespit edilemedi.');
-        }
-      } catch (err: any) {
-        alert('Excel okuma hatası: ' + err.message);
-      } finally {
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      }
-    };
-    reader.readAsBinaryString(file);
   };
 
   return (
@@ -288,7 +239,7 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400">
               {isToptan
-                ? 'Tedarikçi toptan alım fiyatlarını içerir. Mal Alımı ekranında genel iskonto bu baz fiyat üzerinden düşülür.'
+                ? 'Tedarikçi toptan alım fiyatlarını içerir. Mal Alımı ekranında baz fiyat olarak kullanılır.'
                 : 'Tavsiye edilen perakende satış etiket fiyatlarını içerir.'}
             </p>
           </div>
@@ -296,18 +247,9 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
             <input
               type="file"
               ref={fileInputRef}
-              onChange={handleExcelImport}
               accept=".xlsx, .xls, .csv"
               className="hidden"
             />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
-              title="Excel'den bu listeye ürün ekle"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              <span>Excel'den Yükle</span>
-            </button>
             <button
               onClick={handleExportExcel}
               className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
@@ -344,7 +286,7 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
                 type="text"
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                placeholder="Fiyat listesinde stok kodu veya ürün ara..."
+                placeholder="Stok kodu, ürün veya grup ara..."
                 className="w-full pl-8 pr-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
               />
             </div>
@@ -354,13 +296,14 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
               className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 outline-none"
             >
               <option value="ALL">Tüm Kategoriler ({items.length})</option>
-              {productCategories.map(c => (
-                <option key={c.id} value={c.name}>
-                  {c.name}
+              {getUniqueAnaKategoriler(categoryHierarchy).map(c => (
+                <option key={c} value={c}>
+                  {c}
                 </option>
               ))}
             </select>
           </div>
+
           <button
             onClick={() => setIsAddingItem(!isAddingItem)}
             className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition self-start sm:self-auto"
@@ -374,7 +317,7 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
         {isAddingItem && (
           <form
             onSubmit={handleAddItem}
-            className="p-3.5 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-xl grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-2.5 shrink-0 animate-in fade-in"
+            className="p-3.5 bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-xl grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-2.5 shrink-0 animate-in fade-in"
           >
             <div>
               <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Stok Kodu *</label>
@@ -383,7 +326,7 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
                 required
                 value={newItemCode}
                 onChange={e => setNewItemCode(e.target.value)}
-                placeholder="BSH-KGN86"
+                placeholder="Ör: ALT-BUL-003"
                 className="w-full px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none font-mono font-bold"
               />
             </div>
@@ -394,9 +337,25 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
                 required
                 value={newItemName}
                 onChange={e => setNewItemName(e.target.value)}
-                placeholder="Bosch KGN86 Kombi Buzdolabı"
+                placeholder="Ürün adı giriniz"
                 className="w-full px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none"
               />
+            </div>
+            <div>
+              <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">Ürün Grubu</label>
+              <input
+                type="text"
+                list="modal-pl-groups"
+                value={newUrunGrubu}
+                onChange={e => setNewUrunGrubu(e.target.value.toUpperCase())}
+                placeholder="Ürün Grubu"
+                className="w-full px-2.5 py-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none font-semibold"
+              />
+              <datalist id="modal-pl-groups">
+                {getUniqueUrunGruplari(categoryHierarchy).map(g => (
+                  <option key={g} value={g} />
+                ))}
+              </datalist>
             </div>
             <div>
               <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
@@ -430,7 +389,7 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
               <tr>
                 <th className="py-2.5 px-3 font-semibold">Stok Kodu</th>
                 <th className="py-2.5 px-3 font-semibold">Ürün Adı & Modeli</th>
-                <th className="py-2.5 px-3 font-semibold">Kategori / Marka</th>
+                <th className="py-2.5 px-3 font-semibold">3 Seviyeli Kategori (Ana &gt; Alt &gt; Grup)</th>
                 <th className="py-2.5 px-3 font-semibold text-right">
                   {isToptan ? 'Toptan Fiyat (Maliyet)' : 'Perakende Satış Fiyatı'}
                 </th>
@@ -441,7 +400,7 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
               {filteredItems.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-8 text-center text-slate-400">
-                    Fiyat listesinde kayıt bulunamadı. "Yeni Kalem Ekle" veya "Excel'den Yükle" ile ekleyebilirsiniz.
+                    Fiyat listesinde kayıt bulunamadı.
                   </td>
                 </tr>
               ) : (
@@ -462,17 +421,8 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
                         </div>
                       </td>
                       <td className="py-2.5 px-3">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          {item.category && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium">
-                              {item.category}
-                            </span>
-                          )}
-                          {item.brand && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/50 font-medium">
-                              {item.brand}
-                            </span>
-                          )}
+                        <div className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">
+                          {item.anaKategori || item.category || 'MOBİLYA'} &gt; {item.altKategori || item.subCategory || 'BAMBİ'} &gt; <strong className="text-emerald-600 dark:text-emerald-400">{item.urunGrubu || 'BAMBİ YATAK'}</strong>
                         </div>
                       </td>
                       <td className="py-2.5 px-3 text-right">
@@ -485,7 +435,7 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
                             className="w-28 px-2 py-1 bg-white dark:bg-slate-800 border border-indigo-500 rounded text-right font-mono font-bold text-xs"
                           />
                         ) : (
-                          <span className={`font-mono-num font-bold text-sm ${
+                          <span className={`font-mono font-bold text-sm ${
                             isToptan ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
                           }`}>
                             {formatCurrency(itemPrice)}

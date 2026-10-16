@@ -29,13 +29,14 @@ export const LoginScreen: React.FC = () => {
     setErrorMessage(null);
     const cleanUsername = username.trim();
     if (!cleanUsername) {
-      setErrorMessage('Lütfen kullanıcı adı girin.');
+      setErrorMessage('Lütfen kullanıcı adını girin.');
       return;
     }
     if (!password) {
       setErrorMessage('Lütfen şifrenizi girin.');
       return;
     }
+
     try {
       setIsSubmitting(true);
       await loginWithUsername(cleanUsername, password);
@@ -80,7 +81,7 @@ export const LoginScreen: React.FC = () => {
                 Admin & Personel
               </span>
               <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-700/60 text-slate-300 font-mono font-bold">
-                V2.5 Pro
+                V3.0
               </span>
             </div>
           </div>
@@ -267,15 +268,7 @@ export const LoginScreen: React.FC = () => {
           <div className="mt-6 pt-5 border-t border-slate-700/60 space-y-2.5">
             <div className="flex items-center gap-2.5 text-xs text-slate-400">
               <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Sabit Yönetici: ilkerarslan78@gmail / Şifre: 140514</span>
-            </div>
-            <div className="flex items-center gap-2.5 text-xs text-slate-400">
-              <Building2 className="w-4 h-4 text-sky-400 shrink-0" />
-              <span>Ofis PC ve Cep Telefonu kesintisiz 7/24 senkronize.</span>
-            </div>
-            <div className="flex items-center gap-2.5 text-xs text-slate-400">
-              <Wallet className="w-4 h-4 text-purple-400 shrink-0" />
-              <span>Stok, Kâr Takip, Kasa, Banka ve Vade Sistemi.</span>
+              <span>Yönetici: ilkerarslan78@gmail / Şifre: 140514</span>
             </div>
           </div>
         </div>

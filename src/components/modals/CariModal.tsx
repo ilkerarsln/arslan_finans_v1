@@ -136,14 +136,14 @@ export const CariModal: React.FC<CariModalProps> = ({
 
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Firma / Unvan Adı *
+              Firma / Ünvan Adı
             </label>
             <input
               type="text"
               required
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder="ör: Bosch A.Ş. veya Ahmet Yılmaz"
+              placeholder="Ör: Bosch A.Ş. veya Ahmet Yılmaz"
               className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
             />
           </div>
@@ -188,7 +188,7 @@ export const CariModal: React.FC<CariModalProps> = ({
               className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono focus:ring-2 focus:ring-emerald-500"
             />
             <p className="text-[11px] text-slate-400 mt-1">
-              * Pozitif değer alacağı (+), negatif değer firmaya borcumuzu (-) ifade eder.
+              * Pozitif değer alacağımızı (+), negatif değer firmaya borcumuzu (-) ifade eder.
             </p>
           </div>
 

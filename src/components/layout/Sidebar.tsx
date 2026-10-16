@@ -44,7 +44,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     userProfile,
     stockItems,
     sales,
-    priceLists,
+    categoryHierarchy,
     isCloudSyncing,
     openCommandPalette,
     openDataImporter,
@@ -87,9 +87,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     },
     {
       id: 'definitions',
-      label: 'Tanımlamalar & Fiyat Listesi',
+      label: 'Tanımlamalar & 3 Seviyeli Kategori',
       icon: <SlidersHorizontal className="w-4 h-4 text-amber-400" />,
-      badge: priceLists.length > 0 ? priceLists.length : undefined,
+      badge: categoryHierarchy.length > 0 ? categoryHierarchy.length : undefined,
     },
     {
       id: 'reports',
@@ -259,7 +259,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             );
           })}
 
-          {/* Yalın Mal Alımı Hızlı Sihirbaz Butonu */}
+          {/* Yalın Mal Alımı Butonu */}
           <div className="pt-2 mt-2 border-t border-slate-800/80 space-y-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3">
               Veri & Alım Sihirbazı
@@ -279,7 +279,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
         {/* Sidebar Footer */}
         <div className="p-3 border-t border-slate-800/80 text-xs text-slate-500 flex flex-col gap-2">
-          {/* OFİS - MOBİL Bulut Entegrasyon Göstergesi */}
+          {/* OFİS - MOBİL Entegrasyon */}
           <div className="bg-gradient-to-r from-emerald-950/70 via-slate-900 to-slate-900 border border-emerald-500/30 rounded-xl p-2.5 shadow-inner">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-1.5">
@@ -316,7 +316,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                   {userProfile?.displayName || user.displayName || userProfile?.username || user.email?.split('@')[0]}
                 </span>
                 <span className="text-[10px] text-slate-400 block truncate">
-                  {userProfile?.username ? `Personel: @${userProfile.username}` : user.email}
+                  {userProfile?.username ? `@${userProfile.username}` : user.email}
                 </span>
               </div>
               {isAdmin ? (

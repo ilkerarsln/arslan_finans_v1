@@ -57,10 +57,8 @@ export function getDaysRemaining(dateStr: string): { days: number; text: string;
   today.setHours(0, 0, 0, 0);
   const target = new Date(dateStr);
   target.setHours(0, 0, 0, 0);
-
   const diffTime = target.getTime() - today.getTime();
   const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
-
   if (diffDays < 0) {
     return { days: Math.abs(diffDays), text: `${Math.abs(diffDays)} gün gecikti`, status: 'overdue' };
   } else if (diffDays === 0) {
@@ -89,17 +87,10 @@ export function calculateInstallmentDate(firstDueDate: string, installmentIndex:
   return addDays(firstDueDate, installmentIndex * 30);
 }
 
-// Kritik Kural: 10 TL'nin tam katına yukarı yuvarlama
-// Örn: 1.234 -> 1.240, 1.238 -> 1.240, 1.200 -> 1.200
+// 10 TL'nin tam katına yukarı yuvarlama
 export function roundUpTo10TL(amount: number): number {
   if (isNaN(amount) || amount <= 0) return 0;
   return Math.ceil(amount / 10) * 10;
-}
-
-// Eski 100 TL kuralı referansı
-export function roundUpTo100TL(amount: number): number {
-  if (isNaN(amount) || amount <= 0) return 0;
-  return Math.ceil(amount / 100) * 100;
 }
 
 export interface InstallmentScheduleItem {
@@ -121,7 +112,6 @@ export function calculateInstallmentSchedule(
   const remainder = Math.round((totalAmount - baseAmount * count) * 100) / 100;
   const schedule: InstallmentScheduleItem[] = [];
   const displayName = firmName.trim() || 'Taksit';
-
   for (let i = 1; i <= count; i++) {
     const dueDate = calculateInstallmentDate(firstDueDate, i - 1);
     const amount = i === count ? +(baseAmount + remainder).toFixed(2) : baseAmount;

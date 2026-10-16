@@ -34,7 +34,7 @@ const TAB_TITLES: Record<ActiveTab, { title: string; subtitle: string }> = {
   },
   stock: {
     title: 'Mal Alımı & Stok Yönetimi',
-    subtitle: 'Tedarikçi borçlandırması, yalın 2 sütunlu Excel alım entegrasyonu ve stok takibi',
+    subtitle: '3 seviyeli kategori hiyerarşisi, yalın 2 sütunlu Excel alım entegrasyonu ve stok takibi',
   },
   transactions: {
     title: 'Gelir ve Gider Hareketleri (Kasa)',
@@ -42,15 +42,15 @@ const TAB_TITLES: Record<ActiveTab, { title: string; subtitle: string }> = {
   },
   accounts: {
     title: 'Banka Hesapları & Kasalar',
-    subtitle: 'Kasa, banka ve POS hesapları, dönemsel hareket ekstreleri ve transferler',
+    subtitle: 'Kasa, banka ve POS hesapları dönemsel hareket ekstreleri ve transferler',
   },
   currents: {
     title: 'Cari Hesap Yönetimi',
     subtitle: 'Ortak müşteri ve tedarikçi borç/alacak takibi ve ekstreler',
   },
   definitions: {
-    title: 'Tanımlamalar & Fiyat Listeleri',
-    subtitle: 'Toptan ve Perakende fiyat listeleri, kategoriler, markalar ve vade oranları',
+    title: 'Tanımlamalar & 3 Seviyeli Kategori',
+    subtitle: 'Ana Kategori > Alt Kategori > Ürün Grubu hiyerarşisi, markalar ve fiyat listeleri',
   },
   upcoming: {
     title: 'Vade & Ödeme Takvimi',

@@ -18,6 +18,7 @@ import {
   Account,
   Cari,
   CategoryItem,
+  CategoryHierarchyItem,
   Transaction,
   UpcomingDue,
   UserProfile,
@@ -55,6 +56,7 @@ export function subscribeToUserData(
     onSales?: (sales: SaleRecord[]) => void;
     onDeletionRequests?: (requests: DeletionRequest[]) => void;
     onAuditLogs?: (logs: AuditLogEntry[]) => void;
+    onCategoryHierarchy?: (items: CategoryHierarchyItem[]) => void;
   }
 ): () => void {
   const unsubs: Unsubscribe[] = [];
@@ -137,25 +139,7 @@ export function subscribeToUserData(
     handleFirestoreError(error, OperationType.GET, duesPath);
   }
 
-  // 5. Categories
-  const catPath = `users/${userId}/categories`;
-  try {
-    const unsubCat = onSnapshot(
-      collection(db, 'users', userId, 'categories'),
-      snapshot => {
-        const items = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as CategoryItem);
-        callbacks.onCategories(items);
-      },
-      error => {
-        handleFirestoreError(error, OperationType.GET, catPath);
-      }
-    );
-    unsubs.push(unsubCat);
-  } catch (error) {
-    handleFirestoreError(error, OperationType.GET, catPath);
-  }
-
-  // 6. Stocks
+  // 5. Stocks
   if (callbacks.onStocks) {
     const stockPath = `users/${userId}/stocks`;
     try {
@@ -175,7 +159,7 @@ export function subscribeToUserData(
     }
   }
 
-  // 7. Price Lists
+  // 6. Price Lists
   if (callbacks.onPriceLists) {
     const plPath = `users/${userId}/priceLists`;
     try {
@@ -195,45 +179,23 @@ export function subscribeToUserData(
     }
   }
 
-  // 8. Deletion Requests
-  if (callbacks.onDeletionRequests) {
-    const reqPath = `users/${userId}/deletionRequests`;
+  // 7. Category Hierarchy
+  if (callbacks.onCategoryHierarchy) {
+    const catHPath = `users/${userId}/categoryHierarchy`;
     try {
-      const unsubReq = onSnapshot(
-        collection(db, 'users', userId, 'deletionRequests'),
+      const unsubCatH = onSnapshot(
+        collection(db, 'users', userId, 'categoryHierarchy'),
         snapshot => {
-          const items = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as DeletionRequest);
-          items.sort((a, b) => (b.requestedAt || '').localeCompare(a.requestedAt || ''));
-          callbacks.onDeletionRequests!(items);
+          const items = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as CategoryHierarchyItem);
+          if (items.length > 0) callbacks.onCategoryHierarchy!(items);
         },
         error => {
-          handleFirestoreError(error, OperationType.GET, reqPath);
+          handleFirestoreError(error, OperationType.GET, catHPath);
         }
       );
-      unsubs.push(unsubReq);
+      unsubs.push(unsubCatH);
     } catch (error) {
-      handleFirestoreError(error, OperationType.GET, reqPath);
-    }
-  }
-
-  // 9. Audit Logs
-  if (callbacks.onAuditLogs) {
-    const logPath = `users/${userId}/auditLogs`;
-    try {
-      const unsubLog = onSnapshot(
-        collection(db, 'users', userId, 'auditLogs'),
-        snapshot => {
-          const items = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as any) }) as AuditLogEntry);
-          items.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
-          callbacks.onAuditLogs!(items);
-        },
-        error => {
-          handleFirestoreError(error, OperationType.GET, logPath);
-        }
-      );
-      unsubs.push(unsubLog);
-    } catch (error) {
-      handleFirestoreError(error, OperationType.GET, logPath);
+      handleFirestoreError(error, OperationType.GET, catHPath);
     }
   }
 
@@ -242,62 +204,21 @@ export function subscribeToUserData(
   };
 }
 
-export async function fetchUserDataFromFirestore(userId: string): Promise<{
-  accounts: Account[];
-  transactions: Transaction[];
-  caris: Cari[];
-  upcomingDues: UpcomingDue[];
-  categories: CategoryItem[];
-  stocks: StockItem[];
-  priceLists: PriceListEntry[];
-  deletionRequests: DeletionRequest[];
-  auditLogs: AuditLogEntry[];
-}> {
+export async function syncCategoryHierarchyToCloud(userId: string, item: CategoryHierarchyItem) {
+  const path = `users/${userId}/categoryHierarchy/${item.id}`;
   try {
-    const [accSnap, txSnap, cariSnap, duesSnap, catSnap, stockSnap, plSnap, reqSnap, logSnap] = await Promise.all([
-      getDocs(collection(db, 'users', userId, 'accounts')).catch(() => ({ docs: [] } as any)),
-      getDocs(collection(db, 'users', userId, 'transactions')).catch(() => ({ docs: [] } as any)),
-      getDocs(collection(db, 'users', userId, 'caris')).catch(() => ({ docs: [] } as any)),
-      getDocs(collection(db, 'users', userId, 'upcomingDues')).catch(() => ({ docs: [] } as any)),
-      getDocs(collection(db, 'users', userId, 'categories')).catch(() => ({ docs: [] } as any)),
-      getDocs(collection(db, 'users', userId, 'stocks')).catch(() => ({ docs: [] } as any)),
-      getDocs(collection(db, 'users', userId, 'priceLists')).catch(() => ({ docs: [] } as any)),
-      getDocs(collection(db, 'users', userId, 'deletionRequests')).catch(() => ({ docs: [] } as any)),
-      getDocs(collection(db, 'users', userId, 'auditLogs')).catch(() => ({ docs: [] } as any)),
-    ]);
-
-    const accounts = accSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) }) as Account);
-    const transactions = txSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) }) as Transaction);
-    transactions.sort((a: Transaction, b: Transaction) => {
-      const timeA = new Date(a.date).getTime();
-      const timeB = new Date(b.date).getTime();
-      if (timeA !== timeB) return timeB - timeA;
-      return (b.createdAt || '').localeCompare(a.createdAt || '');
-    });
-    const caris = cariSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) }) as Cari);
-    const upcomingDues = duesSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) }) as UpcomingDue);
-    const categories = catSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) }) as CategoryItem);
-    const stocks = stockSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) }) as StockItem);
-    const priceLists = plSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) }) as PriceListEntry);
-    const deletionRequests = reqSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) }) as DeletionRequest);
-    deletionRequests.sort((a: DeletionRequest, b: DeletionRequest) => (b.requestedAt || '').localeCompare(a.requestedAt || ''));
-    const auditLogs = logSnap.docs.map((d: any) => ({ id: d.id, ...(d.data() as any) }) as AuditLogEntry);
-    auditLogs.sort((a: AuditLogEntry, b: AuditLogEntry) => (b.timestamp || '').localeCompare(a.timestamp || ''));
-
-    return { accounts, transactions, caris, upcomingDues, categories, stocks, priceLists, deletionRequests, auditLogs };
+    await setDoc(doc(db, 'users', userId, 'categoryHierarchy', item.id), sanitizeData({ ...item, userId }), { merge: true });
   } catch (error) {
-    handleFirestoreError(error, OperationType.GET, `users/${userId}`);
-    return {
-      accounts: [],
-      transactions: [],
-      caris: [],
-      upcomingDues: [],
-      categories: [],
-      stocks: [],
-      priceLists: [],
-      deletionRequests: [],
-      auditLogs: [],
-    };
+    handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+export async function deleteCategoryHierarchyFromCloud(userId: string, itemId: string) {
+  const path = `users/${userId}/categoryHierarchy/${itemId}`;
+  try {
+    await deleteDoc(doc(db, 'users', userId, 'categoryHierarchy', itemId));
+  } catch (error) {
+    handleFirestoreError(error, OperationType.DELETE, path);
   }
 }
 
@@ -478,6 +399,7 @@ export async function uploadAllInitialDataToCloud(
     categories: CategoryItem[];
     stocks?: StockItem[];
     priceLists?: PriceListEntry[];
+    categoryHierarchy?: CategoryHierarchyItem[];
   }
 ) {
   const batch = writeBatch(db);
@@ -538,6 +460,11 @@ export async function uploadAllInitialDataToCloud(
         batch.set(doc(db, 'users', userId, 'priceLists', pl.id), sanitizeData({ ...pl, userId }));
       });
     }
+    if (data.categoryHierarchy) {
+      data.categoryHierarchy.forEach(ch => {
+        batch.set(doc(db, 'users', userId, 'categoryHierarchy', ch.id), sanitizeData({ ...ch, userId }));
+      });
+    }
     await batch.commit();
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
@@ -545,7 +472,7 @@ export async function uploadAllInitialDataToCloud(
 }
 
 export async function clearAllCloudData(userId: string) {
-  const subcollections = ['transactions', 'caris', 'upcomingDues', 'accounts', 'categories', 'stocks', 'priceLists', 'purchases', 'sales'];
+  const subcollections = ['transactions', 'caris', 'upcomingDues', 'accounts', 'categories', 'stocks', 'priceLists', 'purchases', 'sales', 'categoryHierarchy'];
   for (const sub of subcollections) {
     try {
       const snap = await getDocs(collection(db, 'users', userId, sub));
@@ -610,7 +537,6 @@ export function subscribeToUserProfile(
 }
 
 export function subscribeToAllUsers(callback: (users: UserProfile[]) => void): Unsubscribe {
-  const path = 'users';
   if (!auth.currentUser) {
     callback([]);
     return () => {};
@@ -709,8 +635,6 @@ export async function deletePreAssignedUser(targetUserId: string): Promise<void>
   }
 }
 
-// Staff (Username & Password) Personnel System
-// Sabit yönetici: ilkerarslan78@gmail / 140514
 export const DEFAULT_STAFF_ACCOUNTS: StaffAccount[] = [
   {
     id: 'ilkerarslan78@gmail',
@@ -733,42 +657,12 @@ export const DEFAULT_STAFF_ACCOUNTS: StaffAccount[] = [
     createdBy: 'Sistem',
   },
   {
-    id: 'ilkerarslan78@gmail.com',
-    username: 'ilkerarslan78@gmail.com',
-    displayName: 'İlker Arslan (Yönetici)',
-    role: 'Admin',
-    password: '140514',
-    email: 'ilkerarslan78@gmail.com',
-    createdAt: new Date().toISOString(),
-    createdBy: 'Sistem',
-  },
-  {
-    id: 'arslanmobilya78@gmail.com',
-    username: 'arslanmobilya78@gmail.com',
-    displayName: 'Arslan Mobilya (Yönetici)',
-    role: 'Admin',
-    password: '140514',
-    email: 'arslanmobilya78@gmail.com',
-    createdAt: new Date().toISOString(),
-    createdBy: 'Sistem',
-  },
-  {
     id: 'kasa',
     username: 'kasa',
     displayName: 'Kasa Personeli',
     role: 'Standart',
     password: '123456',
     email: 'kasa@arslanfinans.internal',
-    createdAt: new Date().toISOString(),
-    createdBy: 'Sistem',
-  },
-  {
-    id: 'muhasebe',
-    username: 'muhasebe',
-    displayName: 'Muhasebe Sorumlusu',
-    role: 'Standart',
-    password: '123456',
-    email: 'muhasebe@arslanfinans.internal',
     createdAt: new Date().toISOString(),
     createdBy: 'Sistem',
   },
@@ -802,7 +696,7 @@ export async function loginStaffWithUsername(
   const username = rawUsername.trim().toLowerCase();
   const password = rawPassword.trim();
   if (!username) {
-    throw new Error('Lütfen kullanıcı adı girin.');
+    throw new Error('Lütfen kullanıcı adını girin.');
   }
   if (!password) {
     throw new Error('Lütfen şifrenizi girin.');
@@ -830,7 +724,7 @@ export async function loginStaffWithUsername(
   }
 
   if (!staff) {
-    throw new Error('Kullanıcı bulunamadı. Lütfen kullanıcı adınızı kontrol edin.');
+    throw new Error('Kullanıcı bulunamadı. Lütfen kullanıcı adını kontrol edin.');
   }
 
   const isAdminUser =
@@ -841,7 +735,6 @@ export async function loginStaffWithUsername(
     staff.email?.toLowerCase() === 'arslanmobilya78@gmail.com';
 
   if (isAdminUser) {
-    // Sabit yönetici şifresi: 140514
     if (password !== '140514' && staff.password !== password) {
       throw new Error('Hatalı şifre girdiniz. Yönetici şifrenizi (140514) kontrol edin.');
     }
@@ -862,7 +755,7 @@ export async function loginStaffWithUsername(
       authUid = cred.user.uid;
     }
   } catch (authErr) {
-    // Non-fatal, use internal staff session
+    // offline fallback
   }
 
   const profile: UserProfile = {
@@ -879,9 +772,7 @@ export async function loginStaffWithUsername(
 
   try {
     await setDoc(doc(db, 'staff_accounts', staff.username), { lastLoginAt: new Date().toISOString() }, { merge: true });
-  } catch {
-    // Non-fatal if offline
-  }
+  } catch {}
 
   return { staff, role: profile.role, profile, authUid };
 }

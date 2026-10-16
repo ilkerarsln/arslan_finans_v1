@@ -37,6 +37,7 @@ export const CommandPalette: React.FC = () => {
   const {
     isCommandPaletteOpen,
     closeCommandPalette,
+    openCommandPalette,
     openTransactionModal,
     openInstallmentModal,
     openCurrencyConverter,
@@ -69,14 +70,13 @@ export const CommandPalette: React.FC = () => {
         if (isCommandPaletteOpen) {
           closeCommandPalette();
         } else {
-          const event = new CustomEvent('open-command-palette');
-          window.dispatchEvent(event);
+          openCommandPalette();
         }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isCommandPaletteOpen, closeCommandPalette]);
+  }, [isCommandPaletteOpen, closeCommandPalette, openCommandPalette]);
 
   const allItems: PaletteItem[] = useMemo(() => {
     const actions: PaletteItem[] = [
@@ -147,17 +147,6 @@ export const CommandPalette: React.FC = () => {
         },
       },
       {
-        id: 'act-transfer',
-        category: 'Hızlı Eylemler',
-        title: 'Hesaplar Arası Virman / Transfer Yap',
-        subtitle: 'Kasa ve bankalar arasında bakiye aktar',
-        icon: <ArrowRightLeft className="w-4 h-4 text-blue-500" />,
-        action: () => {
-          closeCommandPalette();
-          setActiveTab('accounts');
-        },
-      },
-      {
         id: 'act-fx',
         category: 'Hızlı Eylemler',
         title: 'Canlı Döviz Çevirici & Hesaplayıcı (USD/EUR)',
@@ -224,22 +213,12 @@ export const CommandPalette: React.FC = () => {
         },
       },
       {
-        id: 'nav-tx',
+        id: 'nav-definitions',
         category: 'Modüllere Git',
-        title: 'Gelir / Gider Hareketleri (Kasa)',
-        icon: <ArrowRightLeft className="w-4 h-4 text-slate-400" />,
+        title: 'Tanımlamalar (3 Seviyeli Kategori, Marka, Fiyat Listeleri)',
+        icon: <SlidersHorizontal className="w-4 h-4 text-amber-400" />,
         action: () => {
-          setActiveTab('transactions');
-          closeCommandPalette();
-        },
-      },
-      {
-        id: 'nav-accounts',
-        category: 'Modüllere Git',
-        title: 'Bankalar & Kasalar & Kredi Kartları',
-        icon: <Building2 className="w-4 h-4 text-slate-400" />,
-        action: () => {
-          setActiveTab('accounts');
+          setActiveTab('definitions');
           closeCommandPalette();
         },
       },
@@ -254,52 +233,12 @@ export const CommandPalette: React.FC = () => {
         },
       },
       {
-        id: 'nav-upcoming',
+        id: 'nav-accounts',
         category: 'Modüllere Git',
-        title: 'Vade & Ödeme Takvimi',
-        icon: <CalendarDays className="w-4 h-4 text-slate-400" />,
+        title: 'Bankalar & Kasalar & Kredi Kartları',
+        icon: <Building2 className="w-4 h-4 text-slate-400" />,
         action: () => {
-          setActiveTab('upcoming');
-          closeCommandPalette();
-        },
-      },
-      {
-        id: 'nav-reports',
-        category: 'Modüllere Git',
-        title: 'Mali Raporlar & Kategori Dağılımı',
-        icon: <FileBarChart2 className="w-4 h-4 text-slate-400" />,
-        action: () => {
-          setActiveTab('reports');
-          closeCommandPalette();
-        },
-      },
-      {
-        id: 'nav-definitions',
-        category: 'Modüllere Git',
-        title: 'Tanımlamalar (Kategori, Marka, Fiyat Listeleri)',
-        icon: <SlidersHorizontal className="w-4 h-4 text-amber-400" />,
-        action: () => {
-          setActiveTab('definitions');
-          closeCommandPalette();
-        },
-      },
-      {
-        id: 'nav-audit',
-        category: 'Modüllere Git',
-        title: 'İşlem Denetim Raporu & Onaylar',
-        icon: <ShieldAlert className="w-4 h-4 text-emerald-400" />,
-        action: () => {
-          setActiveTab('audit');
-          closeCommandPalette();
-        },
-      },
-      {
-        id: 'nav-users',
-        category: 'Modüllere Git',
-        title: 'Personel & Rol Yönetimi',
-        icon: <ShieldCheck className="w-4 h-4 text-amber-400" />,
-        action: () => {
-          setActiveTab('users');
+          setActiveTab('accounts');
           closeCommandPalette();
         },
       },
@@ -321,7 +260,7 @@ export const CommandPalette: React.FC = () => {
       id: `stock-${s.id}`,
       category: 'Stok Ürünleri',
       title: s.name,
-      subtitle: `${s.category} · ${s.brand || 'Genel'} · Stok: ${s.quantity} Adet · Satış: ${formatCurrency(s.salePrice)}`,
+      subtitle: `${s.anaKategori || s.category} > ${s.altKategori || s.subCategory} · Stok: ${s.quantity} Adet · Satış: ${formatCurrency(s.salePrice)}`,
       icon: <Boxes className="w-4 h-4 text-sky-500" />,
       action: () => {
         setActiveTab('stock');
@@ -409,14 +348,13 @@ export const CommandPalette: React.FC = () => {
               setSelectedIndex(0);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Bir işlem, modül, cari veya ürün arayın... (Örn: Mal Alımı, Bosch, Ahmet, Virman)"
+            placeholder="Bir işlem, modül, cari veya ürün arayın... (Örn: Mal Alımı, Bosch, Bambi)"
             className="w-full bg-transparent text-sm font-medium placeholder-slate-400 outline-none text-slate-900 dark:text-white"
           />
           <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 rounded">
             ESC
           </kbd>
         </div>
-
         <div className="max-h-[380px] overflow-y-auto p-2 space-y-1">
           {filteredItems.length === 0 ? (
             <div className="py-8 text-center text-xs text-slate-400">
@@ -469,16 +407,6 @@ export const CommandPalette: React.FC = () => {
               );
             })
           )}
-        </div>
-
-        <div className="px-4 py-2.5 bg-slate-50 dark:bg-slate-850 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-400">
-          <div className="flex items-center gap-3">
-            <span>↑↓ ile gezin</span>
-            <span>↵ ile seç</span>
-          </div>
-          <span className="font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
-            Hızlı Komut Paleti
-          </span>
         </div>
       </div>
     </div>

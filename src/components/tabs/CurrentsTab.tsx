@@ -2,402 +2,238 @@ import React, { useState, useMemo } from 'react';
 import { useFinance } from '../../context/FinanceContext';
 import {
   Users,
-  Search,
   Plus,
-  ArrowUpRight,
-  ArrowDownLeft,
-  Calendar,
-  Phone,
-  Mail,
-  Building,
-  User,
+  Search,
+  Filter,
   Trash2,
   Edit2,
-  FileText,
-  CreditCard,
-  Download,
+  Eye,
+  Phone,
+  Mail,
+  MapPin,
+  TrendingUp,
+  Building2,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 import { Cari, CariType } from '../../types/finance';
 import { CariModal } from '../modals/CariModal';
 import { CariDetailModal } from '../modals/CariDetailModal';
-import * as XLSX from 'xlsx';
 
 export const CurrentsTab: React.FC = () => {
   const {
     caris,
-    openInstallmentModal,
     deleteCari,
     isAdmin,
-    showToast,
+    requestDeleteCari,
   } = useFinance();
 
-  const [selectedType, setSelectedType] = useState<string>('ALL');
-  const [searchTerm, setSearchTerm] = useState<string>('');
-  const [balanceFilter, setBalanceFilter] = useState<'ALL' | 'borc' | 'alacak' | 'zero'>('ALL');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState<string>('ALL');
 
-  // Modal states
   const [isCariModalOpen, setIsCariModalOpen] = useState(false);
   const [editingCari, setEditingCari] = useState<Cari | null>(null);
-  const [selectedCariDetail, setSelectedCariDetail] = useState<Cari | null>(null);
+  const [detailCari, setDetailCari] = useState<Cari | null>(null);
 
   const filteredCaris = useMemo(() => {
     return caris.filter(c => {
-      if (selectedType !== 'ALL' && c.type !== selectedType) return false;
-      if (balanceFilter === 'borc' && c.balance >= 0) return false; // Borcumuz var (negatif)
-      if (balanceFilter === 'alacak' && c.balance <= 0) return false; // Alacağımız var (pozitif)
-      if (balanceFilter === 'zero' && c.balance !== 0) return false;
+      const matchSearch =
+        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (c.phone && c.phone.includes(searchTerm)) ||
+        (c.city && c.city.toLowerCase().includes(searchTerm.toLowerCase()));
 
-      if (searchTerm.trim()) {
-        const q = searchTerm.toLowerCase();
-        const mName = c.name.toLowerCase().includes(q);
-        const mPhone = (c.phone || '').toLowerCase().includes(q);
-        const mCity = (c.city || '').toLowerCase().includes(q);
-        const mTax = (c.taxNumber || '').toLowerCase().includes(q);
-        if (!mName && !mPhone && !mCity && !mTax) return false;
-      }
-      return true;
+      const matchType = typeFilter === 'ALL' || c.type === typeFilter;
+      return matchSearch && matchType;
     });
-  }, [caris, selectedType, balanceFilter, searchTerm]);
+  }, [caris, searchTerm, typeFilter]);
 
-  // Statistics
-  const stats = useMemo(() => {
-    let totalReceivable = 0; // Bizim alacağımız (pozitif)
-    let totalPayable = 0; // Bizim borcumuz (negatif bakiye -> tedarikçiler vs)
-    let supplierCount = 0;
-    let customerCount = 0;
-
-    caris.forEach(c => {
-      if (c.type === 'Tedarikçi') supplierCount++;
-      if (c.type === 'Müşteri') customerCount++;
-
-      if (c.balance > 0) {
-        totalReceivable += c.balance;
-      } else if (c.balance < 0) {
-        totalPayable += Math.abs(c.balance);
-      }
-    });
-
-    return { totalReceivable, totalPayable, supplierCount, customerCount };
-  }, [caris]);
-
-  const handleOpenNewCari = () => {
+  const handleOpenNew = () => {
     setEditingCari(null);
     setIsCariModalOpen(true);
   };
 
-  const handleOpenEditCari = (cari: Cari) => {
-    setEditingCari(cari);
+  const handleOpenEdit = (c: Cari) => {
+    setEditingCari(c);
     setIsCariModalOpen(true);
   };
 
-  const handleExportExcel = () => {
-    try {
-      const rows = filteredCaris.map(c => ({
-        Ünvan: c.name,
-        Tür: c.type,
-        Bakiye: c.balance,
-        Telefon: c.phone || '-',
-        Şehir: c.city || '-',
-        VergiNo: c.taxNumber || '-',
-        Eposta: c.email || '-',
-      }));
-      const ws = XLSX.utils.json_to_sheet(rows);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'CariListesi');
-      XLSX.writeFile(wb, 'Arslan_Mobilya_Cari_Listesi.xlsx');
-      showToast('Cari listesi Excel olarak indirildi', 'success');
-    } catch {
-      showToast('Dışa aktarma başarısız', 'error');
+  const handleDelete = (id: string, name: string) => {
+    if (isAdmin) {
+      if (window.confirm(`"${name}" cari hesabını silmek istediğinize emin misiniz?`)) {
+        deleteCari(id);
+      }
+    } else {
+      const reason = window.prompt(`Silme gerekçesi:`, 'Cari kayıt silme talebi');
+      if (reason) {
+        requestDeleteCari(id, reason);
+      }
     }
   };
 
   return (
     <div className="space-y-6">
-      {/* Top Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl">
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>Toplam Müşteri Alacağı</span>
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center">
-              <ArrowDownLeft className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-xl font-bold font-mono text-emerald-400 mt-2">
-            {formatCurrency(stats.totalReceivable)}
-          </div>
-          <span className="text-[11px] text-slate-500 mt-1 block">
-            {stats.customerCount} Müşteri kaydı
-          </span>
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+        <div>
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <Users className="w-6 h-6 text-indigo-400" />
+            Cari Hesaplar (Müşteri & Tedarikçiler)
+          </h2>
+          <p className="text-xs text-slate-400 mt-1">
+            Müşteriler, tedarikçiler ve çalışanların cari bakiyelerini ve hareketlerini görüntüleyin.
+          </p>
         </div>
 
-        <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl">
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>Toplam Tedarikçi Borcu</span>
-            <div className="w-8 h-8 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center">
-              <ArrowUpRight className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-xl font-bold font-mono text-rose-400 mt-2">
-            {formatCurrency(stats.totalPayable)}
-          </div>
-          <span className="text-[11px] text-slate-500 mt-1 block">
-            {stats.supplierCount} Tedarikçi & Fabrika borcu
-          </span>
-        </div>
-
-        <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl">
-          <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>Net Cari Pozisyonu</span>
-            <Users className="w-4 h-4 text-sky-400" />
-          </div>
-          <div
-            className={`text-xl font-bold font-mono mt-2 ${
-              stats.totalReceivable - stats.totalPayable >= 0 ? 'text-emerald-400' : 'text-rose-400'
-            }`}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleOpenNew}
+            className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-900/20 transition-all"
           >
-            {formatCurrency(stats.totalReceivable - stats.totalPayable)}
-          </div>
-          <span className="text-[11px] text-slate-500 mt-1 block">Alacak - Borç farkı</span>
-        </div>
-
-        <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl flex flex-col justify-between">
-          <div className="text-xs text-slate-400">Toplam Kayıtlı Cari</div>
-          <div className="text-2xl font-bold font-mono text-slate-100">
-            {caris.length} Firma / Şahıs
-          </div>
-          <span className="text-[11px] text-slate-500">Toptan & Perakende ortak cari havuzu</span>
+            <Plus className="w-4 h-4" /> Yeni Cari Ekle
+          </button>
         </div>
       </div>
 
-      {/* Filter and Control Bar */}
-      <div className="p-4 bg-slate-900 border border-slate-800 rounded-2xl space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleOpenNewCari}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-sm transition"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Yeni Cari Kart Ekle</span>
-            </button>
-            <button
-              onClick={() => openInstallmentModal()}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition"
-            >
-              <CreditCard className="w-4 h-4 text-sky-400" />
-              <span>Senet / Taksit Planla</span>
-            </button>
-          </div>
-
-          <button
-            onClick={handleExportExcel}
-            className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition"
-          >
-            <Download className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Excel'e Aktar</span>
-          </button>
+      {/* Filters */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-900/30 p-3 rounded-xl border border-slate-800/60">
+        <div className="relative md:col-span-2">
+          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Cari adı, telefon, şehir ara..."
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            className="w-full bg-slate-950/70 border border-slate-800 pl-9 pr-3 py-1.5 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+          />
         </div>
 
-        {/* Filter inputs */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-800/80">
-          <div>
-            <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
-              Cari Türü
-            </label>
-            <select
-              value={selectedType}
-              onChange={e => setSelectedType(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-emerald-500"
-            >
-              <option value="ALL">Tümü (Müşteri & Tedarikçi)</option>
-              <option value="Tedarikçi">Tedarikçiler (Fabrikalar)</option>
-              <option value="Müşteri">Müşteriler</option>
-              <option value="Ortak">Ortaklar / Personel</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
-              Bakiye Durumu
-            </label>
-            <select
-              value={balanceFilter}
-              onChange={e => setBalanceFilter(e.target.value as any)}
-              className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl px-2.5 py-1.5 text-xs focus:ring-1 focus:ring-emerald-500"
-            >
-              <option value="ALL">Tüm Bakiyeler</option>
-              <option value="borc">Borcumuz Olanlar (Tedarikçi Borcu)</option>
-              <option value="alacak">Alacağımız Olanlar (Müşteri Alacağı)</option>
-              <option value="zero">Bakiyesi Sıfır Olanlar</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">
-              Arama
-            </label>
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
-                type="text"
-                placeholder="Firma ünvanı, tel, vergi no..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 text-slate-200 rounded-xl pl-8 pr-2.5 py-1.5 text-xs focus:ring-1 focus:ring-emerald-500"
-              />
-            </div>
-          </div>
-        </div>
+        <select
+          value={typeFilter}
+          onChange={e => setTypeFilter(e.target.value)}
+          className="bg-slate-950/70 border border-slate-800 px-3 py-1.5 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+        >
+          <option value="ALL">Tüm Cari Türleri</option>
+          <option value="Müşteri">Müşteriler</option>
+          <option value="Tedarikçi">Tedarikçiler</option>
+          <option value="Personel">Personel</option>
+          <option value="Diğer">Diğer</option>
+        </select>
       </div>
 
       {/* Caris Table */}
-      <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-sm">
+      <div className="bg-slate-900/40 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-950 text-slate-400 border-b border-slate-800 uppercase tracking-wider text-[10px]">
+            <thead className="bg-slate-950/80 text-slate-400 font-semibold border-b border-slate-800">
               <tr>
-                <th className="py-3 px-4">Cari Ünvanı / Adı</th>
-                <th className="py-3 px-3">Tür</th>
-                <th className="py-3 px-3">Telefon & İletişim</th>
-                <th className="py-3 px-3">Şehir / Adres</th>
-                <th className="py-3 px-4 text-right">Bakiye</th>
-                <th className="py-3 px-4 text-center">İşlemler</th>
+                <th className="p-3.5">Cari Ünvanı / Adı</th>
+                <th className="p-3.5">Tür</th>
+                <th className="p-3.5">Telefon / İletişim</th>
+                <th className="p-3.5">Şehir</th>
+                <th className="p-3.5 text-right">Bakiye</th>
+                <th className="p-3.5 text-center">İşlem</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 font-mono-num">
+            <tbody className="divide-y divide-slate-800/60">
               {filteredCaris.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-slate-500 font-sans">
-                    Aranan kriterlere uygun cari kart bulunamadı.
+                  <td colSpan={6} className="text-center py-10 text-slate-500">
+                    Kayıtlı cari bulunamadı.
                   </td>
                 </tr>
               ) : (
-                filteredCaris.map(cari => {
-                  const isSupplier = cari.type === 'Tedarikçi';
-                  const isDebt = cari.balance < 0; // Borcumuz var
-                  const isCredit = cari.balance > 0; // Alacağımız var
-
-                  return (
-                    <tr
-                      key={cari.id}
-                      onClick={() => setSelectedCariDetail(cari)}
-                      className="hover:bg-slate-850/60 transition group cursor-pointer"
-                    >
-                      <td className="py-3 px-4 font-sans">
-                        <div className="font-semibold text-slate-100 group-hover:text-emerald-400 transition-colors flex items-center gap-2">
-                          {isSupplier ? (
-                            <Building className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                          ) : (
-                            <User className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                          )}
-                          <span>{cari.name}</span>
-                        </div>
-                        {cari.taxNumber && (
-                          <span className="text-[10px] text-slate-500 block ml-5">
-                            VN: {cari.taxNumber} {cari.taxOffice ? `(${cari.taxOffice})` : ''}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3 whitespace-nowrap">
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                            isSupplier
-                              ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
-                              : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                          }`}
-                        >
-                          {cari.type}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 font-sans text-slate-400 whitespace-nowrap">
-                        {cari.phone ? (
-                          <div className="flex items-center gap-1.5 text-slate-300">
-                            <Phone className="w-3 h-3 text-slate-500" />
-                            <span>{cari.phone}</span>
-                          </div>
-                        ) : (
-                          <span className="text-slate-600">-</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-3 font-sans text-slate-400 whitespace-nowrap">
-                        {cari.city || '-'}
-                      </td>
-                      <td className="py-3 px-4 text-right whitespace-nowrap font-bold">
-                        <span
-                          className={
-                            isCredit
-                              ? 'text-emerald-400'
-                              : isDebt
-                              ? 'text-rose-400'
-                              : 'text-slate-400'
-                          }
-                        >
-                          {isDebt ? `-${formatCurrency(Math.abs(cari.balance))}` : formatCurrency(cari.balance)}
-                        </span>
-                        <span className="block text-[9px] font-sans font-normal text-slate-500">
-                          {isDebt
-                            ? '(Borçluyuz)'
-                            : isCredit
-                            ? '(Alacaklıyız)'
-                            : '(Bakiye Sıfır)'}
-                        </span>
-                      </td>
-                      <td
-                        className="py-3 px-4 text-center whitespace-nowrap"
-                        onClick={e => e.stopPropagation()}
+                filteredCaris.map(c => (
+                  <tr key={c.id} className="hover:bg-slate-800/40 transition-colors">
+                    <td className="p-3.5 whitespace-nowrap font-medium text-white">
+                      <button
+                        onClick={() => setDetailCari(c)}
+                        className="hover:text-indigo-400 text-left transition-colors font-semibold"
                       >
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => setSelectedCariDetail(cari)}
-                            className="p-1.5 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-750 rounded-lg transition"
-                            title="Ekstre ve Detay"
-                          >
-                            <FileText className="w-3.5 h-3.5 text-sky-400" />
-                          </button>
-                          <button
-                            onClick={() => handleOpenEditCari(cari)}
-                            className="p-1.5 text-slate-400 hover:text-white bg-slate-800/80 hover:bg-slate-750 rounded-lg transition"
-                            title="Düzenle"
-                          >
-                            <Edit2 className="w-3.5 h-3.5 text-amber-400" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              if (window.confirm(`${cari.name} cari kartını silmek istediğinize emin misiniz?`)) {
-                                deleteCari(cari.id);
-                              }
-                            }}
-                            className="p-1.5 text-slate-500 hover:text-rose-400 bg-slate-800/80 hover:bg-slate-750 rounded-lg transition"
-                            title="Sil"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
+                        {c.name}
+                      </button>
+                    </td>
+                    <td className="p-3.5 whitespace-nowrap">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+                          c.type === 'Müşteri'
+                            ? 'bg-blue-950/80 text-blue-400 border border-blue-800/50'
+                            : c.type === 'Tedarikçi'
+                            ? 'bg-amber-950/80 text-amber-400 border border-amber-800/50'
+                            : 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/50'
+                        }`}
+                      >
+                        {c.type}
+                      </span>
+                    </td>
+                    <td className="p-3.5 whitespace-nowrap text-slate-400">
+                      {c.phone ? (
+                        <span className="flex items-center gap-1.5 font-mono">
+                          <Phone className="w-3 h-3 text-slate-500" /> {c.phone}
+                        </span>
+                      ) : (
+                        '-'
+                      )}
+                    </td>
+                    <td className="p-3.5 whitespace-nowrap text-slate-400">
+                      {c.city || '-'}
+                    </td>
+                    <td
+                      className={`p-3.5 whitespace-nowrap text-right font-bold text-sm ${
+                        c.balance > 0
+                          ? 'text-emerald-400'
+                          : c.balance < 0
+                          ? 'text-rose-400'
+                          : 'text-slate-400'
+                      }`}
+                    >
+                      {formatCurrency(c.balance)}
+                    </td>
+                    <td className="p-3.5 text-center whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          onClick={() => setDetailCari(c)}
+                          className="p-1.5 text-slate-400 hover:text-indigo-400 hover:bg-slate-800 rounded-lg transition-colors"
+                          title="Ekstre / Hareketler"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleOpenEdit(c)}
+                          className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                          title="Düzenle"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(c.id, c.name)}
+                          className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition-colors"
+                          title="Sil"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Cari Modal */}
       <CariModal
         isOpen={isCariModalOpen}
         onClose={() => setIsCariModalOpen(false)}
         editingCari={editingCari}
       />
 
-      {/* Cari Detail Modal */}
       <CariDetailModal
-        cari={selectedCariDetail}
-        onClose={() => setSelectedCariDetail(null)}
-        onEdit={(c) => {
-          setSelectedCariDetail(null);
-          handleOpenEditCari(c);
+        cari={detailCari}
+        onClose={() => setDetailCari(null)}
+        onEdit={c => {
+          setDetailCari(null);
+          setEditingCari(c);
+          setIsCariModalOpen(true);
         }}
       />
     </div>

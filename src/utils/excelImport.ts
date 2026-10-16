@@ -14,7 +14,7 @@ function normalizeKey(key: string): string {
   return key
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9ğüşıöç]/gi, '')
+    .replace(/[^a-z0-9 ]/gi, '')
     .replace(/ç/g, 'c')
     .replace(/ğ/g, 'g')
     .replace(/ı/g, 'i')
@@ -59,7 +59,7 @@ export function parseExcelDate(val: any): string {
 export function parseExcelAmount(val: any): number {
   if (typeof val === 'number') return Math.abs(val);
   if (!val) return 0;
-  let str = String(val).trim().replace(/[₺\s]/g, '');
+  let str = String(val).trim().replace(/[₺$€\s]/g, '');
   if (str.includes(',') && str.includes('.')) {
     if (str.lastIndexOf(',') > str.lastIndexOf('.')) {
       str = str.replace(/\./g, '').replace(',', '.');
@@ -114,7 +114,6 @@ export function parseExcelData(
   const currentAccounts = [...existingAccounts];
   const newTransactions: Transaction[] = [];
   const addedCaris: Cari[] = [];
-
   const defaultAccount =
     currentAccounts.find(a => a.type === 'Ticari Hesap') || currentAccounts[0];
 
@@ -227,7 +226,6 @@ export function parseExcelData(
         a.name.toLowerCase() === accNameRaw.toLowerCase() ||
         (a.bankName && a.bankName.toLowerCase() === accNameRaw.toLowerCase())
     );
-
     if (!targetAcc) {
       targetAcc = defaultAccount;
     }
@@ -303,5 +301,6 @@ export function parseExcelData(
   result.updatedAccounts = currentAccounts;
   result.transactionsCount = newTransactions.length;
   result.carisCount = addedCaris.length;
+
   return result;
 }

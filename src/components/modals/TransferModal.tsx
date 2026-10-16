@@ -81,12 +81,6 @@ export const TransferModal: React.FC<TransferModalProps> = ({
               </select>
             </div>
 
-            <div className="flex justify-center -my-1">
-              <div className="w-6 h-6 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center border border-slate-200 dark:border-slate-700 text-xs">
-                ↓
-              </div>
-            </div>
-
             <div>
               <label className="block text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-1">
                 Hedef Hesap (Para Aktarılacak)

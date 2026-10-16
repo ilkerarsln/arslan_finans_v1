@@ -270,7 +270,6 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
                     rx="4"
                   />
                 )}
-
                 <rect
                   x={centerX - barWidth - 1.5}
                   y={paddingTop + chartHeight - incH}
@@ -295,7 +294,6 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
                       : 'fill-rose-500 hover:fill-rose-400'
                   } transition-all duration-200`}
                 />
-
                 <text
                   x={centerX}
                   y={height - (m.isCurrentMonth ? 6 : 10)}
@@ -312,16 +310,6 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
                 >
                   {m.monthName}
                 </text>
-                {m.isCurrentMonth && (
-                  <text
-                    x={centerX}
-                    y={paddingTop - 7}
-                    textAnchor="middle"
-                    className="text-[9px] fill-emerald-600 dark:fill-emerald-400 font-extrabold uppercase tracking-wider"
-                  >
-                    Bu Ay
-                  </text>
-                )}
               </g>
             );
           })}
@@ -342,14 +330,7 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
             }}
           >
             <div className="font-semibold text-slate-200 border-b border-slate-700 pb-1 mb-1.5 flex justify-between gap-4">
-              <span>
-                {months[hoveredIndex].monthName}{' '}
-                {months[hoveredIndex].isCurrentMonth
-                  ? '(İçinde Bulunduğumuz Ay)'
-                  : months[hoveredIndex].isFuture
-                  ? '(Gelecek / Planlanan)'
-                  : '(Geçmiş Ay)'}
-              </span>
+              <span>{months[hoveredIndex].monthName}</span>
               <span
                 className={`font-mono font-bold ${
                   months[hoveredIndex].net >= 0 ? 'text-emerald-400' : 'text-rose-400'

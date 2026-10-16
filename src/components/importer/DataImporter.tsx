@@ -19,17 +19,22 @@ import {
   X,
   FileCheck,
   Tag,
-  DollarSign,
   Boxes,
-  HelpCircle,
+  Layers,
+  FolderTree,
 } from 'lucide-react';
-import { formatCurrency, formatDate, roundUpTo10TL } from '../../utils/formatters';
+import { formatCurrency, roundUpTo10TL } from '../../utils/formatters';
 import {
   LeanImportPreviewItem,
   LeanMalAlimiConfig,
   ImportVadeOption,
   PriceListEntry,
 } from '../../types/finance';
+import {
+  getUniqueAnaKategoriler,
+  getUniqueAltKategoriler,
+  getUniqueUrunGruplari,
+} from '../../data/initialCategories';
 
 export const DataImporter: React.FC<{
   onClose?: () => void;
@@ -41,6 +46,7 @@ export const DataImporter: React.FC<{
     caris,
     accounts,
     stockItems,
+    categoryHierarchy,
     executeBatchLeanMalAlimi,
     showToast,
   } = useFinance();
@@ -52,13 +58,13 @@ export const DataImporter: React.FC<{
   // Wizard Steps: 1: Parameters & File Upload, 2: Preview & Approval, 3: Success Result
   const [step, setStep] = useState<1 | 2 | 3>(1);
 
-  // 1. Parametreler
+  // 1. Parameters
   const [selectedPriceListId, setSelectedPriceListId] = useState<string>(() => {
     return priceLists[0]?.id || '';
   });
   const [donemMonthKey, setDonemMonthKey] = useState<string>(currentMonthKey);
   const [genelIskontoOrani, setGenelIskontoOrani] = useState<number>(10);
-  const [karMarjiOrani, setKarMarjiOrani] = useState<number>(35); // Varsayılan kâr marjı %35 (kullanıcı değiştirebilir)
+  const [karMarjiOrani, setKarMarjiOrani] = useState<number>(35);
   const [vadeOption, setVadeOption] = useState<ImportVadeOption>('30gun');
   const [customDueDate, setCustomDueDate] = useState<string>(defaultDueDate);
   const [selectedAccountId, setSelectedAccountId] = useState<string>(accounts[0]?.id || 'acc-banka');
@@ -77,14 +83,14 @@ export const DataImporter: React.FC<{
   const [searchFilter, setSearchFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'matched' | 'warning'>('all');
 
-  // Sonuç State
+  // Result Summary State
   const [resultSummary, setResultSummary] = useState<{
     totalCount: number;
     totalCost: number;
     totalQty: number;
   } | null>(null);
 
-  // Seçili Fiyat Listesi ve Tedarikçi
+  // Selected Price List & Supplier
   const selectedPriceList: PriceListEntry | undefined = useMemo(() => {
     return priceLists.find(p => p.id === selectedPriceListId);
   }, [priceLists, selectedPriceListId]);
@@ -96,15 +102,15 @@ export const DataImporter: React.FC<{
     return undefined;
   }, [selectedPriceList, caris]);
 
-  // Şablon İndirme (Yalnızca 2 Kolon: stokKodu, alisAdeti)
+  // Sample Template Download (2 Columns: stokKodu, alisAdeti)
   const handleDownloadSampleTemplate = (format: 'xlsx' | 'csv') => {
     try {
       const sampleRows = [
-        { stokKodu: 'BOSCH-KGN56', alisAdeti: 4 },
-        { stokKodu: 'BOSCH-WAU28', alisAdeti: 6 },
-        { stokKodu: 'BAMBI-MAGNA', alisAdeti: 8 },
-        { stokKodu: 'BSH-SMS46', alisAdeti: 3 },
-        { stokKodu: 'YENI-KOD-001', alisAdeti: 2 },
+        { stokKodu: 'BAM-YTK-001', alisAdeti: 4 },
+        { stokKodu: 'ALT-BUL-003', alisAdeti: 6 },
+        { stokKodu: 'BSH-BUZ-005', alisAdeti: 3 },
+        { stokKodu: 'UGR-DND-006', alisAdeti: 5 },
+        { stokKodu: 'MED-DEL-007', alisAdeti: 2 },
       ];
       const ws = XLSX.utils.json_to_sheet(sampleRows, { header: ['stokKodu', 'alisAdeti'] });
       const wb = XLSX.utils.book_new();
@@ -122,16 +128,15 @@ export const DataImporter: React.FC<{
     }
   };
 
-  // Helper: Normalize string for matching
+  // Helper normalize
   const normalize = (val: any) => String(val || '').toLowerCase().trim().replace(/[\s\-_]/g, '');
 
-  // Dosya Yükleme ve Otomatik Hesaplama Motoru
+  // Process File with 3-Level Category Matching
   const processUploadedFile = async (file: File) => {
     if (!selectedPriceList) {
       showToast('Lütfen önce bir Fiyat Listesi seçiniz.', 'error');
       return;
     }
-
     setIsParsing(true);
     setFileName(file.name);
 
@@ -147,8 +152,19 @@ export const DataImporter: React.FC<{
         return;
       }
 
-      // 1. Fiyat Listesi ve Stok Haritalarını Hazırla
-      const priceListMap = new Map<string, { name: string; price: number; brand?: string; category?: string }>();
+      // 1. Price List Map
+      const priceListMap = new Map<
+        string,
+        {
+          name: string;
+          price: number;
+          brand?: string;
+          anaKategori?: string;
+          altKategori?: string;
+          urunGrubu?: string;
+        }
+      >();
+
       (selectedPriceList.items || []).forEach(item => {
         const itemCode = item.stokKodu || item.code || '';
         const itemPrice =
@@ -161,13 +177,27 @@ export const DataImporter: React.FC<{
             name: item.urunAdi || item.name || itemCode,
             price: Number(itemPrice) || 0,
             brand: item.brand,
-            category: item.category,
+            anaKategori: item.anaKategori,
+            altKategori: item.altKategori,
+            urunGrubu: item.urunGrubu,
           });
         }
       });
 
-      // 2. Ana Stok Listesi Haritası (Fallback kontrolü)
-      const stockCodeMap = new Map<string, { id: string; name: string; price: number; brand?: string; category?: string }>();
+      // 2. Existing Stock Map
+      const stockCodeMap = new Map<
+        string,
+        {
+          id: string;
+          name: string;
+          price: number;
+          brand?: string;
+          anaKategori?: string;
+          altKategori?: string;
+          urunGrubu?: string;
+        }
+      >();
+
       stockItems.forEach(s => {
         if (s.code) {
           stockCodeMap.set(normalize(s.code), {
@@ -175,16 +205,23 @@ export const DataImporter: React.FC<{
             name: s.name,
             price: s.purchasePrice || 0,
             brand: s.brand,
-            category: s.category,
+            anaKategori: s.anaKategori,
+            altKategori: s.altKategori,
+            urunGrubu: s.urunGrubu,
           });
         }
       });
 
-      // 3. Dosyadaki Satırları Eşleştir ve Hesapla
+      // 3. Fallback default category from hierarchy
+      const defaultHierarchy = categoryHierarchy[0] || {
+        anaKategori: 'MOBİLYA',
+        altKategori: 'BAMBİ',
+        urunGrubu: 'BAMBİ YATAK',
+      };
+
       const parsedItems: LeanImportPreviewItem[] = [];
 
       rawRows.forEach((row, idx) => {
-        // Kolon aliasları: stokKodu, stok_kodu, kod, barkod, code, sku
         const rawCode = String(
           row['stokKodu'] ??
           row['stok_kodu'] ??
@@ -197,13 +234,11 @@ export const DataImporter: React.FC<{
           ''
         ).trim();
 
-        // Kolon aliasları: alisAdeti, alis_adeti, adet, miktar, alim, gelen, quantity, qty
         const rawQty = Number(
           row['alisAdeti'] ??
           row['alis_adeti'] ??
           row['Alış Adeti'] ??
           row['Alis Adeti'] ??
-          row['AlışAdeti'] ??
           row['adet'] ??
           row['miktar'] ??
           row['alim'] ??
@@ -213,8 +248,7 @@ export const DataImporter: React.FC<{
           1
         );
 
-        if (!rawCode) return; // Boş kodları atla
-
+        if (!rawCode) return;
         const cleanQty = Math.max(1, isNaN(rawQty) ? 1 : rawQty);
         const normCode = normalize(rawCode);
 
@@ -222,46 +256,42 @@ export const DataImporter: React.FC<{
         let bazFiyat = 0;
         let isMatched = false;
         let matchedStockId: string | undefined = undefined;
-        let category = 'Beyaz Eşya';
-        let brand = 'Genel';
+        let anaKategori = defaultHierarchy.anaKategori;
+        let altKategori = defaultHierarchy.altKategori;
+        let urunGrubu = defaultHierarchy.urunGrubu;
+        let brand = 'GENEL';
 
-        // Öncelik 1: Seçili Fiyat Listesinde var mı?
+        // Check Price List match
         if (priceListMap.has(normCode)) {
           const match = priceListMap.get(normCode)!;
           urunAdi = match.name;
           bazFiyat = match.price;
-          category = match.category || category;
           brand = match.brand || brand;
+          anaKategori = match.anaKategori || anaKategori;
+          altKategori = match.altKategori || altKategori;
+          urunGrubu = match.urunGrubu || urunGrubu;
           isMatched = true;
 
-          // Varsa mevcut stok ID'si ile bağla
           if (stockCodeMap.has(normCode)) {
             matchedStockId = stockCodeMap.get(normCode)!.id;
           }
-        }
-        // Öncelik 2: Mevcut Stok Kartlarında var mı?
-        else if (stockCodeMap.has(normCode)) {
+        } else if (stockCodeMap.has(normCode)) {
           const match = stockCodeMap.get(normCode)!;
           urunAdi = match.name;
           bazFiyat = match.price;
-          category = match.category || category;
           brand = match.brand || brand;
+          anaKategori = match.anaKategori || anaKategori;
+          altKategori = match.altKategori || altKategori;
+          urunGrubu = match.urunGrubu || urunGrubu;
           matchedStockId = match.id;
           isMatched = true;
-        }
-        // Eşleşmedi: Kullanıcıdan baz fiyat istenecek
-        else {
+        } else {
           urunAdi = `Yeni Ürün (${rawCode})`;
           bazFiyat = 0;
           isMatched = false;
         }
 
-        // HESAPLAMA KURALLARI:
-        // netMaliyet = bazFiyat * (1 - genelIskontoOrani / 100)
         const netMaliyet = +(bazFiyat * (1 - genelIskontoOrani / 100)).toFixed(2);
-
-        // hesaplananSatisFiyati = 10 TL'nin tam katına yukarı yuvarlama
-        // Math.ceil((netMaliyet * (1 + karMarjiOrani / 100)) / 10) * 10
         const hamSatis = netMaliyet * (1 + karMarjiOrani / 100);
         const hesaplananSatisFiyati = roundUpTo10TL(hamSatis);
 
@@ -277,7 +307,9 @@ export const DataImporter: React.FC<{
           toplamSatis: +(cleanQty * hesaplananSatisFiyati).toFixed(2),
           isMatched,
           matchedStockId,
-          category,
+          anaKategori,
+          altKategori,
+          urunGrubu,
           brand,
           hasManualPrice: false,
         });
@@ -290,8 +322,8 @@ export const DataImporter: React.FC<{
       }
 
       setPreviewItems(parsedItems);
-      setStep(2); // Ön İzleme ve Onay Ekranına Geç
-      showToast(`${file.name} okundu (${parsedItems.length} ürün eşleştirildi)`, 'info');
+      setStep(2);
+      showToast(`${file.name} okundu (${parsedItems.length} kalem eşleştirildi)`, 'info');
     } catch (err: any) {
       console.error('File parsing error:', err);
       showToast(`Dosya okunurken hata: ${err?.message || 'Bilinmeyen hata'}`, 'error');
@@ -314,14 +346,12 @@ export const DataImporter: React.FC<{
     }
   };
 
-  // İskonto veya Kâr Marjı değiştiğinde tüm ön izleme satırlarını anında güncelle
   const handleRecalculateAll = (newIskonto: number, newKarMarji: number) => {
     setPreviewItems(prev =>
       prev.map(item => {
         const netMaliyet = +(item.bazFiyat * (1 - newIskonto / 100)).toFixed(2);
         const hamSatis = netMaliyet * (1 + newKarMarji / 100);
         const hesaplananSatisFiyati = roundUpTo10TL(hamSatis);
-
         return {
           ...item,
           netMaliyet,
@@ -333,7 +363,6 @@ export const DataImporter: React.FC<{
     );
   };
 
-  // Satır bazında manuel baz fiyat düzenleme (Listede olmayan veya özel fiyatlar için)
   const handleInlineBazFiyatChange = (id: string, newBazFiyat: number) => {
     setPreviewItems(prev =>
       prev.map(item => {
@@ -342,7 +371,6 @@ export const DataImporter: React.FC<{
           const netMaliyet = +(cleanBaz * (1 - genelIskontoOrani / 100)).toFixed(2);
           const hamSatis = netMaliyet * (1 + karMarjiOrani / 100);
           const hesaplananSatisFiyati = roundUpTo10TL(hamSatis);
-
           return {
             ...item,
             bazFiyat: cleanBaz,
@@ -359,7 +387,6 @@ export const DataImporter: React.FC<{
     );
   };
 
-  // Satır bazında adet düzenleme
   const handleInlineAdetChange = (id: string, newAdet: number) => {
     setPreviewItems(prev =>
       prev.map(item => {
@@ -377,19 +404,36 @@ export const DataImporter: React.FC<{
     );
   };
 
-  // Satır bazında ürün adı düzenleme
   const handleInlineUrunAdiChange = (id: string, newName: string) => {
     setPreviewItems(prev =>
       prev.map(item => (item.id === id ? { ...item, urunAdi: newName } : item))
     );
   };
 
-  // Satır silme
+  const handleInlineUrunGrubuChange = (id: string, newGrup: string) => {
+    // Find matching hierarchy record to sync Ana and Alt
+    const matchedHier = categoryHierarchy.find(
+      c => c.urunGrubu.toUpperCase() === newGrup.toUpperCase()
+    );
+    setPreviewItems(prev =>
+      prev.map(item => {
+        if (item.id === id) {
+          return {
+            ...item,
+            urunGrubu: newGrup.toUpperCase(),
+            anaKategori: matchedHier ? matchedHier.anaKategori : item.anaKategori,
+            altKategori: matchedHier ? matchedHier.altKategori : item.altKategori,
+          };
+        }
+        return item;
+      })
+    );
+  };
+
   const handleDeletePreviewItem = (id: string) => {
     setPreviewItems(prev => prev.filter(i => i.id !== id));
   };
 
-  // Toplam İstatistikler
   const summary = useMemo(() => {
     const totalLines = previewItems.length;
     const totalQty = previewItems.reduce((sum, i) => sum + i.gelenAdet, 0);
@@ -410,7 +454,6 @@ export const DataImporter: React.FC<{
     };
   }, [previewItems]);
 
-  // Filtrelenmiş Ön İzleme Satırları
   const displayedRows = useMemo(() => {
     return previewItems.filter(item => {
       if (statusFilter === 'matched' && (!item.isMatched || item.bazFiyat <= 0)) return false;
@@ -419,18 +462,18 @@ export const DataImporter: React.FC<{
         const q = searchFilter.toLowerCase();
         const mCode = item.stokKodu.toLowerCase().includes(q);
         const mName = item.urunAdi.toLowerCase().includes(q);
-        if (!mCode && !mName) return false;
+        const mGrup = (item.urunGrubu || '').toLowerCase().includes(q);
+        if (!mCode && !mName && !mGrup) return false;
       }
       return true;
     });
   }, [previewItems, statusFilter, searchFilter]);
 
-  // ON ONAY & VERİTABANINA TOPLU YAZIM
   const handleConfirmAndSave = async () => {
     if (summary.unmatchedCount > 0) {
       if (
         !window.confirm(
-          `Dikkat: Fiyatı girilmemiş / eşleşmeyen ${summary.unmatchedCount} adet ürün var. Baz fiyatı 0 olan ürünler 0 TL maliyetle işlenecektir. Onaylayıp devam etmek istiyor musunuz?`
+          `Dikkat: Fiyatı girilmemiş ${summary.unmatchedCount} adet ürün var. Onaylayıp devam etmek istiyor musunuz?`
         )
       ) {
         return;
@@ -438,7 +481,6 @@ export const DataImporter: React.FC<{
     }
 
     setIsSubmitting(true);
-
     try {
       const config: LeanMalAlimiConfig = {
         priceListId: selectedPriceListId,
@@ -455,14 +497,13 @@ export const DataImporter: React.FC<{
       };
 
       const result = await executeBatchLeanMalAlimi(config, previewItems);
-
       if (result.success) {
         setResultSummary({
           totalCount: result.totalCount,
           totalCost: result.totalCost,
           totalQty: summary.totalQty,
         });
-        setStep(3); // Tamamlandı ekranına geç
+        setStep(3);
         if (onImportComplete) {
           onImportComplete(result.totalCount);
         }
@@ -485,17 +526,17 @@ export const DataImporter: React.FC<{
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden max-w-6xl w-full mx-auto animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[92vh]">
       {/* HEADER */}
-      <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-800 bg-linear-to-r from-sky-500/10 via-emerald-500/5 to-transparent flex items-center justify-between gap-4 shrink-0">
+      <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-sky-500/10 via-emerald-500/5 to-transparent flex items-center justify-between gap-4 shrink-0">
         <div className="flex items-center gap-3">
           <div className="p-2.5 bg-sky-600 text-white rounded-xl shadow-xs">
             <Boxes className="w-5 h-5" />
           </div>
           <div>
             <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white leading-tight">
-              Yalın Mal Alımı & Fiyat Listesi Entegrasyonu
+              Yalın Mal Alımı & 3 Seviyeli Kategori Entegrasyonu
             </h2>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Yalnızca <code className="font-mono font-bold text-sky-600 dark:text-sky-400">stokKodu</code> ve <code className="font-mono font-bold text-sky-600 dark:text-sky-400">alisAdeti</code> içeren dosyalardan otomatik maliyet, 10 TL katına yukarı yuvarlama ve cari borçlandırma
+              Yalnızca <code className="font-mono font-bold text-sky-600 dark:text-sky-400">stokKodu</code> ve <code className="font-mono font-bold text-sky-600 dark:text-sky-400">alisAdeti</code> sütunlarıyla otomatik 3 seviyeli kategori atama, iskonto ve 10 TL katına yuvarlanmış fiyatlama
             </p>
           </div>
         </div>
@@ -509,16 +550,15 @@ export const DataImporter: React.FC<{
         )}
       </div>
 
-      {/* STEP 1: PARAMETRELER, FİYAT LİSTESİ SEÇİMİ VE YALIN DOSYA YÜKLEME */}
+      {/* STEP 1: PARAMETRELER VE DOSYA YÜKLEME */}
       {step === 1 && (
         <div className="p-5 sm:p-8 overflow-y-auto space-y-6 flex-1">
-          {/* Parametre Kartları */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-5 bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-700/80">
-            {/* 1. Fiyat Listesi Kaynağı */}
+            {/* 1. Fiyat Listesi */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <Tag className="w-3.5 h-3.5 text-sky-500" />
-                Fiyat Listesi Kaynağı *
+                Fiyat Listesi Kaynağı
               </label>
               <select
                 value={selectedPriceListId}
@@ -539,7 +579,7 @@ export const DataImporter: React.FC<{
               )}
             </div>
 
-            {/* 2. Alım Yapılan Ay / Dönem */}
+            {/* 2. Alım Ayı */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <Calendar className="w-3.5 h-3.5 text-emerald-500" />
@@ -557,7 +597,7 @@ export const DataImporter: React.FC<{
               </span>
             </div>
 
-            {/* 3. Genel İskonto Oranı (%) */}
+            {/* 3. Genel İskonto Oranı */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <Percent className="w-3.5 h-3.5 text-amber-500" />
@@ -582,7 +622,7 @@ export const DataImporter: React.FC<{
               </span>
             </div>
 
-            {/* 4. Hedef Kâr Marjı (10 TL Yuvarlama) */}
+            {/* 4. Hedef Kâr Marjı */}
             <div className="space-y-1.5">
               <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                 <TrendingUp className="w-3.5 h-3.5 text-purple-500" />
@@ -608,18 +648,17 @@ export const DataImporter: React.FC<{
             </div>
           </div>
 
-          {/* Vade & Finans Parametreleri (Peşin, 30 Gün, 60 Gün, Özel) */}
+          {/* Vade Seçenekleri */}
           <div className="p-4 bg-slate-50 dark:bg-slate-850 rounded-2xl border border-slate-200 dark:border-slate-700/80 space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-sky-500" />
-                Ödeme Vadesi & Tedarikçi Cari Borçlandırması
+                Ödeme Vadesi & Tedarikçi Borçlandırması
               </span>
               <span className="text-[11px] text-slate-400">
                 Tedarikçi: <strong className="text-slate-800 dark:text-slate-200">{selectedPriceList?.supplierName || selectedSupplier?.name || 'Tedarikçi'}</strong>
               </span>
             </div>
-
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <button
                 type="button"
@@ -666,11 +705,10 @@ export const DataImporter: React.FC<{
                 <span>Özel Vade Tarihi</span>
               </button>
             </div>
-
             {vadeOption === 'ozel' && (
               <div className="pt-2 flex items-center gap-3">
                 <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-                  Özel Vade Tarihi Seçin:
+                  Özel Vade Tarihi Seç:
                 </span>
                 <input
                   type="date"
@@ -680,7 +718,6 @@ export const DataImporter: React.FC<{
                 />
               </div>
             )}
-
             {vadeOption === 'pesin' && (
               <div className="pt-2 flex items-center gap-3">
                 <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
@@ -701,7 +738,7 @@ export const DataImporter: React.FC<{
             )}
           </div>
 
-          {/* Şablon İndirme & Bilgi Şeridi */}
+          {/* Şablon İndirme */}
           <div className="p-4 rounded-2xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-800/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <FileCheck className="w-5 h-5 text-sky-600 dark:text-sky-400 shrink-0" />
@@ -710,7 +747,7 @@ export const DataImporter: React.FC<{
                   Yalın 2 Sütunlu Dosya Formatı (stokKodu, alisAdeti)
                 </span>
                 <span className="text-[11px] text-sky-800/80 dark:text-sky-300/80">
-                  Excel dosyasında başka hiçbir karmaşık kolon gerekmez; fiyatlar seçilen listeden otomatik çekilir.
+                  Excel dosyasında başka sütun gerekmez; 3 seviyeli kategori ve baz fiyat listeden çekilir.
                 </span>
               </div>
             </div>
@@ -722,14 +759,6 @@ export const DataImporter: React.FC<{
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Örnek Excel (.xlsx)</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDownloadSampleTemplate('csv')}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-sky-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-semibold transition"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>CSV</span>
               </button>
             </div>
           </div>
@@ -763,7 +792,7 @@ export const DataImporter: React.FC<{
               {isParsing ? 'Dosya Analiz Ediliyor ve Eşleştiriliyor...' : 'Excel veya CSV Dosyasını Buraya Bırakın'}
             </h4>
             <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mb-4">
-              Dosyanızdaki <code className="font-mono font-bold text-slate-700 dark:text-slate-300">stokKodu</code> ve <code className="font-mono font-bold text-slate-700 dark:text-slate-300">alisAdeti</code> satırları okunarak anında ön izleme tablosu oluşturulacaktır.
+              Dosyanızdaki <code className="font-mono font-bold text-slate-700 dark:text-slate-300">stokKodu</code> ve <code className="font-mono font-bold text-slate-700 dark:text-slate-300">alisAdeti</code> satırları okunarak anında önizleme tablosu oluşturulacaktır.
             </p>
             <button
               type="button"
@@ -775,13 +804,13 @@ export const DataImporter: React.FC<{
         </div>
       )}
 
-      {/* STEP 2: ÖN İZLEME VE ONAY (PREVIEW & APPROVAL) */}
+      {/* STEP 2: ÖNİZLEME VE ONAY (3 SEVİYELİ KATEGORİ SÜTUNLARIYLA) */}
       {step === 2 && (
         <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
-          {/* Üst İstatistik Şeridi */}
+          {/* İstatistik Şeridi */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold block">Gelen Ürün Çeşidi</span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold block">Gelen Çeşit</span>
               <span className="text-base sm:text-lg font-bold font-mono text-slate-800 dark:text-white">
                 {summary.totalLines} Kalem
               </span>
@@ -818,7 +847,7 @@ export const DataImporter: React.FC<{
               <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
               <div className="text-xs text-amber-900 dark:text-amber-200">
                 <span className="font-bold block">
-                  {summary.unmatchedCount} adet stok kodu Fiyat Listesinde bulunamadı!
+                  {summary.unmatchedCount} adet stok kodu Fiyat Listesinde bulunamadı
                 </span>
                 <span>
                   Aşağıdaki tabloda sarı renkli satırlarda doğrudan <strong>Baz Fiyat</strong> girebilirsiniz. Girdiğiniz tutara göre net maliyet ve <strong>10 TL'ye yuvarlanmış satış fiyatı</strong> otomatik hesaplanacaktır.
@@ -846,7 +875,6 @@ export const DataImporter: React.FC<{
                 />
                 <span className="text-slate-400 font-bold">%</span>
               </div>
-
               <div className="flex items-center gap-1.5">
                 <span className="text-slate-500 font-semibold">Kâr Marjı:</span>
                 <input
@@ -863,16 +891,14 @@ export const DataImporter: React.FC<{
                 />
                 <span className="text-slate-400 font-bold">%</span>
               </div>
-
               <span className="text-[11px] text-purple-600 dark:text-purple-400 font-medium hidden md:inline">
-                * Satış fiyatı daima 10 TL katına yukarı yuvarlanır.
+                * Satış fiyatı daima 10 TL katına yukarı yuvarlanır
               </span>
             </div>
-
             <div className="flex items-center gap-2">
               <input
                 type="text"
-                placeholder="Stok kodu veya ürün ara..."
+                placeholder="Stok kodu, ürün veya grup ara..."
                 value={searchFilter}
                 onChange={e => setSearchFilter(e.target.value)}
                 className="px-3 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg text-xs"
@@ -884,36 +910,37 @@ export const DataImporter: React.FC<{
               >
                 <option value="all">Tüm Satırlar ({previewItems.length})</option>
                 <option value="matched">Eşleşenler ({previewItems.length - summary.unmatchedCount})</option>
-                <option value="warning">Eksik/Uyarılı ({summary.unmatchedCount})</option>
+                <option value="warning">Eksik/Uyarı ({summary.unmatchedCount})</option>
               </select>
             </div>
           </div>
 
-          {/* ÖN İZLEME TABLOSU */}
+          {/* ÖNİZLEME TABLOSU (3 Seviyeli Kategori Sütunlarıyla) */}
           <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-2xl max-h-96 overflow-y-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 font-semibold uppercase sticky top-0 border-b border-slate-200 dark:border-slate-700 z-10 backdrop-blur-xs">
+              <thead className="bg-slate-50 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 font-semibold uppercase sticky top-0 border-b border-slate-200 dark:border-slate-700 z-10 backdrop-blur-xs text-[10px]">
                 <tr>
                   <th className="py-2.5 px-3">Durum</th>
                   <th className="py-2.5 px-3">Stok Kodu</th>
-                  <th className="py-2.5 px-3">Ürün Adı & Modeli</th>
-                  <th className="py-2.5 px-3 text-center">Gelen Adet</th>
+                  <th className="py-2.5 px-3">Ürün Adı</th>
+                  <th className="py-2.5 px-3">Hiyerarşi (Ana &gt; Alt &gt; Grup)</th>
+                  <th className="py-2.5 px-3 text-center">Adet</th>
                   <th className="py-2.5 px-3 text-right">Baz Fiyat</th>
                   <th className="py-2.5 px-3 text-right">Net Maliyet (-%{genelIskontoOrani})</th>
-                  <th className="py-2.5 px-3 text-right">Hesaplanan Satış (10 TL Yuvarlama)</th>
-                  <th className="py-2.5 px-3 text-right">Satır Toplamı</th>
+                  <th className="py-2.5 px-3 text-right">Satış (10 TL Yuvarlama)</th>
+                  <th className="py-2.5 px-3 text-right">Toplam Maliyet</th>
                   <th className="py-2.5 px-3 text-center">Sil</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {displayedRows.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-8 text-center text-slate-400">
-                      Filtreye uygun satır bulunamadı
+                    <td colSpan={10} className="py-8 text-center text-slate-400">
+                      Filtreye uygun satır bulunamadı.
                     </td>
                   </tr>
                 ) : (
-                  displayedRows.map((item, idx) => {
+                  displayedRows.map((item) => {
                     const isMissing = !item.isMatched || item.bazFiyat <= 0;
                     return (
                       <tr
@@ -943,13 +970,36 @@ export const DataImporter: React.FC<{
                         </td>
 
                         {/* Ürün Adı */}
-                        <td className="py-2.5 px-3 max-w-[220px]">
+                        <td className="py-2.5 px-3 max-w-[180px]">
                           <input
                             type="text"
                             value={item.urunAdi}
                             onChange={e => handleInlineUrunAdiChange(item.id, e.target.value)}
                             className="w-full bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-sky-500 focus:outline-none font-medium text-slate-800 dark:text-slate-200 text-xs py-0.5"
                           />
+                        </td>
+
+                        {/* 3 Seviyeli Kategori (Ana > Alt > Grup) */}
+                        <td className="py-2.5 px-3 whitespace-nowrap">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[10px] text-slate-400 font-semibold">
+                              {item.anaKategori} &gt; {item.altKategori}
+                            </span>
+                            <div className="relative">
+                              <input
+                                list={`group-list-${item.id}`}
+                                type="text"
+                                value={item.urunGrubu || ''}
+                                onChange={e => handleInlineUrunGrubuChange(item.id, e.target.value)}
+                                className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 rounded text-[11px] font-semibold text-slate-800 dark:text-slate-100 outline-none w-36"
+                              />
+                              <datalist id={`group-list-${item.id}`}>
+                                {getUniqueUrunGruplari(categoryHierarchy, item.anaKategori, item.altKategori).map(g => (
+                                  <option key={g} value={g} />
+                                ))}
+                              </datalist>
+                            </div>
+                          </div>
                         </td>
 
                         {/* Gelen Adet */}
@@ -959,11 +1009,11 @@ export const DataImporter: React.FC<{
                             min="1"
                             value={item.gelenAdet}
                             onChange={e => handleInlineAdetChange(item.id, parseInt(e.target.value) || 1)}
-                            className="w-16 px-2 py-0.5 text-center bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg font-mono font-bold text-xs"
+                            className="w-14 px-1.5 py-0.5 text-center bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg font-mono font-bold text-xs"
                           />
                         </td>
 
-                        {/* Baz Fiyat (Düzenlenebilir) */}
+                        {/* Baz Fiyat */}
                         <td className="py-2.5 px-3 text-right">
                           <input
                             type="number"
@@ -972,7 +1022,7 @@ export const DataImporter: React.FC<{
                             value={item.bazFiyat || ''}
                             onChange={e => handleInlineBazFiyatChange(item.id, parseFloat(e.target.value) || 0)}
                             placeholder="0.00"
-                            className={`w-24 px-2 py-0.5 text-right rounded-lg font-mono font-bold text-xs ${
+                            className={`w-20 px-2 py-0.5 text-right rounded-lg font-mono font-bold text-xs ${
                               item.bazFiyat <= 0
                                 ? 'bg-amber-100 dark:bg-amber-900/60 border border-amber-400 text-amber-900 dark:text-amber-100'
                                 : 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white'
@@ -990,12 +1040,9 @@ export const DataImporter: React.FC<{
                           <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
                             {formatCurrency(item.hesaplananSatisFiyati)}
                           </span>
-                          <span className="text-[10px] text-slate-400 block font-sans">
-                            (%{karMarjiOrani} kâr / 10 TL katı)
-                          </span>
                         </td>
 
-                        {/* Satır Toplamı */}
+                        {/* Satır Toplam Maliyet */}
                         <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
                           {formatCurrency(item.toplamMaliyet)}
                         </td>
@@ -1018,7 +1065,7 @@ export const DataImporter: React.FC<{
             </table>
           </div>
 
-          {/* Alt Onay ve Eylem Butonları */}
+          {/* Alt Onay Butonları */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-3 border-t border-slate-200 dark:border-slate-800 shrink-0">
             <button
               type="button"
@@ -1028,7 +1075,6 @@ export const DataImporter: React.FC<{
               <ArrowLeft className="w-4 h-4" />
               <span>Geri (Dosya & Parametreler)</span>
             </button>
-
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
                 <span className="text-xs text-slate-500 dark:text-slate-400 block font-medium">
@@ -1038,7 +1084,6 @@ export const DataImporter: React.FC<{
                   {formatCurrency(summary.totalNetCost)}
                 </span>
               </div>
-
               <button
                 type="button"
                 disabled={isSubmitting || previewItems.length === 0}
@@ -1062,30 +1107,28 @@ export const DataImporter: React.FC<{
         </div>
       )}
 
-      {/* STEP 3: TAMAMLANDI VE SONUÇ BİLDİRİMİ */}
+      {/* STEP 3: TAMAMLANDI */}
       {step === 3 && resultSummary && (
         <div className="p-8 text-center space-y-6 flex-1 flex flex-col justify-center items-center">
           <div className="w-20 h-20 rounded-3xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
             <CheckCircle2 className="w-10 h-10" />
           </div>
-
           <div>
             <h3 className="text-2xl font-bold text-slate-800 dark:text-white">
-              Mal Alımı Başarıyla Onaylandı ve Kaydedildi!
+              Mal Alımı 3 Seviyeli Kategoriyle Kaydedildi!
             </h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
-              Stok adetleri gelen miktar kadar artırıldı, tedarikçi cari hesabına borç işlendi ve vade takvimine ödeme kaydı oluşturuldu.
+              Stok adetleri gelen miktar kadar arttırıldı, ürünlerin Ana Kategori, Alt Kategori ve Ürün Grubu bilgileri işlendi ve tedarikçi cari borcu kaydedildi.
             </p>
           </div>
-
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-lg w-full">
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700">
               <span className="text-xs text-slate-400 block font-semibold">İşlenen Kalem</span>
               <span className="text-2xl font-bold font-mono text-slate-800 dark:text-white">
                 {resultSummary.totalCount} Kalem
               </span>
             </div>
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700">
               <span className="text-xs text-slate-400 block font-semibold">Toplam Adet</span>
               <span className="text-2xl font-bold font-mono text-slate-800 dark:text-white">
                 +{resultSummary.totalQty} Adet
@@ -1098,14 +1141,13 @@ export const DataImporter: React.FC<{
               </span>
             </div>
           </div>
-
           <div className="flex items-center gap-3 pt-4">
             <button
               type="button"
               onClick={handleReset}
               className="px-5 py-2.5 text-xs font-semibold text-slate-700 dark:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 rounded-xl transition"
             >
-              Yeni Bir Mal Alımı Yükle
+              Yeni Bir Mal Alımı
             </button>
             {onClose && (
               <button

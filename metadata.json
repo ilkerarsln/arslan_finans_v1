@@ -1,6 +1,6 @@
 {
   "name": "Arslan Mobilya ERP & Finans Yönetimi",
-  "description": "Arslan Mobilya ve Beyaz Eşya Kâr Takip, Stok, Mal Alımı, Cari, Kasa, Banka ve Finans Yönetim Sistemi",
+  "description": "3 Seviyeli Kategori Hiyerarşisi, Stok, Kâr Takip, Mal Alımı ve Finans Yönetim Sistemi",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

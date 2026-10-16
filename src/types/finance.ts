@@ -1,5 +1,4 @@
 export type TransactionType = 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alımı';
-
 export type TransactionStatus = 'Tamamlandı' | 'Beklemede' | 'İptal';
 
 export interface Transaction {
@@ -214,21 +213,22 @@ export interface SaleRecord {
   createdBy?: string;
 }
 
+// 3 Seviyeli Kategori Hiyerarşisi
 export interface CategoryHierarchyItem {
   id: string;
   anaKategori: string; // MOBİLYA, BEYAZ EŞYA
   altKategori: string; // BAMBİ, ALTUS, KEA, UĞUR vb.
-  urunGrubu: string; // BAMBİ BASLIK, ALTUS ANKASTRE DAVLUMBAZLAR vb.
+  urunGrubu: string;   // BAMBİ BASLIK, ALTUS ANKASTRE DAVLUMBAZLAR vb.
 }
 
-// Mal Alımı & Stok Yönetimi
+// Mal Alımı & Stok Yönetimi (Zorunlu 3 Seviye + Bağımsız Marka)
 export interface StockItem {
   id: string;
   code?: string; // stokKodu
   name: string; // urunAdi
-  anaKategori: string; // e.g. MOBİLYA, BEYAZ EŞYA
-  altKategori: string; // e.g. BAMBİ, ALTUS, MEDİSA
-  urunGrubu: string; // e.g. BAMBİ YATAK, ALTUS FIRIN
+  anaKategori: string; // Zorunlu Ana Kategori: MOBİLYA, BEYAZ EŞYA
+  altKategori: string; // Zorunlu Alt Kategori: BAMBİ, ALTUS, MEDİSA vb.
+  urunGrubu: string; // Zorunlu Ürün Grubu: BAMBİ YATAK, ALTUS FIRIN vb.
   brand?: string; // İsteğe bağlı bağımsız Marka (Bosch, Altus, Bambi vb.)
   category?: string; // alias for anaKategori
   subCategory?: string; // alias for altKategori
@@ -241,7 +241,7 @@ export interface StockItem {
   salePrice: number; // Perakende Satış Fiyatı (10 TL katına yukarı yuvarlanmış)
   iskontoOrani?: number; // Uygulanan İskonto Oranı (%)
   karMarjiOrani?: number; // Hedef Kâr Marjı (%)
-  vadeDays?: number; // Vade Süresi (Gün, örn: 30, 60 gün)
+  vadeDays?: number; // Vade Süresi (Gün) örn: 30, 60 gün
   minStockLevel?: number;
   lastPurchaseDate?: string;
   notes?: string;
@@ -312,7 +312,7 @@ export interface VadeRateEntry {
   notes?: string;
 }
 
-// 1. Fiyat Listesi Türleri (Toptan ve Perakende)
+// Fiyat Listesi Türleri (Toptan ve Perakende)
 export type PriceListType = 'Toptan' | 'Perakende';
 
 export interface PriceListItem {
@@ -349,7 +349,6 @@ export interface PriceListEntry {
   updatedAt?: string;
 }
 
-// 2, 3, 4. Yalın Dosya Yapısı & Ön İzleme Modelleri
 export type MalAlimiVadeSecimi = 'pesin' | '30gun' | '60gun' | 'ozel';
 export type ImportVadeOption = MalAlimiVadeSecimi;
 

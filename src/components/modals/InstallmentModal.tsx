@@ -101,6 +101,7 @@ export const InstallmentModal: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (parsedTotal <= 0 || !firstDueDate || activeCount <= 0) return;
+
     createInstallmentPlan({
       type,
       totalAmount: parsedTotal,
@@ -200,7 +201,7 @@ export const InstallmentModal: React.FC = () => {
                 list="installment-cari-list"
                 value={cariName}
                 onChange={e => handleCariSelect(e.target.value)}
-                placeholder="ör: Bosch, Bambi, Ahmet Yılmaz..."
+                placeholder="Ör: Bosch, Bambi, Ahmet Yılmaz..."
                 className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-white"
               />
               <datalist id="installment-cari-list">

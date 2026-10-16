@@ -18,14 +18,12 @@ import {
   TrendingUp,
   TrendingDown,
   Users,
-  Download,
-  BarChart3,
   ShoppingBag,
 } from 'lucide-react';
 
 const MONTH_NAMES_TR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-  'Temmuz', 'Ağustos', 'Eylul', 'Ekim', 'Kasım', 'Aralık',
+  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
 ];
 
 export const DashboardTab: React.FC = () => {
@@ -34,7 +32,6 @@ export const DashboardTab: React.FC = () => {
     accounts,
     caris,
     upcomingDues,
-    sales,
     setActiveTab,
     toggleUpcomingDue,
   } = useFinance();
@@ -60,7 +57,6 @@ export const DashboardTab: React.FC = () => {
     return `${MONTH_NAMES_TR[mIdx] || m} ${y}`;
   }, [selectedMonthKey]);
 
-  // Selected month calculations
   const currentMonthTxs = useMemo(() => {
     return transactions.filter(
       tx => tx.date.startsWith(selectedMonthKey) && tx.status !== 'İptal'
@@ -81,29 +77,27 @@ export const DashboardTab: React.FC = () => {
 
   const netCashFlowThisMonth = totalIncomeThisMonth - totalExpenseThisMonth;
 
-  // Liquid assets
   const totalLiquidAssets = accounts
     .filter(a => a.type !== 'Şirket Kredi Kartı')
     .reduce((sum, a) => sum + a.balance, 0);
 
-  // Total receivables & payables
   const totalReceivables = caris
     .filter(c => c.balance > 0)
     .reduce((sum, c) => sum + c.balance, 0);
+
   const totalPayables = caris
     .filter(c => c.balance < 0)
     .reduce((sum, c) => sum + Math.abs(c.balance), 0);
 
-  // Today's summary
   const todayIncome = transactions
     .filter(t => t.date === todayStr && t.type === 'Gelir' && t.status !== 'İptal')
     .reduce((s, t) => s + t.amount, 0);
+
   const todayExpense = transactions
     .filter(t => t.date === todayStr && (t.type === 'Gider' || t.type === 'Mal Alımı') && t.status !== 'İptal')
     .reduce((s, t) => s + t.amount, 0);
 
   const recentTransactions = transactions.slice(0, 6);
-
   const activeDues = upcomingDues
     .filter(d => !d.isCompleted)
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
@@ -143,12 +137,6 @@ export const DashboardTab: React.FC = () => {
           <p className="text-xs text-slate-300 mt-1 max-w-xl">
             Tüm şirket banka hesapları, nakit kasalar, cari borç/alacaklar ve planlanan ödemelerin anlık özeti.
           </p>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-slate-400 self-start sm:self-center">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/80 border border-slate-700 rounded-xl">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span className="text-slate-200 font-medium">Bulut Senkronize</span>
-          </div>
         </div>
       </div>
 
@@ -292,6 +280,7 @@ export const DashboardTab: React.FC = () => {
             Carileri İncele
           </button>
         </div>
+
         <div className="bg-white dark:bg-slate-900 p-4 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-rose-50 dark:bg-rose-950 text-rose-600 dark:text-rose-400 flex items-center justify-center">
@@ -352,7 +341,7 @@ export const DashboardTab: React.FC = () => {
                   <th className="py-2.5 px-4 font-semibold">Tür</th>
                   <th className="py-2.5 px-4 font-semibold">Firma / Cari</th>
                   <th className="py-2.5 px-4 font-semibold">Kategori</th>
-                  <th className="py-2.5 px-4 font-semibold text-right">Tutar</th>
+                  <th className="py-2.5 px-4 text-right">Tutar</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -449,11 +438,6 @@ export const DashboardTab: React.FC = () => {
                           <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
                             {due.title}
                           </p>
-                          {due.installmentIndex && due.totalInstallments && (
-                            <span className="text-[10px] font-bold text-indigo-700 dark:text-indigo-300 bg-indigo-50 dark:bg-indigo-950/70 border border-indigo-200 dark:border-indigo-800 px-1.5 py-0.2 rounded shrink-0">
-                              {due.installmentIndex}/{due.totalInstallments}
-                            </span>
-                          )}
                         </div>
                         <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5 ml-4">
                           <span>{formatDate(due.dueDate)}</span>
@@ -495,15 +479,6 @@ export const DashboardTab: React.FC = () => {
                 })
               )}
             </div>
-          </div>
-          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs">
-            <span className="text-slate-400">Vadesi gelen çek ve taksitler</span>
-            <button
-              onClick={() => setActiveTab('upcoming')}
-              className="text-emerald-600 dark:text-emerald-400 font-semibold hover:underline"
-            >
-              Yeni Vade Ekle +
-            </button>
           </div>
         </div>
       </div>
