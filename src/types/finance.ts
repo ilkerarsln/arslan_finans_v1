@@ -405,3 +405,31 @@ export type ActiveTab =
   | 'definitions'
   | 'audit'
   | 'users';
+
+// ==========================================
+// Ciro & Finansal Analiz Matrisi (Excel Birebir Uyumlu)
+// ==========================================
+export type CiroMainGroup = 'BEYAZ EŞYA' | 'MOBİLYA';
+
+export interface CiroMatrixRowDef {
+  id: string; // e.g. 'ALTUS', 'UGUR', 'HOOVER', 'KEA', 'TV', 'BOSCH', 'MEDISA', 'MOBILYA', 'YATAK', 'BAMBI', 'MASA', 'AKSESUAR'
+  displayName: string;
+  group: CiroMainGroup;
+  defaultProfitMargin: number; // e.g. 22
+  aliases: string[];
+}
+
+export interface CiroCellEntry {
+  manualAmount?: number;
+  overrideTotal?: number;
+  note?: string;
+  updatedAt?: string;
+}
+
+export interface CiroYearConfig {
+  rowMargins?: Record<string, number>; // rowId -> custom profit margin %
+  cells?: Record<string, Record<number, CiroCellEntry>>; // rowId -> month(1..12) -> entry
+}
+
+export type CiroMatrixDataStore = Record<string, CiroYearConfig>;
+

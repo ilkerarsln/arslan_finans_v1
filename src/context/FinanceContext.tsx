@@ -86,7 +86,10 @@ import {
   StockPurchaseRecord,
   LeanImportPreviewItem,
   LeanMalAlimiConfig,
+  CiroMatrixDataStore,
+  CiroCellEntry,
 } from '../types/finance';
+import { INITIAL_CIRO_MATRIX_DATA } from '../data/initialCiroMatrix';
 import { calculateInstallmentDate, formatDate, formatCurrency, addDays } from '../utils/formatters';
 import { parseExcelData } from '../utils/excelImport';
 
@@ -263,6 +266,13 @@ interface FinanceContextType {
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   syncLocalToCloud: () => Promise<void>;
+
+  // Ciro & Finansal Analiz Matrisi (Excel Uyumlu)
+  ciroMatrixData: CiroMatrixDataStore;
+  updateCiroCell: (year: string, rowId: string, month: number, updates: Partial<CiroCellEntry>) => void;
+  updateCiroRowMargin: (year: string, rowId: string, margin: number) => void;
+  addNewCiroYear: (year: string) => void;
+  resetCiroMatrixToDefault: () => void;
 }
 
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
@@ -491,6 +501,17 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   });
 
+  // Ciro & Finansal Analiz Matrisi State (Excel Birebir Uyumlu)
+  const [ciroMatrixData, setCiroMatrixData] = useState<CiroMatrixDataStore>(() => {
+    try {
+      const saved = localStorage.getItem('arslan_ciro_matrix_v2');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error('Failed to parse ciroMatrixData:', e);
+    }
+    return INITIAL_CIRO_MATRIX_DATA;
+  });
+
   // Sync to localStorage
   useEffect(() => {
     try {
@@ -606,6 +627,84 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const resetCategoryHierarchy = () => {
     setCategoryHierarchy(INITIAL_CATEGORY_HIERARCHY);
     showToast('Kategori hiyerarşisi varsayılan tam 13 gruba sıfırlandı.', 'success');
+  };
+
+  // Ciro Matrisi LocalStorage Sync
+  useEffect(() => {
+    try {
+      localStorage.setItem('arslan_ciro_matrix_v2', JSON.stringify(ciroMatrixData));
+    } catch {}
+  }, [ciroMatrixData]);
+
+  // Ciro Matrisi Metodları
+  const updateCiroCell = (year: string, rowId: string, month: number, updates: Partial<CiroCellEntry>) => {
+    setCiroMatrixData(prev => {
+      const yearConfig = prev[year] || { rowMargins: {}, cells: {} };
+      const rowCells = yearConfig.cells?.[rowId] || {};
+      const existingCell = rowCells[month] || {};
+
+      const updatedCell: CiroCellEntry = {
+        ...existingCell,
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      };
+
+      return {
+        ...prev,
+        [year]: {
+          ...yearConfig,
+          cells: {
+            ...(yearConfig.cells || {}),
+            [rowId]: {
+              ...rowCells,
+              [month]: updatedCell,
+            },
+          },
+        },
+      };
+    });
+    showToast(`${year} ciro matrisi güncellendi.`, 'success');
+  };
+
+  const updateCiroRowMargin = (year: string, rowId: string, margin: number) => {
+    setCiroMatrixData(prev => {
+      const yearConfig = prev[year] || { rowMargins: {}, cells: {} };
+      return {
+        ...prev,
+        [year]: {
+          ...yearConfig,
+          rowMargins: {
+            ...(yearConfig.rowMargins || {}),
+            [rowId]: margin,
+          },
+        },
+      };
+    });
+    showToast(`${rowId} kâr marjı %${margin} olarak güncellendi.`, 'info');
+  };
+
+  const addNewCiroYear = (newYear: string) => {
+    const trimmed = newYear.trim();
+    if (!trimmed) return;
+    setCiroMatrixData(prev => {
+      if (prev[trimmed]) {
+        showToast(`${trimmed} yılı zaten mevcut.`, 'info');
+        return prev;
+      }
+      showToast(`${trimmed} yılı ciro matrisine eklendi.`, 'success');
+      return {
+        ...prev,
+        [trimmed]: {
+          rowMargins: {},
+          cells: {},
+        },
+      };
+    });
+  };
+
+  const resetCiroMatrixToDefault = () => {
+    setCiroMatrixData(INITIAL_CIRO_MATRIX_DATA);
+    showToast('Ciro matrisi fabrika başlangıç ayarlarına döndürüldü.', 'info');
   };
 
   // Kapsamlı Düzenleme Modal State
@@ -2392,6 +2491,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         loginWithGoogle,
         logout,
         syncLocalToCloud,
+        ciroMatrixData,
+        updateCiroCell,
+        updateCiroRowMargin,
+        addNewCiroYear,
+        resetCiroMatrixToDefault,
       }}
     >
       {children}
