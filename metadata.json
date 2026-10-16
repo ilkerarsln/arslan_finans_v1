@@ -1,6 +1,6 @@
 {
-  "name": "Arslan Mobilya - Finans, Kâr & Stok Yönetimi",
-  "description": "Arslan Mobilya için ortak tedarikçi altyapılı finans, cari hesap, mal alım/stok entegrasyonu ve kâr takip sistemi.",
+  "name": "Arslan Mobilya ERP & Finans Yönetimi",
+  "description": "Arslan Mobilya ve Beyaz Eşya Kâr Takip, Stok, Mal Alış, Cari, Kasa, Banka ve Finans Yönetim Sistemi",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
