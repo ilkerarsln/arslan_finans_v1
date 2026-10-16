@@ -159,7 +159,7 @@ export interface DeletionRequest {
 export interface AuditLogEntry {
   id: string;
   action: 'Ekleme' | 'Güncelleme' | 'Silme Talebi' | 'Silme Onayı' | 'Silme Reddi' | 'Kalıcı Silme';
-  entityType: 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alımı' | 'Cari' | 'Hesap' | 'Personel' | 'Sistem';
+  entityType: 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alımı' | 'Cari' | 'Hesap' | 'Personel' | 'Sistem' | 'Satış' | 'Stok';
   entityId: string;
   description: string;
   performedBy: string;
@@ -170,4 +170,143 @@ export interface AuditLogEntry {
   details?: Record<string, any>;
 }
 
-export type ActiveTab = 'dashboard' | 'transactions' | 'accounts' | 'currents' | 'upcoming' | 'reports' | 'users' | 'audit';
+// ----------------------------------------------------------------------
+// Kâr Takip & Satış Türleri
+// ----------------------------------------------------------------------
+export type SaleType = 'Peşin' | 'Kredi Kartı' | 'Senetli Satış';
+
+export interface SaleRecord {
+  id: string;
+  date: string; // YYYY-MM-DD
+  documentNo?: string;
+  customerId?: string;
+  customerName: string;
+  productId?: string;
+  productName: string;
+  category: string;
+  subCategory?: string;
+  brand?: string;
+  supplierId?: string; // Ortak Tedarikçi Cari ID
+  supplierName?: string;
+  quantity: number;
+  costPrice: number; // Birim alış maliyeti
+  totalCost: number; // quantity * costPrice
+  saleType: SaleType;
+  installmentsCount?: number; // Senetli satış taksit sayısı (örn: 6, 12, 18, 24)
+  vadeRateMonthly?: number; // Tanımlardan alınan aylık vade farkı oranı (% örn: 3.5)
+  vadeFarkiAmount?: number; // Senetli satış için hesaplanan toplam vade farkı maliyeti
+  effectiveCost: number; // Ürün Maliyeti + Vade Farkı Maliyeti
+  salePrice: number; // Birim satış fiyatı
+  totalSaleAmount: number; // Toplam Satış Cirosu
+  netProfit: number; // Toplam Ciro - Efektif Maliyet
+  profitMargin: number; // Net Kâr / Satış Cirosu (%)
+  salesPerson: string; // İşlemi gerçekleştiren Satış Personeli
+  accountId?: string; // Peşin/Kredi Kartı tahsilat hesabı
+  notes?: string;
+  createdAt: string;
+  createdBy?: string;
+}
+
+// ----------------------------------------------------------------------
+// Mal Alım & Stok Yönetimi
+// ----------------------------------------------------------------------
+export interface StockItem {
+  id: string;
+  code?: string;
+  name: string;
+  category: string; // e.g. Beyaz Eşya, Mobilya
+  subCategory?: string; // e.g. Buzdolabı, Çamaşır Makinesi
+  brand?: string; // e.g. Bosch, Altus, Bambi
+  supplierId?: string; // Ortak Tedarikçi
+  supplierName?: string;
+  quantity: number;
+  unit: string;
+  purchasePrice: number; // Son Alış Maliyeti
+  totalValue: number; // quantity * purchasePrice
+  salePrice: number; // Perakende Satış Fiyatı
+  minStockLevel?: number;
+  lastPurchaseDate?: string;
+  notes?: string;
+}
+
+export interface PurchaseItemDetail {
+  productId?: string;
+  name: string;
+  category: string;
+  subCategory?: string;
+  brand?: string;
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+  salePrice?: number;
+}
+
+export interface StockPurchaseRecord {
+  id: string;
+  date: string; // YYYY-MM-DD
+  documentNo: string;
+  supplierId: string; // Ortak Tedarikçi Cari ID
+  supplierName: string;
+  items: PurchaseItemDetail[];
+  totalAmount: number;
+  paymentType: 'Vadeli (Cari Borca Ekle)' | 'Peşin Kasa/Banka';
+  dueDate?: string; // Vade tarihi
+  accountId?: string;
+  notes?: string;
+  createdAt: string;
+  createdBy?: string;
+  createdByName?: string;
+}
+
+// ----------------------------------------------------------------------
+// Tanımlamalar (Kategoriler, Alt Kategoriler, Markalar, Vade Oranları, Fiyat Listeleri)
+// ----------------------------------------------------------------------
+export interface ProductCategory {
+  id: string;
+  name: string;
+  type?: string;
+  color?: string;
+}
+
+export interface ProductSubCategory {
+  id: string;
+  categoryId: string;
+  categoryName: string;
+  name: string;
+}
+
+export interface ProductBrand {
+  id: string;
+  name: string;
+  categoryNames?: string[];
+}
+
+export interface VadeRateEntry {
+  id: string;
+  monthKey: string; // YYYY-MM
+  rateMonthly: number; // Aylık Vade Farkı Oranı (%) örn: 3.5
+  notes?: string;
+}
+
+export interface PriceListEntry {
+  id: string;
+  monthKey: string; // YYYY-MM
+  title: string;
+  categoryName?: string;
+  itemsCount: number;
+  fileUrl?: string;
+  notes?: string;
+}
+
+export type ActiveTab =
+  | 'dashboard'
+  | 'profit'
+  | 'stock'
+  | 'transactions'
+  | 'accounts'
+  | 'currents'
+  | 'upcoming'
+  | 'reports'
+  | 'definitions'
+  | 'audit'
+  | 'users';

@@ -7,8 +7,12 @@ import { TransactionsTab } from './components/tabs/TransactionsTab';
 import { AccountsTab } from './components/tabs/AccountsTab';
 import { CurrentsTab } from './components/tabs/CurrentsTab';
 import { UpcomingDuesTab } from './components/tabs/UpcomingDuesTab';
+import { ProfitTab } from './components/tabs/ProfitTab';
+import { StockTab } from './components/tabs/StockTab';
+import { DefinitionsTab } from './components/tabs/DefinitionsTab';
 import { ReportsTab } from './components/tabs/ReportsTab';
 import { UsersTab } from './components/tabs/UsersTab';
+import { AuditTab } from './components/tabs/AuditTab';
 import { TransactionModal } from './components/modals/TransactionModal';
 import { InstallmentModal } from './components/modals/InstallmentModal';
 import { AccountModal } from './components/modals/AccountModal';
@@ -115,9 +119,13 @@ const MainAppContent: React.FC = () => {
                 onSelectCariDetail={cari => setSelectedCariForDetail(cari)}
               />
             )}
+            {activeTab === 'profit' && <ProfitTab />}
+            {activeTab === 'stock' && <StockTab />}
+            {activeTab === 'definitions' && <DefinitionsTab />}
             {activeTab === 'upcoming' && <UpcomingDuesTab />}
             {activeTab === 'reports' && <ReportsTab />}
             {activeTab === 'users' && <UsersTab />}
+            {activeTab === 'audit' && <AuditTab />}
           </div>
         </main>
       </div>

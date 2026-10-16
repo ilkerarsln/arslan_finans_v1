@@ -14,6 +14,8 @@ import {
   FileSpreadsheet,
   Layers,
   Calendar,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface CariDetailModalProps {
@@ -27,15 +29,25 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
   onClose,
   onEdit,
 }) => {
-  const { transactions, upcomingDues, openTransactionModal, openInstallmentModal } = useFinance();
+  const {
+    transactions,
+    upcomingDues,
+    openTransactionModal,
+    openInstallmentModal,
+    isAdmin,
+    deleteCari,
+    requestDeleteCari,
+  } = useFinance();
 
   if (!cari) return null;
 
-  // Filter transactions for this Cari
+  // Filter transactions for this Cari, including POS collections offset to this supplier
   const cariTransactions = transactions.filter(
     tx =>
       tx.cariId === cari.id ||
-      (tx.cariName && tx.cariName.toLowerCase().includes(cari.name.toLowerCase()))
+      (tx.isPosOffset && tx.supplierCariId === cari.id) ||
+      (tx.cariName && tx.cariName.toLowerCase().includes(cari.name.toLowerCase())) ||
+      (tx.isPosOffset && tx.supplierCariName && tx.supplierCariName.toLowerCase().includes(cari.name.toLowerCase()))
   );
 
   // Filter upcoming dues for this Cari
@@ -101,6 +113,39 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
             >
               Düzenle
             </button>
+            {isAdmin ? (
+              <button
+                onClick={() => {
+                  if (window.confirm(`"${cari.name}" cari kartını silmek istediğinize emin misiniz?`)) {
+                    deleteCari(cari.id);
+                    onClose();
+                  }
+                }}
+                className="text-xs font-semibold px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/60 dark:hover:bg-rose-900 text-rose-700 dark:text-rose-300 rounded-lg transition flex items-center gap-1"
+                title="Cari Kartı Sil (Yönetici)"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Sil</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  const reason = window.prompt(
+                    `"${cari.name}" cari kartını silmek için Yönetici (Admin) onayına gerekçe iletiniz:`,
+                    'Cari kapatıldı / mükerrer kayıt'
+                  );
+                  if (reason !== null && reason.trim()) {
+                    requestDeleteCari(cari.id, reason.trim());
+                    onClose();
+                  }
+                }}
+                className="text-xs font-semibold px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/60 dark:hover:bg-amber-900 text-amber-700 dark:text-amber-300 rounded-lg transition flex items-center gap-1"
+                title="Yönetici Onayına Silme Talebi Gönder"
+              >
+                <AlertTriangle className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Silme Talebi</span>
+              </button>
+            )}
             <button
               onClick={onClose}
               className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg"
@@ -299,59 +344,81 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {cariTransactions.map(tx => (
-                    <tr
-                      key={tx.id}
-                      className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
-                    >
-                      <td className="py-2.5 px-3 text-slate-500 whitespace-nowrap">{formatDate(tx.date)}</td>
-                      <td className="py-2.5 px-3 whitespace-nowrap">
-                        <span
-                          className={`font-semibold ${
-                            tx.type === 'Gelir'
+                  {cariTransactions.map(tx => {
+                    const isSupplierPosOffset = tx.isPosOffset && tx.supplierCariId === cari.id;
+                    return (
+                      <tr
+                        key={tx.id}
+                        className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
+                      >
+                        <td className="py-2.5 px-3 text-slate-500 whitespace-nowrap">{formatDate(tx.date)}</td>
+                        <td className="py-2.5 px-3 whitespace-nowrap">
+                          {isSupplierPosOffset ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                              POS Mahsup
+                            </span>
+                          ) : (
+                            <span
+                              className={`font-semibold ${
+                                tx.type === 'Gelir'
+                                  ? 'text-emerald-600 dark:text-emerald-400'
+                                  : 'text-rose-600 dark:text-rose-400'
+                              }`}
+                            >
+                              {tx.type}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300">
+                          <div>{tx.desc || tx.category}</div>
+                          {isSupplierPosOffset && (
+                            <span className="text-[10px] text-teal-600 dark:text-teal-400 font-medium">
+                              POS Tahsilatından Tedarikçi Borcuna Mahsup Edildi
+                            </span>
+                          )}
+                          {isAdmin && (tx.createdByName || tx.createdBy) && (
+                            <span className="text-[10px] text-slate-400 block">
+                              Ekleyen: {tx.createdByName || tx.createdBy}
+                            </span>
+                          )}
+                          {tx.installmentIndex && tx.totalInstallments && (
+                            <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
+                              {tx.installmentIndex}/{tx.totalInstallments}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 whitespace-nowrap">
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                              tx.status === 'Tamamlandı'
+                                ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400'
+                                : tx.status === 'Beklemede'
+                                ? 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400'
+                                : 'bg-slate-100 text-slate-600'
+                            }`}
+                          >
+                            {tx.status}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500">
+                          {tx.documentNo || '-'}
+                        </td>
+                        <td
+                          className={`py-2.5 px-3 text-right font-mono-num font-bold whitespace-nowrap ${
+                            isSupplierPosOffset
+                              ? 'text-teal-600 dark:text-teal-400'
+                              : tx.type === 'Gelir'
                               ? 'text-emerald-600 dark:text-emerald-400'
                               : 'text-rose-600 dark:text-rose-400'
                           }`}
                         >
-                          {tx.type}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300">
-                        <span>{tx.desc || tx.category}</span>
-                        {tx.installmentIndex && tx.totalInstallments && (
-                          <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
-                            {tx.installmentIndex}/{tx.totalInstallments}
-                          </span>
-                        )}
-                      </td>
-                      <td className="py-2.5 px-3 whitespace-nowrap">
-                        <span
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                            tx.status === 'Tamamlandı'
-                              ? 'bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-400'
-                              : tx.status === 'Beklemede'
-                              ? 'bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-400'
-                              : 'bg-slate-100 text-slate-600'
-                          }`}
-                        >
-                          {tx.status}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500">
-                        {tx.documentNo || '-'}
-                      </td>
-                      <td
-                        className={`py-2.5 px-3 text-right font-mono-num font-bold whitespace-nowrap ${
-                          tx.type === 'Gelir'
-                            ? 'text-emerald-600 dark:text-emerald-400'
-                            : 'text-rose-600 dark:text-rose-400'
-                        }`}
-                      >
-                        {tx.type === 'Gelir' ? '+' : '-'}
-                        {formatCurrency(tx.amount)}
-                      </td>
-                    </tr>
-                  ))}
+                          {isSupplierPosOffset
+                            ? `+${formatCurrency(tx.amount)} (Mahsup)`
+                            : `${tx.type === 'Gelir' ? '+' : '-'}${formatCurrency(tx.amount)}`}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             )}

@@ -17,6 +17,11 @@ import {
   FileSpreadsheet,
   Layers,
   ShoppingBag,
+  Boxes,
+  AlertTriangle,
+  Clock,
+  UserCheck,
+  Shield,
 } from 'lucide-react';
 
 export const TransactionsTab: React.FC = () => {
@@ -24,11 +29,13 @@ export const TransactionsTab: React.FC = () => {
     transactions,
     accounts,
     deleteTransaction,
+    requestDeleteTransaction,
     openTransactionModal,
     openInstallmentModal,
     exportDataToExcel,
     showToast,
     isAdmin,
+    setActiveTab,
   } = useFinance();
 
   const [searchTerm, setSearchTerm] = useState('');
@@ -167,11 +174,21 @@ export const TransactionsTab: React.FC = () => {
 
   const handleDelete = (id: string) => {
     if (!isAdmin) {
-      showToast('İşlem silme yetkisi yalnızca Yöneticilere (Admin) aittir.', 'error');
+      showToast('İşlem doğrudan silme yetkisi yalnızca Yöneticilere (Admin) aittir. Silme talebi oluşturabilirsiniz.', 'info');
       return;
     }
     if (window.confirm('Bu finansal işlemi silmek istediğinize emin misiniz? Bakiye otomatik güncellenecektir.')) {
       deleteTransaction(id);
+    }
+  };
+
+  const handleRequestDelete = (tx: Transaction) => {
+    const reason = window.prompt(
+      `"${tx.type} - ${tx.desc || tx.category} (₺${tx.amount.toLocaleString('tr-TR')})" işlemini iptal etme / silme gerekçenizi yazın:\n\n(Bu talep Yönetici (Admin) onayına sunulacaktır ve onaylanana kadar işlem aktif kalacaktır)`,
+      'Hatalı tutar girildi / İşlem iptal talebi'
+    );
+    if (reason !== null && reason.trim()) {
+      requestDeleteTransaction(tx.id, reason.trim());
     }
   };
 
@@ -215,11 +232,18 @@ export const TransactionsTab: React.FC = () => {
               <Layers className="w-3.5 h-3.5" /> Taksitlendir
             </button>
             <button
+              onClick={() => setActiveTab('stock')}
+              className="px-3.5 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
+              title="Birleşik Mal Alım & Stok Ekranına Git"
+            >
+              <Boxes className="w-3.5 h-3.5" /> Mal Alımı Yap (Stok)
+            </button>
+            <button
               onClick={() => openTransactionModal({ type: 'Mal Alımı' })}
               className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
               title="Tedarikçiden Vadeli Mal Alımı Ekle"
             >
-              <ShoppingBag className="w-3.5 h-3.5" /> Mal Alımı Ekle
+              <ShoppingBag className="w-3.5 h-3.5" /> Hızlı Mal Girişi
             </button>
             <button
               onClick={() => openTransactionModal()}
@@ -348,11 +372,12 @@ export const TransactionsTab: React.FC = () => {
               <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-semibold">
                 <tr>
                   <th className="py-3 px-4">Tarih</th>
+                  {isAdmin && <th className="py-3 px-4">Ekleyen Personel</th>}
                   <th className="py-3 px-4">Tür</th>
                   <th className="py-3 px-4">Kategori</th>
                   <th className="py-3 px-4">Cari / Firma</th>
                   <th className="py-3 px-4">Hesap / Kasa</th>
-                  <th className="py-3 px-4">Açıklama</th>
+                  <th className="py-3 px-4">Açıklama & Detay</th>
                   <th className="py-3 px-4 text-right">Tutar</th>
                   <th className="py-3 px-4 text-center">İşlemler</th>
                 </tr>
@@ -372,6 +397,25 @@ export const TransactionsTab: React.FC = () => {
                       <td className="py-3 px-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">
                         {formatDate(tx.date)}
                       </td>
+                      {isAdmin && (
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center text-[10px] font-bold border border-slate-200 dark:border-slate-700">
+                              {(tx.createdByName || tx.createdBy || 'S')[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <span className="font-semibold text-slate-800 dark:text-slate-200 block text-[11px]">
+                                {tx.createdByName || tx.createdBy || 'Sistem'}
+                              </span>
+                              {tx.createdBy && tx.createdByName && tx.createdBy !== tx.createdByName && (
+                                <span className="text-[9px] text-slate-400 block font-mono">
+                                  @{tx.createdBy}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      )}
                       <td className="py-3 px-4 whitespace-nowrap">
                         <span
                           className={`font-semibold inline-flex items-center gap-1 ${
@@ -410,9 +454,20 @@ export const TransactionsTab: React.FC = () => {
                           sourceAcc?.name || '-'
                         )}
                       </td>
-                      <td className="py-3 px-4 text-slate-500 dark:text-slate-400 max-w-[220px]">
+                      <td className="py-3 px-4 text-slate-500 dark:text-slate-400 max-w-[260px]">
                         <div className="flex flex-wrap items-center gap-1">
-                          <span className="truncate">{tx.desc || '-'}</span>
+                          <span className="truncate font-medium text-slate-800 dark:text-slate-200">{tx.desc || '-'}</span>
+                          {tx.isPosOffset && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 shrink-0">
+                              POS Mahsup ➔ {tx.supplierCariName || 'Tedarikçi'}
+                            </span>
+                          )}
+                          {tx.pendingDeletion && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700 flex items-center gap-1 shrink-0 animate-pulse">
+                              <AlertTriangle className="w-3 h-3 text-amber-500" />
+                              Silme Onayı Bekliyor
+                            </span>
+                          )}
                           {tx.dueDate && tx.type === 'Mal Alımı' && (
                             <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0">
                               Vade: {formatDate(tx.dueDate)}
@@ -469,21 +524,41 @@ export const TransactionsTab: React.FC = () => {
                             <Edit2 className="w-3.5 h-3.5" />
                           </button>
                           {isAdmin ? (
-                            <button
-                              onClick={() => handleDelete(tx.id)}
-                              title="Sil (Yönetici)"
-                              className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
+                            tx.pendingDeletion ? (
+                              <button
+                                onClick={() => setActiveTab('audit')}
+                                title="Bu işlem için silme onayı bekleniyor. İncelemek için Denetim sekmesine git"
+                                className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 transition shadow-xs"
+                              >
+                                <AlertTriangle className="w-3 h-3" />
+                                <span>Talebi İncele</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleDelete(tx.id)}
+                                title="İşlemi Kalıcı Olarak Sil (Yönetici)"
+                                className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )
                           ) : (
-                            <button
-                              onClick={() => handleDelete(tx.id)}
-                              title="Silme yetkisi yalnızca Yöneticilere (Admin) aittir"
-                              className="p-1 text-slate-300 dark:text-slate-700 cursor-not-allowed rounded"
-                            >
-                              <Trash2 className="w-3.5 h-3.5 opacity-40" />
-                            </button>
+                            tx.pendingDeletion ? (
+                              <span
+                                title="Yönetici onayı bekleniyor"
+                                className="px-2 py-0.5 bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700 rounded-lg text-[10px] font-semibold flex items-center gap-1"
+                              >
+                                <Clock className="w-3 h-3" /> Onayda
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => handleRequestDelete(tx)}
+                                title="İşlemi İptal Et / Silme Talebi İlet (Admin Onayına)"
+                                className="p-1 text-slate-400 hover:text-amber-600 rounded transition"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )
                           )}
                         </div>
                       </td>

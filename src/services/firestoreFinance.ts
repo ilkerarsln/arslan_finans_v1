@@ -665,10 +665,30 @@ export const DEFAULT_STAFF_ACCOUNTS: StaffAccount[] = [
   {
     id: 'admin',
     username: 'admin',
-    displayName: 'Sistem Yöneticisi (Admin)',
+    displayName: 'İlker Arslan (Yönetici)',
     role: 'Admin',
-    password: 'admin123',
-    email: 'admin@arslanfinans.internal',
+    password: '140514',
+    email: 'ilkerarslan78@gmail.com',
+    createdAt: new Date().toISOString(),
+    createdBy: 'Sistem',
+  },
+  {
+    id: 'ilkerarslan78@gmail',
+    username: 'ilkerarslan78@gmail',
+    displayName: 'İlker Arslan (Yönetici)',
+    role: 'Admin',
+    password: '140514',
+    email: 'ilkerarslan78@gmail.com',
+    createdAt: new Date().toISOString(),
+    createdBy: 'Sistem',
+  },
+  {
+    id: 'ilkerarslan78@gmail.com',
+    username: 'ilkerarslan78@gmail.com',
+    displayName: 'İlker Arslan (Yönetici)',
+    role: 'Admin',
+    password: '140514',
+    email: 'ilkerarslan78@gmail.com',
     createdAt: new Date().toISOString(),
     createdBy: 'Sistem',
   },
@@ -705,7 +725,7 @@ export async function getStaffAccountByUsername(username: string): Promise<Staff
     }
 
     // Check default staff templates
-    const defaultStaff = DEFAULT_STAFF_ACCOUNTS.find(s => s.username === clean);
+    const defaultStaff = DEFAULT_STAFF_ACCOUNTS.find(s => s.username === clean || s.email.toLowerCase() === clean);
     if (defaultStaff) {
       // Auto-seed into Firestore staff_accounts collection
       await setDoc(doc(db, 'staff_accounts', clean), sanitizeData(defaultStaff), { merge: true });
@@ -716,7 +736,7 @@ export async function getStaffAccountByUsername(username: string): Promise<Staff
   } catch (error) {
     console.warn('getStaffAccountByUsername check error:', error);
     // Fallback to local default if offline or network issue
-    const defaultStaff = DEFAULT_STAFF_ACCOUNTS.find(s => s.username === clean);
+    const defaultStaff = DEFAULT_STAFF_ACCOUNTS.find(s => s.username === clean || s.email.toLowerCase() === clean);
     return defaultStaff || null;
   }
 }
@@ -736,18 +756,29 @@ export async function loginStaffWithUsername(
   }
 
   // 1. Verify against Firestore staff_accounts table
-  const staff = await getStaffAccountByUsername(username);
+  let staff = await getStaffAccountByUsername(username);
+  if (!staff && (username === 'admin' || username === 'ilkerarslan78@gmail' || username === 'ilkerarslan78@gmail.com')) {
+    staff = DEFAULT_STAFF_ACCOUNTS[0];
+  }
+
   if (!staff) {
     throw new Error('Kullanıcı adı bulunamadı. Lütfen girdiğiniz bilgileri kontrol edin.');
   }
 
+  const isAdminUser =
+    username === 'admin' ||
+    username === 'ilkerarslan78@gmail' ||
+    username === 'ilkerarslan78@gmail.com' ||
+    staff.username === 'admin' ||
+    staff.email?.toLowerCase() === 'ilkerarslan78@gmail.com';
+
   // Check password
-  if (staff.password && staff.password !== password) {
-    if (username === 'admin' && (password === '123456' || password === 'admin123')) {
-      // Allow either password for admin
-    } else {
-      throw new Error('Hatalı şifre girdiniz. Lütfen kontrol edip tekrar deneyin.');
+  if (isAdminUser) {
+    if (password !== '140514' && password !== 'admin123' && staff.password !== password) {
+      throw new Error('Hatalı şifre girdiniz. Yönetici şifrenizi kontrol edin.');
     }
+  } else if (staff.password && staff.password !== password) {
+    throw new Error('Hatalı şifre girdiniz. Lütfen kontrol edip tekrar deneyin.');
   }
 
   // 2. Perform Firebase Auth to obtain a real session for Firestore Security Rules
@@ -755,9 +786,10 @@ export async function loginStaffWithUsername(
   let authUid = '';
 
   const passwordsToTry = [password];
-  if (username === 'admin') {
-    if (!passwordsToTry.includes('123456')) passwordsToTry.push('123456');
+  if (isAdminUser) {
+    if (!passwordsToTry.includes('140514')) passwordsToTry.push('140514');
     if (!passwordsToTry.includes('admin123')) passwordsToTry.push('admin123');
+    if (!passwordsToTry.includes('123456')) passwordsToTry.push('123456');
   }
   if (staff.password && !passwordsToTry.includes(staff.password)) {
     passwordsToTry.push(staff.password);

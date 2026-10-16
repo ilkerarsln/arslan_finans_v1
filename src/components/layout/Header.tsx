@@ -10,36 +10,48 @@ interface HeaderProps {
 
 const TAB_TITLES: Record<ActiveTab, { title: string; subtitle: string }> = {
   dashboard: {
-    title: 'Genel Finansal Özet',
-    subtitle: 'Nakit akışı ve anlık şirket mali durumu',
+    title: 'Genel Finansal Özet & Kârlılık',
+    subtitle: 'Nakit akışı, dönemlik kâr-zarar tablosu ve şirket mali durumu',
+  },
+  profit: {
+    title: 'Kâr Takip (Satışlar & Kârlılık)',
+    subtitle: 'Peşin, kredi kartı ve senetli satış takibi, vade farkı maliyetleri ve personel performansı',
+  },
+  stock: {
+    title: 'Mal Alım & Stok Yönetimi',
+    subtitle: 'Tedarikçi borçlandırması, ürün stok girişleri ve toplu Excel alım entegrasyonu',
   },
   transactions: {
-    title: 'Gelir ve Gider Hareketleri',
-    subtitle: 'Kasa ve banka kayıtları, arama ve filtreleme',
+    title: 'Gelir ve Gider Hareketleri (Kasa)',
+    subtitle: 'Kasa ve banka kayıtları, masraf takibi ve denetim izi',
   },
   accounts: {
-    title: 'Banka Hesapları & Kartlar',
-    subtitle: 'Vadesiz ticari hesaplar, limitler ve virman transferleri',
+    title: 'Banka Hesapları & Kasalar',
+    subtitle: 'Kasa, banka ve POS hesapları, dönemlik hareket ekstreleri ve transferler',
   },
   currents: {
     title: 'Cari Hesap Yönetimi',
-    subtitle: 'Müşteri ve tedarikçi borç/alacak takibi ve ekstreler',
+    subtitle: 'Ortak müşteri ve tedarikçi borç/alacak takibi ve ekstreler',
+  },
+  definitions: {
+    title: 'Tanımlamalar & Fiyat Listeleri',
+    subtitle: 'Beyaz eşya & mobilya kategorileri, alt kategoriler, markalar, vade oranları ve fiyat listeleri',
   },
   upcoming: {
     title: 'Vade & Ödeme Takvimi',
-    subtitle: 'Gelecek ödemeler, vadesi gelen çekler ve tahsilatlar',
+    subtitle: 'Gelecek ödemeler, vadesi gelen çekler, senetler ve tedarikçi borçları',
   },
   reports: {
-    title: 'Mali Raporlar & Yedek',
-    subtitle: 'Gelir tablosu, kar-zarar ve veri yedekleme',
-  },
-  users: {
-    title: 'Kullanıcı ve Rol Yönetimi',
-    subtitle: 'Admin ve Normal Kullanıcı yetkilendirme, erişim izinleri',
+    title: 'Mali Raporlar & Kategori Dağılımı',
+    subtitle: 'Kategorilere göre stok payı ve kâr analizi, aylık masraf detayları',
   },
   audit: {
     title: 'İşlem Denetim Raporu & Onaylar',
     subtitle: 'Kullanıcı işlem kayıtları, denetim izi ve silme onay talepleri',
+  },
+  users: {
+    title: 'Personel ve Rol Yönetimi',
+    subtitle: 'Yönetici ve Standart personel yetkilendirme, erişim izinleri',
   },
 };
 
@@ -106,7 +118,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         >
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block sm:inline">
-              Arslan Finans {activeTab !== 'dashboard' && '›'}
+              Arslan Mobilya {activeTab !== 'dashboard' && '›'}
             </span>
             <h1 className="text-base md:text-lg font-bold text-slate-900 dark:text-white leading-tight group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
               {TAB_TITLES[activeTab].title}

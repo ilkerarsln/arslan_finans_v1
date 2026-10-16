@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useFinance } from '../../context/FinanceContext';
-import { Account } from '../../types/finance';
+import { Account, Transaction } from '../../types/finance';
 import { formatCurrency, formatDate } from '../../utils/formatters';
 import {
   Building2,
@@ -15,6 +15,13 @@ import {
   Calendar,
   AlertCircle,
   Coins,
+  Download,
+  TrendingUp,
+  TrendingDown,
+  Clock,
+  ArrowLeft,
+  FileText,
+  X,
 } from 'lucide-react';
 
 interface AccountsTabProps {
@@ -63,11 +70,72 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
   const totalCreditLimit = creditCards.reduce((sum, a) => sum + (a.creditLimit || 50000), 0);
   const totalAvailableLimit = Math.max(totalCreditLimit - totalCardDebt, 0);
 
-  // Selected account transactions
+  // Selected account transactions & movement reports
   const selectedAccount = accounts.find(a => a.id === selectedAccountId);
   const accountTransactions = transactions.filter(
     tx => tx.accountId === selectedAccountId || tx.targetAccountId === selectedAccountId
   );
+
+  const [movementPeriod, setMovementPeriod] = useState<'all' | 'daily' | 'weekly' | 'monthly' | 'yearly'>('all');
+
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const currentYearStr = String(now.getFullYear());
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const sevenDaysAgoStr = sevenDaysAgo.toISOString().split('T')[0];
+
+  const filteredAccountTransactions = useMemo(() => {
+    return accountTransactions.filter(tx => {
+      if (movementPeriod === 'daily') return tx.date === todayStr;
+      if (movementPeriod === 'weekly') return tx.date >= sevenDaysAgoStr;
+      if (movementPeriod === 'monthly') return tx.date.startsWith(currentMonthKey);
+      if (movementPeriod === 'yearly') return tx.date.startsWith(currentYearStr);
+      return true;
+    });
+  }, [accountTransactions, movementPeriod, todayStr, sevenDaysAgoStr, currentMonthKey, currentYearStr]);
+
+  const periodTotalIn = useMemo(() => {
+    return filteredAccountTransactions.reduce((sum, tx) => {
+      const isIncoming = tx.type === 'Gelir' || (tx.type === 'Transfer' && tx.targetAccountId === selectedAccountId);
+      return isIncoming ? sum + tx.amount : sum;
+    }, 0);
+  }, [filteredAccountTransactions, selectedAccountId]);
+
+  const periodTotalOut = useMemo(() => {
+    return filteredAccountTransactions.reduce((sum, tx) => {
+      const isOutgoing = tx.type === 'Gider' || tx.type === 'Mal Alımı' || (tx.type === 'Transfer' && tx.accountId === selectedAccountId);
+      return isOutgoing ? sum + tx.amount : sum;
+    }, 0);
+  }, [filteredAccountTransactions, selectedAccountId]);
+
+  const periodNetChange = periodTotalIn - periodTotalOut;
+
+  const handleExportAccountStatementCSV = () => {
+    if (!selectedAccount || filteredAccountTransactions.length === 0) {
+      showToast('Dışa aktarılacak hareket bulunamadı.', 'info');
+      return;
+    }
+    const headers = ['Tarih', 'İşlem Türü', 'Kategori', 'Açıklama / Cari', 'Giriş Tutarı (TL)', 'Çıkış Tutarı (TL)'];
+    const rows = filteredAccountTransactions.map(tx => {
+      const isIncoming = tx.type === 'Gelir' || (tx.type === 'Transfer' && tx.targetAccountId === selectedAccount.id);
+      return [
+        tx.date,
+        `"${tx.type}"`,
+        `"${tx.category}"`,
+        `"${tx.cariName ? `${tx.cariName} - ` : ''}${tx.desc}"`,
+        isIncoming ? tx.amount : '',
+        !isIncoming ? tx.amount : '',
+      ];
+    });
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${selectedAccount.name.replace(/\s+/g, '_')}_hesap_ekstresi_${movementPeriod}.csv`;
+    link.click();
+  };
 
   return (
     <div className="space-y-6">
@@ -458,78 +526,209 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
         </div>
       )}
 
-      {/* Selected Account Detailed History */}
+      {/* Selected Account Detailed History & Hareket Raporları */}
       {selectedAccount && (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-5 space-y-4 animate-in fade-in duration-200">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-emerald-500/30 dark:border-emerald-500/40 shadow-xl p-5 md:p-6 space-y-5 animate-in fade-in duration-200">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
             <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                  {selectedAccount.name} Hesap Ekstresi
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <span className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
+                  <FileText className="w-5 h-5" />
+                </span>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                  {selectedAccount.name} Hareket ve Ekstre Raporu
                 </h3>
-                <span className="px-2 py-0.5 rounded text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
                   {selectedAccount.type}
                 </span>
                 {selectedAccount.type === 'Şirket Kredi Kartı' && (
-                  <span className="px-2 py-0.5 rounded text-xs font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 flex items-center gap-1">
+                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1">
                     <Calendar className="w-3 h-3" />
                     Kesim: {selectedAccount.cutOffDate ? formatDate(selectedAccount.cutOffDate) : (selectedAccount.cutOffDay ? `Her ayın ${selectedAccount.cutOffDay}'i` : '-')}
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-500">
-                Bu hesaba ait son finansal giriş ve çıkışlar
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Bu kasa veya banka hesabına ait günlük, haftalık, aylık ve yıllık tüm para giriş-çıkış hareketleri
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="text-right">
-                <span className="text-[11px] text-slate-400">
-                  {selectedAccount.type === 'Şirket Kredi Kartı' ? 'Dönem Borcu:' : 'Bakiye:'}
+
+            <div className="flex items-center gap-2.5 shrink-0">
+              <div className="text-right pr-2">
+                <span className="text-[11px] text-slate-400 block font-medium">
+                  {selectedAccount.type === 'Şirket Kredi Kartı' ? 'Güncel Dönem Borcu:' : 'Mevcut Bakiye:'}
                 </span>
-                <div className="text-base font-bold font-mono-num text-slate-900 dark:text-white">
+                <div className="text-lg font-bold font-mono-num text-slate-900 dark:text-white">
                   {formatCurrency(selectedAccount.balance, selectedAccount.currency)}
                 </div>
               </div>
+
+              <button
+                onClick={handleExportAccountStatementCSV}
+                className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+                title="Ekstre CSV İndir"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>CSV</span>
+              </button>
+
               <button
                 onClick={() => onOpenTransfer(selectedAccount.id)}
-                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition"
+                className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-xs active:scale-95"
               >
-                <ArrowRightLeft className="w-3.5 h-3.5" /> Virman / Ödeme Yap
+                <ArrowRightLeft className="w-3.5 h-3.5" />
+                <span>Virman Yap</span>
+              </button>
+
+              <button
+                onClick={() => setSelectedAccountId(null)}
+                className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                title="Detay Ekranını Kapat"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
           </div>
 
+          {/* Rapor Periyot Seçici: Günlük, Haftalık, Aylık, Yıllık, Tümü */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200 dark:border-slate-800">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300">
+              <Clock className="w-4 h-4 text-emerald-500" />
+              <span>Hareket Raporu Periyodu:</span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1">
+              <button
+                onClick={() => setMovementPeriod('daily')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  movementPeriod === 'daily'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+                }`}
+              >
+                Günlük (Bugün)
+              </button>
+              <button
+                onClick={() => setMovementPeriod('weekly')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  movementPeriod === 'weekly'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+                }`}
+              >
+                Haftalık (Son 7 Gün)
+              </button>
+              <button
+                onClick={() => setMovementPeriod('monthly')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  movementPeriod === 'monthly'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+                }`}
+              >
+                Aylık (Bu Ay)
+              </button>
+              <button
+                onClick={() => setMovementPeriod('yearly')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  movementPeriod === 'yearly'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+                }`}
+              >
+                Yıllık (Bu Yıl)
+              </button>
+              <button
+                onClick={() => setMovementPeriod('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                  movementPeriod === 'all'
+                    ? 'bg-emerald-600 text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+                }`}
+              >
+                Tüm Geçmiş
+              </button>
+            </div>
+          </div>
+
+          {/* KPI Summary Cards for Selected Period */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
+              <span className="text-[11px] font-semibold text-slate-400 block">Dönem Girişleri (+)</span>
+              <div className="text-lg font-bold font-mono-num text-emerald-600 dark:text-emerald-400 mt-1">
+                +{formatCurrency(periodTotalIn, selectedAccount.currency)}
+              </div>
+              <span className="text-[10px] text-slate-400">Tahsilat & gelen virman</span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
+              <span className="text-[11px] font-semibold text-slate-400 block">Dönem Çıkışları (-)</span>
+              <div className="text-lg font-bold font-mono-num text-rose-600 dark:text-rose-400 mt-1">
+                -{formatCurrency(periodTotalOut, selectedAccount.currency)}
+              </div>
+              <span className="text-[10px] text-slate-400">Ödeme, gider & giden virman</span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
+              <span className="text-[11px] font-semibold text-slate-400 block">Dönem Net Değişimi</span>
+              <div
+                className={`text-lg font-bold font-mono-num mt-1 ${
+                  periodNetChange >= 0
+                    ? 'text-emerald-600 dark:text-emerald-400'
+                    : 'text-rose-600 dark:text-rose-400'
+                }`}
+              >
+                {periodNetChange > 0 ? '+' : ''}{formatCurrency(periodNetChange, selectedAccount.currency)}
+              </div>
+              <span className="text-[10px] text-slate-400">Girişler - Çıkışlar farkı</span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
+              <span className="text-[11px] font-semibold text-slate-400 block">Dönem İşlem Sayısı</span>
+              <div className="text-lg font-bold font-mono-num text-slate-800 dark:text-slate-100 mt-1">
+                {filteredAccountTransactions.length} Hareket
+              </div>
+              <span className="text-[10px] text-slate-400">Seçilen dönem kayıtları</span>
+            </div>
+          </div>
+
+          {/* Transactions List */}
           <div className="overflow-x-auto">
-            {accountTransactions.length === 0 ? (
+            {filteredAccountTransactions.length === 0 ? (
               <div className="p-8 text-center text-xs text-slate-400">
-                Bu hesap için henüz işlem kaydı bulunmamaktadır.
+                Seçilen periyotta ({movementPeriod === 'daily' ? 'Bugün' : movementPeriod === 'weekly' ? 'Bu Hafta' : movementPeriod === 'monthly' ? 'Bu Ay' : movementPeriod === 'yearly' ? 'Bu Yıl' : 'Tümü'}) bu hesaba ait işlem kaydı bulunmamaktadır.
               </div>
             ) : (
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-semibold">
                   <tr>
                     <th className="py-2.5 px-3">Tarih</th>
                     <th className="py-2.5 px-3">Tür</th>
                     <th className="py-2.5 px-3">Kategori</th>
                     <th className="py-2.5 px-3">Cari / Açıklama</th>
-                    <th className="py-2.5 px-3 text-right">Tutar</th>
+                    <th className="py-2.5 px-3 text-right">Giriş (+)</th>
+                    <th className="py-2.5 px-3 text-right">Çıkış (-)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                  {accountTransactions.map(tx => {
-                    const isIncomingTransfer =
-                      tx.type === 'Transfer' && tx.targetAccountId === selectedAccount.id;
+                  {filteredAccountTransactions.map(tx => {
+                    const isIncoming =
+                      tx.type === 'Gelir' ||
+                      (tx.type === 'Transfer' && tx.targetAccountId === selectedAccount.id);
 
                     return (
                       <tr
                         key={tx.id}
                         className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition"
                       >
-                        <td className="py-2.5 px-3 text-slate-500">{formatDate(tx.date)}</td>
-                        <td className="py-2.5 px-3 font-semibold">
+                        <td className="py-2.5 px-3 text-slate-500 whitespace-nowrap font-mono text-[11px]">
+                          {formatDate(tx.date)}
+                        </td>
+                        <td className="py-2.5 px-3 font-semibold whitespace-nowrap">
                           <span
                             className={
-                              isIncomingTransfer || tx.type === 'Gelir'
+                              isIncoming
                                 ? 'text-emerald-600 dark:text-emerald-400'
                                 : tx.type === 'Mal Alımı'
                                 ? 'text-amber-600 dark:text-amber-400'
@@ -537,26 +736,22 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
                             }
                           >
                             {tx.type === 'Transfer'
-                              ? isIncomingTransfer
+                              ? isIncoming
                                 ? 'Virman Giriş (+)'
                                 : 'Virman Çıkış (-)'
                               : tx.type}
                           </span>
                         </td>
-                        <td className="py-2.5 px-3">{tx.category}</td>
-                        <td className="py-2.5 px-3 text-slate-700 dark:text-slate-300">
-                          {tx.cariName ? `${tx.cariName} · ` : ''}
-                          {tx.desc}
+                        <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300">{tx.category}</td>
+                        <td className="py-2.5 px-3 text-slate-800 dark:text-slate-200">
+                          {tx.cariName ? <span className="font-semibold text-slate-900 dark:text-white">{tx.cariName} · </span> : ''}
+                          <span>{tx.desc}</span>
                         </td>
-                        <td
-                          className={`py-2.5 px-3 text-right font-mono-num font-bold ${
-                            isIncomingTransfer || tx.type === 'Gelir'
-                              ? 'text-emerald-600 dark:text-emerald-400'
-                              : 'text-rose-600 dark:text-rose-400'
-                          }`}
-                        >
-                          {isIncomingTransfer || tx.type === 'Gelir' ? '+' : '-'}
-                          {formatCurrency(tx.amount)}
+                        <td className="py-2.5 px-3 text-right font-mono-num font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+                          {isIncoming ? `+${formatCurrency(tx.amount, selectedAccount.currency)}` : '-'}
+                        </td>
+                        <td className="py-2.5 px-3 text-right font-mono-num font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap">
+                          {!isIncoming ? `-${formatCurrency(tx.amount, selectedAccount.currency)}` : '-'}
                         </td>
                       </tr>
                     );

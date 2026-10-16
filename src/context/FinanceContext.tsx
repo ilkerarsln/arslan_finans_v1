@@ -47,6 +47,14 @@ import {
   INITIAL_CATEGORIES,
   INITIAL_TRANSACTIONS,
   INITIAL_UPCOMING_DUES,
+  INITIAL_PRODUCT_CATEGORIES,
+  INITIAL_SUB_CATEGORIES,
+  INITIAL_BRANDS,
+  INITIAL_VADE_RATES,
+  INITIAL_PRICE_LISTS,
+  INITIAL_STOCK_ITEMS,
+  INITIAL_SALES,
+  INITIAL_PURCHASES,
 } from '../data/initialData';
 import {
   Account,
@@ -62,6 +70,14 @@ import {
   StaffAccount,
   DeletionRequest,
   AuditLogEntry,
+  ProductCategory,
+  ProductSubCategory,
+  ProductBrand,
+  VadeRateEntry,
+  PriceListEntry,
+  StockItem,
+  SaleRecord,
+  StockPurchaseRecord,
 } from '../types/finance';
 import { calculateInstallmentDate } from '../utils/formatters';
 import { parseExcelData } from '../utils/excelImport';
@@ -151,6 +167,44 @@ interface FinanceContextType {
   toastMessage: { text: string; type: 'success' | 'info' | 'error' } | null;
   showToast: (text: string, type?: 'success' | 'info' | 'error') => void;
 
+  // ERP Mal Alım & Stok Yönetimi
+  stockItems: StockItem[];
+  purchases: StockPurchaseRecord[];
+  addStockPurchase: (purchase: Omit<StockPurchaseRecord, 'id' | 'createdAt'>) => StockPurchaseRecord;
+  deleteStockPurchase: (id: string) => void;
+  addStockItem: (item: Omit<StockItem, 'id'>) => StockItem;
+  updateStockItem: (item: StockItem) => void;
+  deleteStockItem: (id: string) => void;
+  importStockItemsBulk: (items: Array<Omit<StockItem, 'id'>>) => void;
+  importPurchasesBulk: (purchases: Array<Omit<StockPurchaseRecord, 'id' | 'createdAt'>>) => void;
+
+  // ERP Kâr Takip & Satış Yönetimi
+  sales: SaleRecord[];
+  addSaleRecord: (sale: Omit<SaleRecord, 'id' | 'createdAt'>) => SaleRecord;
+  updateSaleRecord: (sale: SaleRecord) => void;
+  deleteSaleRecord: (id: string) => void;
+
+  // ERP Tanımlamalar (Kategoriler, Alt Kategoriler, Markalar, Vade Oranları, Fiyat Listeleri)
+  productCategories: ProductCategory[];
+  productSubCategories: ProductSubCategory[];
+  productBrands: ProductBrand[];
+  vadeRates: VadeRateEntry[];
+  priceLists: PriceListEntry[];
+  addProductCategory: (cat: Omit<ProductCategory, 'id'>) => void;
+  deleteProductCategory: (id: string) => void;
+  addProductSubCategory: (sub: Omit<ProductSubCategory, 'id'>) => void;
+  deleteProductSubCategory: (id: string) => void;
+  addProductBrand: (brand: Omit<ProductBrand, 'id'>) => void;
+  deleteProductBrand: (id: string) => void;
+  setVadeRate: (monthKey: string, rate: number, notes?: string) => void;
+  getVadeRateForMonth: (monthKey: string) => number;
+  addPriceList: (priceList: Omit<PriceListEntry, 'id'>) => void;
+  deletePriceList: (id: string) => void;
+
+  // Kasa / Banka Detay Sayfası / Modal Seçimi
+  selectedAccountForDetail: Account | null;
+  setSelectedAccountForDetail: (acc: Account | null) => void;
+
   // Cloud Sync & Multi-device state
   user: User | null;
   isAuthLoading: boolean;
@@ -208,13 +262,189 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   // Financial state - 100% cloud-backed by Firebase Firestore
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>(INITIAL_ACCOUNTS);
-  const [caris, setCaris] = useState<Cari[]>([]);
-  const [upcomingDues, setUpcomingDues] = useState<UpcomingDue[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>(() => {
+    try {
+      const saved = localStorage.getItem('arslan_transactions');
+      return saved ? JSON.parse(saved) : INITIAL_TRANSACTIONS;
+    } catch {
+      return INITIAL_TRANSACTIONS;
+    }
+  });
+  const [accounts, setAccounts] = useState<Account[]>(() => {
+    try {
+      const saved = localStorage.getItem('arslan_accounts');
+      return saved ? JSON.parse(saved) : INITIAL_ACCOUNTS;
+    } catch {
+      return INITIAL_ACCOUNTS;
+    }
+  });
+  const [caris, setCaris] = useState<Cari[]>(() => {
+    try {
+      const saved = localStorage.getItem('arslan_caris');
+      return saved ? JSON.parse(saved) : INITIAL_CARIS;
+    } catch {
+      return INITIAL_CARIS;
+    }
+  });
+  const [upcomingDues, setUpcomingDues] = useState<UpcomingDue[]>(() => {
+    try {
+      const saved = localStorage.getItem('arslan_upcoming_dues');
+      return saved ? JSON.parse(saved) : INITIAL_UPCOMING_DUES;
+    } catch {
+      return INITIAL_UPCOMING_DUES;
+    }
+  });
   const [categories, setCategories] = useState<CategoryItem[]>(INITIAL_CATEGORIES);
   const [deletionRequests, setDeletionRequests] = useState<DeletionRequest[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+
+  // ERP State with localStorage & initialData fallback
+  const [stockItems, setStockItems] = useState<StockItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('arslan_stock_items');
+      return saved ? JSON.parse(saved) : INITIAL_STOCK_ITEMS;
+    } catch {
+      return INITIAL_STOCK_ITEMS;
+    }
+  });
+
+  const [sales, setSales] = useState<SaleRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem('arslan_sales_records');
+      return saved ? JSON.parse(saved) : INITIAL_SALES;
+    } catch {
+      return INITIAL_SALES;
+    }
+  });
+
+  const [purchases, setPurchases] = useState<StockPurchaseRecord[]>(() => {
+    try {
+      const saved = localStorage.getItem('arslan_purchases_records');
+      return saved ? JSON.parse(saved) : INITIAL_PURCHASES;
+    } catch {
+      return INITIAL_PURCHASES;
+    }
+  });
+
+  const [productCategories, setProductCategories] = useState<ProductCategory[]>(() => {
+    try {
+      const saved = localStorage.getItem('arslan_product_categories');
+      return saved ? JSON.parse(saved) : INITIAL_PRODUCT_CATEGORIES;
+    } catch {
+      return INITIAL_PRODUCT_CATEGORIES;
+    }
+  });
+
+  const [productSubCategories, setProductSubCategories] = useState<ProductSubCategory[]>(() => {
+    try {
+      const saved = localStorage.getItem('arslan_sub_categories');
+      return saved ? JSON.parse(saved) : INITIAL_SUB_CATEGORIES;
+    } catch {
+      return INITIAL_SUB_CATEGORIES;
+    }
+  });
+
+  const [productBrands, setProductBrands] = useState<ProductBrand[]>(() => {
+    try {
+      const saved = localStorage.getItem('arslan_brands');
+      return saved ? JSON.parse(saved) : INITIAL_BRANDS;
+    } catch {
+      return INITIAL_BRANDS;
+    }
+  });
+
+  const [vadeRates, setVadeRates] = useState<VadeRateEntry[]>(() => {
+    try {
+      const saved = localStorage.getItem('arslan_vade_rates');
+      return saved ? JSON.parse(saved) : INITIAL_VADE_RATES;
+    } catch {
+      return INITIAL_VADE_RATES;
+    }
+  });
+
+  const [priceLists, setPriceLists] = useState<PriceListEntry[]>(() => {
+    try {
+      const saved = localStorage.getItem('arslan_price_lists');
+      return saved ? JSON.parse(saved) : INITIAL_PRICE_LISTS;
+    } catch {
+      return INITIAL_PRICE_LISTS;
+    }
+  });
+
+  const [selectedAccountForDetail, setSelectedAccountForDetail] = useState<Account | null>(null);
+
+  // Sync state to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('arslan_transactions', JSON.stringify(transactions));
+    } catch {}
+  }, [transactions]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('arslan_accounts', JSON.stringify(accounts));
+    } catch {}
+  }, [accounts]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('arslan_caris', JSON.stringify(caris));
+    } catch {}
+  }, [caris]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('arslan_upcoming_dues', JSON.stringify(upcomingDues));
+    } catch {}
+  }, [upcomingDues]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('arslan_stock_items', JSON.stringify(stockItems));
+    } catch {}
+  }, [stockItems]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('arslan_sales_records', JSON.stringify(sales));
+    } catch {}
+  }, [sales]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('arslan_purchases_records', JSON.stringify(purchases));
+    } catch {}
+  }, [purchases]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('arslan_product_categories', JSON.stringify(productCategories));
+    } catch {}
+  }, [productCategories]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('arslan_sub_categories', JSON.stringify(productSubCategories));
+    } catch {}
+  }, [productSubCategories]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('arslan_brands', JSON.stringify(productBrands));
+    } catch {}
+  }, [productBrands]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('arslan_vade_rates', JSON.stringify(vadeRates));
+    } catch {}
+  }, [vadeRates]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('arslan_price_lists', JSON.stringify(priceLists));
+    } catch {}
+  }, [priceLists]);
 
   // Guard active tab navigation
   const setActiveTab = (tab: ActiveTab) => {
@@ -1387,6 +1617,387 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
+  // ----------------------------------------------------------------------
+  // ERP Implementation: Stock & Purchases (Mal Alım & Stok)
+  // ----------------------------------------------------------------------
+  const addStockPurchase = (purchaseData: Omit<StockPurchaseRecord, 'id' | 'createdAt'>): StockPurchaseRecord => {
+    const actorUser = userProfile?.username || user?.email || 'Anonim';
+    const actorName = userProfile?.displayName || user?.displayName || userProfile?.username || user?.email || 'Personel';
+
+    const newPurchase: StockPurchaseRecord = {
+      ...purchaseData,
+      id: `pur-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      createdAt: new Date().toISOString(),
+      createdBy: actorUser,
+      createdByName: actorName,
+    };
+
+    // 1. Ürün stoklarını ve maliyetlerini güncelle
+    setStockItems(prev => {
+      let updatedList = [...prev];
+      for (const item of newPurchase.items) {
+        const existingIdx = updatedList.findIndex(
+          s => (item.productId && s.id === item.productId) || (s.name.trim().toLowerCase() === item.name.trim().toLowerCase())
+        );
+        if (existingIdx >= 0) {
+          const old = updatedList[existingIdx];
+          const newQty = old.quantity + item.quantity;
+          const newTotalVal = +(newQty * item.unitPrice).toFixed(2);
+          updatedList[existingIdx] = {
+            ...old,
+            quantity: newQty,
+            purchasePrice: item.unitPrice,
+            totalValue: newTotalVal,
+            salePrice: item.salePrice || old.salePrice,
+            lastPurchaseDate: newPurchase.date,
+          };
+        } else {
+          const newStock: StockItem = {
+            id: `stk-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+            name: item.name,
+            category: item.category || 'Beyaz Eşya',
+            subCategory: item.subCategory,
+            brand: item.brand,
+            supplierId: newPurchase.supplierId,
+            supplierName: newPurchase.supplierName,
+            quantity: item.quantity,
+            unit: 'Adet',
+            purchasePrice: item.unitPrice,
+            totalValue: +(item.quantity * item.unitPrice).toFixed(2),
+            salePrice: item.salePrice || +(item.unitPrice * 1.35).toFixed(2),
+            lastPurchaseDate: newPurchase.date,
+          };
+          updatedList.push(newStock);
+        }
+      }
+      return updatedList;
+    });
+
+    // 2. Tedarikçi Cari Borcuna Otomatik İşleme (Tedarikçi cari borcu artar)
+    if (newPurchase.supplierId) {
+      adjustCariBalance(newPurchase.supplierId, -newPurchase.totalAmount);
+    }
+
+    // 3. Peşin ödeme yapıldıysa ilgili kasa/bankadan düş
+    if (newPurchase.paymentType === 'Peşin Kasa/Banka' && newPurchase.accountId) {
+      adjustAccountBalance(newPurchase.accountId, -newPurchase.totalAmount);
+    }
+
+    // 4. Finansal İşlem (Transaction) Olarak Otomatik Kaydet
+    addTransaction({
+      date: newPurchase.date,
+      dueDate: newPurchase.dueDate,
+      type: 'Mal Alımı',
+      category: 'Mal / Stok Alımı',
+      cariId: newPurchase.supplierId,
+      cariName: newPurchase.supplierName,
+      desc: `${newPurchase.supplierName} - Mal Alımı (${newPurchase.items.map(i => i.name).join(', ')})`,
+      amount: newPurchase.totalAmount,
+      accountId: newPurchase.accountId || accounts[0]?.id || 'acc-banka',
+      status: 'Tamamlandı',
+      documentNo: newPurchase.documentNo,
+    });
+
+    // 5. Vade tarihi varsa Vade Takvimine otomatik ekle
+    if (newPurchase.dueDate && newPurchase.paymentType !== 'Peşin Kasa/Banka') {
+      addUpcomingDue({
+        title: `Mal Alımı Ödemesi - ${newPurchase.supplierName}`,
+        type: 'Gider',
+        amount: newPurchase.totalAmount,
+        dueDate: newPurchase.dueDate,
+        cariId: newPurchase.supplierId,
+        cariName: newPurchase.supplierName,
+        category: 'Mal / Stok Alımı',
+        isCompleted: false,
+        recurrence: 'Tek Seferlik',
+        accountId: newPurchase.accountId || accounts[0]?.id,
+      });
+    }
+
+    setPurchases(prev => [newPurchase, ...prev]);
+
+    logAudit({
+      action: 'Ekleme',
+      entityType: 'Stok',
+      entityId: newPurchase.id,
+      amount: newPurchase.totalAmount,
+      description: `Mal Alımı kaydedildi: ${newPurchase.supplierName} (₺${newPurchase.totalAmount.toLocaleString('tr-TR')})`,
+    });
+
+    showToast('Mal alımı başarıyla kaydedildi, stok ve tedarikçi cari borcu güncellendi.', 'success');
+    return newPurchase;
+  };
+
+  const deleteStockPurchase = (id: string) => {
+    if (!isAdmin) {
+      showToast('Alım kaydını silme yetkisi yalnızca Yöneticilere (Admin) aittir.', 'error');
+      return;
+    }
+    const pur = purchases.find(p => p.id === id);
+    if (!pur) return;
+
+    if (window.confirm(`"${pur.documentNo}" nolu mal alım kaydını silmek istediğinize emin misiniz?`)) {
+      // Revert supplier balance
+      if (pur.supplierId) {
+        adjustCariBalance(pur.supplierId, pur.totalAmount);
+      }
+      setPurchases(prev => prev.filter(p => p.id !== id));
+      showToast('Mal alım kaydı silindi ve tedarikçi borcu düzeltildi.', 'info');
+    }
+  };
+
+  const addStockItem = (itemData: Omit<StockItem, 'id'>): StockItem => {
+    const newItem: StockItem = {
+      ...itemData,
+      id: `stk-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      totalValue: +(itemData.quantity * itemData.purchasePrice).toFixed(2),
+    };
+    setStockItems(prev => [newItem, ...prev]);
+    showToast(`${newItem.name} stoğa eklendi`, 'success');
+    return newItem;
+  };
+
+  const updateStockItem = (updated: StockItem) => {
+    setStockItems(prev =>
+      prev.map(item =>
+        item.id === updated.id
+          ? { ...updated, totalValue: +(updated.quantity * updated.purchasePrice).toFixed(2) }
+          : item
+      )
+    );
+    showToast(`${updated.name} stok kartı güncellendi`, 'info');
+  };
+
+  const deleteStockItem = (id: string) => {
+    if (!isAdmin) {
+      showToast('Stok kartı silme yetkisi yalnızca Yöneticilere (Admin) aittir.', 'error');
+      return;
+    }
+    setStockItems(prev => prev.filter(item => item.id !== id));
+    showToast('Stok kartı silindi', 'info');
+  };
+
+  const importStockItemsBulk = (newItems: Array<Omit<StockItem, 'id'>>) => {
+    const formatted: StockItem[] = newItems.map((item, idx) => ({
+      ...item,
+      id: `stk-import-${Date.now()}-${idx}`,
+      totalValue: +(item.quantity * item.purchasePrice).toFixed(2),
+    }));
+    setStockItems(prev => [...formatted, ...prev]);
+    showToast(`${formatted.length} adet stok kartı başarıyla içe aktarıldı!`, 'success');
+  };
+
+  const importPurchasesBulk = (purchaseList: Array<Omit<StockPurchaseRecord, 'id' | 'createdAt'>>) => {
+    purchaseList.forEach(p => addStockPurchase(p));
+  };
+
+  // ----------------------------------------------------------------------
+  // ERP Implementation: Profit & Sales (Kâr Takip)
+  // ----------------------------------------------------------------------
+  const addSaleRecord = (saleData: Omit<SaleRecord, 'id' | 'createdAt'>): SaleRecord => {
+    const actorUser = userProfile?.username || user?.email || 'Anonim';
+
+    const newSale: SaleRecord = {
+      ...saleData,
+      id: `sale-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      createdAt: new Date().toISOString(),
+      createdBy: actorUser,
+    };
+
+    // 1. Stok adedini düşür
+    if (newSale.productId) {
+      setStockItems(prev =>
+        prev.map(stk => {
+          if (stk.id === newSale.productId) {
+            const nextQty = Math.max(0, stk.quantity - newSale.quantity);
+            return {
+              ...stk,
+              quantity: nextQty,
+              totalValue: +(nextQty * stk.purchasePrice).toFixed(2),
+            };
+          }
+          return stk;
+        })
+      );
+    }
+
+    // 2. Satış Şekline göre finansal etki
+    if (newSale.saleType === 'Senetli Satış') {
+      if (newSale.customerId) {
+        // Müşteri cari borcu artar (alacağımız artar)
+        adjustCariBalance(newSale.customerId, newSale.totalSaleAmount);
+      }
+      // Vade taksitleri oluşturulabilir
+      if (newSale.installmentsCount && newSale.installmentsCount > 1) {
+        const monthlyInstallment = +(newSale.totalSaleAmount / newSale.installmentsCount).toFixed(2);
+        for (let i = 1; i <= Math.min(newSale.installmentsCount, 12); i++) {
+          const installmentDate = calculateInstallmentDate(newSale.date, i);
+          addUpcomingDue({
+            title: `Senet Taksiti ${i}/${newSale.installmentsCount} - ${newSale.customerName}`,
+            type: 'Gelir',
+            amount: monthlyInstallment,
+            dueDate: installmentDate,
+            cariId: newSale.customerId,
+            cariName: newSale.customerName,
+            category: 'Senet Tahsilatı',
+            isCompleted: false,
+            recurrence: 'Tek Seferlik',
+            accountId: newSale.accountId || accounts[0]?.id,
+          });
+        }
+      }
+    } else if (newSale.accountId) {
+      // Peşin veya Kredi Kartı tahsilatı kasaya / bankaya eklenir
+      adjustAccountBalance(newSale.accountId, newSale.totalSaleAmount);
+
+      addTransaction({
+        date: newSale.date,
+        type: 'Gelir',
+        category: 'Mobilya & Beyaz Eşya Satışı',
+        cariId: newSale.customerId,
+        cariName: newSale.customerName,
+        desc: `${newSale.productName} Satışı (${newSale.saleType})`,
+        amount: newSale.totalSaleAmount,
+        accountId: newSale.accountId,
+        status: 'Tamamlandı',
+        documentNo: newSale.documentNo,
+      });
+    }
+
+    setSales(prev => [newSale, ...prev]);
+
+    logAudit({
+      action: 'Ekleme',
+      entityType: 'Satış',
+      entityId: newSale.id,
+      amount: newSale.totalSaleAmount,
+      description: `Satış kaydedildi: ${newSale.productName} -> ${newSale.customerName} (${newSale.saleType}, Personel: ${newSale.salesPerson}, Net Kâr: ₺${newSale.netProfit.toLocaleString('tr-TR')})`,
+    });
+
+    showToast(`Satış kaydedildi. Net Kâr: ₺${newSale.netProfit.toLocaleString('tr-TR')}`, 'success');
+    return newSale;
+  };
+
+  const updateSaleRecord = (updated: SaleRecord) => {
+    setSales(prev => prev.map(s => (s.id === updated.id ? updated : s)));
+    showToast('Satış kaydı güncellendi', 'info');
+  };
+
+  const deleteSaleRecord = (id: string) => {
+    if (!isAdmin) {
+      showToast('Satış kaydını silme yetkisi yalnızca Yöneticilere (Admin) aittir.', 'error');
+      return;
+    }
+    const sale = sales.find(s => s.id === id);
+    if (!sale) return;
+
+    if (window.confirm(`"${sale.customerName}" adına yapılan ${sale.productName} satışını silmek istediğinize emin misiniz?`)) {
+      // Revert stock
+      if (sale.productId) {
+        setStockItems(prev =>
+          prev.map(stk =>
+            stk.id === sale.productId
+              ? {
+                  ...stk,
+                  quantity: stk.quantity + sale.quantity,
+                  totalValue: +((stk.quantity + sale.quantity) * stk.purchasePrice).toFixed(2),
+                }
+              : stk
+          )
+        );
+      }
+      // Revert cari balance if senetli
+      if (sale.saleType === 'Senetli Satış' && sale.customerId) {
+        adjustCariBalance(sale.customerId, -sale.totalSaleAmount);
+      } else if (sale.accountId) {
+        adjustAccountBalance(sale.accountId, -sale.totalSaleAmount);
+      }
+
+      setSales(prev => prev.filter(s => s.id !== id));
+      showToast('Satış kaydı silindi ve stok geri yüklendi.', 'info');
+    }
+  };
+
+  // ----------------------------------------------------------------------
+  // ERP Implementation: Definitions (Tanımlamalar)
+  // ----------------------------------------------------------------------
+  const addProductCategory = (cat: Omit<ProductCategory, 'id'>) => {
+    const newCat: ProductCategory = {
+      ...cat,
+      id: `pcat-${Date.now()}`,
+    };
+    setProductCategories(prev => [...prev, newCat]);
+    showToast(`'${newCat.name}' kategorisi eklendi`, 'success');
+  };
+
+  const deleteProductCategory = (id: string) => {
+    setProductCategories(prev => prev.filter(c => c.id !== id));
+    showToast('Kategori silindi', 'info');
+  };
+
+  const addProductSubCategory = (sub: Omit<ProductSubCategory, 'id'>) => {
+    const newSub: ProductSubCategory = {
+      ...sub,
+      id: `sub-${Date.now()}`,
+    };
+    setProductSubCategories(prev => [...prev, newSub]);
+    showToast(`'${newSub.name}' alt kategorisi eklendi`, 'success');
+  };
+
+  const deleteProductSubCategory = (id: string) => {
+    setProductSubCategories(prev => prev.filter(s => s.id !== id));
+    showToast('Alt kategori silindi', 'info');
+  };
+
+  const addProductBrand = (brand: Omit<ProductBrand, 'id'>) => {
+    const newBrand: ProductBrand = {
+      ...brand,
+      id: `brand-${Date.now()}`,
+    };
+    setProductBrands(prev => [...prev, newBrand]);
+    showToast(`'${newBrand.name}' markası eklendi`, 'success');
+  };
+
+  const deleteProductBrand = (id: string) => {
+    setProductBrands(prev => prev.filter(b => b.id !== id));
+    showToast('Marka silindi', 'info');
+  };
+
+  const setVadeRate = (monthKey: string, rate: number, notes?: string) => {
+    setVadeRates(prev => {
+      const filtered = prev.filter(v => v.monthKey !== monthKey);
+      return [
+        {
+          id: `vr-${monthKey}`,
+          monthKey,
+          rateMonthly: rate,
+          notes: notes || `${monthKey} Vade Farkı Oranı`,
+        },
+        ...filtered,
+      ];
+    });
+    showToast(`${monthKey} için aylık vade farkı %${rate} olarak kaydedildi.`, 'success');
+  };
+
+  const getVadeRateForMonth = (monthKey: string): number => {
+    const found = vadeRates.find(v => v.monthKey === monthKey);
+    return found ? found.rateMonthly : 3.5;
+  };
+
+  const addPriceList = (priceList: Omit<PriceListEntry, 'id'>) => {
+    const newEntry: PriceListEntry = {
+      ...priceList,
+      id: `pl-${Date.now()}`,
+    };
+    setPriceLists(prev => [newEntry, ...prev]);
+    showToast(`'${newEntry.title}' fiyat listesi eklendi`, 'success');
+  };
+
+  const deletePriceList = (id: string) => {
+    setPriceLists(prev => prev.filter(p => p.id !== id));
+    showToast('Fiyat listesi kaldırıldı', 'info');
+  };
+
   return (
     <FinanceContext.Provider
       value={{
@@ -1458,6 +2069,45 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         clearAllToZero,
         toastMessage,
         showToast,
+
+        // ERP Mal Alım & Stok
+        stockItems,
+        purchases,
+        addStockPurchase,
+        deleteStockPurchase,
+        addStockItem,
+        updateStockItem,
+        deleteStockItem,
+        importStockItemsBulk,
+        importPurchasesBulk,
+
+        // ERP Kâr Takip & Satış
+        sales,
+        addSaleRecord,
+        updateSaleRecord,
+        deleteSaleRecord,
+
+        // ERP Tanımlamalar
+        productCategories,
+        productSubCategories,
+        productBrands,
+        vadeRates,
+        priceLists,
+        addProductCategory,
+        deleteProductCategory,
+        addProductSubCategory,
+        deleteProductSubCategory,
+        addProductBrand,
+        deleteProductBrand,
+        setVadeRate,
+        getVadeRateForMonth,
+        addPriceList,
+        deletePriceList,
+
+        // Kasa/Banka Detay Modal
+        selectedAccountForDetail,
+        setSelectedAccountForDetail,
+
         user,
         isAuthLoading,
         isCloudConnected: !!user,
