@@ -1,10 +1,10 @@
-export type TransactionType = 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alımı';
+export type TransactionType = 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alım';
 export type TransactionStatus = 'Tamamlandı' | 'Beklemede' | 'İptal';
 
 export interface Transaction {
   id: string;
   date: string; // YYYY-MM-DD
-  dueDate?: string; // Mal alımı ödeme / vade tarihi
+  dueDate?: string; // Mal alım ödeme / vade tarihi
   type: TransactionType;
   category: string;
   cariId?: string;
@@ -166,7 +166,7 @@ export interface DeletionRequest {
 export interface AuditLogEntry {
   id: string;
   action: 'Ekleme' | 'Giriş' | 'Güncelleme' | 'Silme Talebi' | 'Silme Onayı' | 'Silme Reddi' | 'Kalıcı Silme';
-  entityType: 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alımı' | 'Cari' | 'Hesap' | 'Personel' | 'Sistem' | 'Satış' | 'Stok' | 'Fiyat Listesi';
+  entityType: 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alım' | 'Cari' | 'Hesap' | 'Personel' | 'Sistem' | 'Satış' | 'Stok' | 'Fiyat Listesi';
   entityId: string;
   description: string;
   performedBy: string;
@@ -221,7 +221,7 @@ export interface CategoryHierarchyItem {
   urunGrubu: string;   // BAMBİ BASLIK, ALTUS ANKASTRE DAVLUMBAZLAR vb.
 }
 
-// Mal Alımı & Stok Yönetimi (Zorunlu 3 Seviye + Bağımsız Marka)
+// Mal Alım & Stok Yönetimi (Zorunlu 3 Seviye + Bağımsız Marka)
 export interface StockItem {
   id: string;
   code?: string; // stokKodu
@@ -229,7 +229,7 @@ export interface StockItem {
   anaKategori: string; // Zorunlu Ana Kategori: MOBİLYA, BEYAZ EŞYA
   altKategori: string; // Zorunlu Alt Kategori: BAMBİ, ALTUS, MEDİSA vb.
   urunGrubu: string; // Zorunlu Ürün Grubu: BAMBİ YATAK, ALTUS FIRIN vb.
-  brand?: string; // İsteğe bağlı bağımsız Marka (Bosch, Altus, Bambi vb.)
+  brand?: string; // Ürüne bağlı Marka (Bosch, Altus, Bambi vb.)
   category?: string; // alias for anaKategori
   subCategory?: string; // alias for altKategori
   supplierId?: string;
@@ -241,7 +241,7 @@ export interface StockItem {
   salePrice: number; // Perakende Satış Fiyatı (10 TL katına yukarı yuvarlanmış)
   iskontoOrani?: number; // Uygulanan İskonto Oranı (%)
   karMarjiOrani?: number; // Hedef Kâr Marjı (%)
-  vadeDays?: number; // Vade Süresi (Gün) örn: 30, 60 gün
+  vadeDays?: number; // Vade Süresi (Gün, örn: 30, 60 gün)
   minStockLevel?: number;
   lastPurchaseDate?: string;
   notes?: string;
@@ -432,4 +432,3 @@ export interface CiroYearConfig {
 }
 
 export type CiroMatrixDataStore = Record<string, CiroYearConfig>;
-

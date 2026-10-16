@@ -14,7 +14,7 @@ function normalizeKey(key: string): string {
   return key
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9 ]/gi, '')
+    .replace(/[^a-z0-9]/gi, '')
     .replace(/ç/g, 'c')
     .replace(/ğ/g, 'g')
     .replace(/ı/g, 'i')
@@ -59,7 +59,7 @@ export function parseExcelDate(val: any): string {
 export function parseExcelAmount(val: any): number {
   if (typeof val === 'number') return Math.abs(val);
   if (!val) return 0;
-  let str = String(val).trim().replace(/[₺$€\s]/g, '');
+  let str = String(val).trim().replace(/[₺\s]/g, '');
   if (str.includes(',') && str.includes('.')) {
     if (str.lastIndexOf(',') > str.lastIndexOf('.')) {
       str = str.replace(/\./g, '').replace(',', '.');
@@ -149,7 +149,7 @@ export function parseExcelData(
         ''
     ).trim().toLowerCase();
 
-    let type: 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alımı' = 'Gider';
+    let type: 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alım' = 'Gider';
     if (
       typeVal.includes('gelir') ||
       typeVal.includes('tahsilat') ||
@@ -164,7 +164,7 @@ export function parseExcelData(
       typeVal.includes('borclan') ||
       typeVal.includes('purchase')
     ) {
-      type = 'Mal Alımı';
+      type = 'Mal Alım';
     } else if (
       typeVal.includes('transfer') ||
       typeVal.includes('virman')
@@ -256,13 +256,13 @@ export function parseExcelData(
       } else if (existingCari.type === 'Tedarikçi') {
         if (type === 'Gider') {
           existingCari.balance += amount;
-        } else if (type === 'Mal Alımı') {
+        } else if (type === 'Mal Alım') {
           existingCari.balance -= amount;
         }
       }
     }
 
-    if (targetAcc && type !== 'Mal Alımı') {
+    if (targetAcc && type !== 'Mal Alım') {
       if (type === 'Gelir') {
         targetAcc.balance += amount;
       } else if (type === 'Gider') {

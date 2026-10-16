@@ -66,6 +66,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
         : type === 'Şirket Kredi Kartı'
         ? 'CreditCard'
         : 'Building2';
+
     const derivedDay = cutOffDay
       ? parseInt(cutOffDay, 10)
       : cutOffDate
@@ -202,6 +203,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono font-bold focus:ring-2 focus:ring-emerald-500"
               />
             </div>
+
             {type === 'Şirket Kredi Kartı' ? (
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">

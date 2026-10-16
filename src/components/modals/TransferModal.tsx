@@ -80,7 +80,6 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                 ))}
               </select>
             </div>
-
             <div>
               <label className="block text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-1">
                 Hedef Hesap (Para Aktarılacak)

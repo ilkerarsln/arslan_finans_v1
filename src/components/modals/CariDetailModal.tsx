@@ -53,7 +53,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
     .reduce((sum, t) => sum + t.amount, 0);
 
   const totalExpenseToCari = cariTransactions
-    .filter(t => t.type === 'Gider' || t.type === 'Mal Alımı')
+    .filter(t => t.type === 'Gider' || t.type === 'Mal Alım')
     .reduce((sum, t) => sum + t.amount, 0);
 
   const handleCollect = () => {
@@ -130,7 +130,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
             {isAdmin ? (
               <button
                 onClick={() => {
-                  if (window.confirm(`"${cari.name}" cari kartını silmek istediğinize emin misiniz?`)) {
+                  if (window.confirm(`"${cari.name}" cari kartı silmek istediğinize emin misiniz?`)) {
                     deleteCari(cari.id);
                     onClose();
                   }
@@ -145,7 +145,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
               <button
                 onClick={() => {
                   const reason = window.prompt(
-                    `"${cari.name}" cari kartını silmek için Yönetici (Admin) onayına gerekçe iletiniz:`,
+                    `"${cari.name}" cari kartı silmek için Yönetici (Admin) onayına gerekçe iletiniz:`,
                     'Cari kapatıldı / mükerrer kayıt'
                   );
                   if (reason !== null && reason.trim()) {
@@ -169,7 +169,6 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
           </div>
         </div>
 
-        {/* Balance & Quick Actions Bar */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-800">
           <div>
             <span className="text-[11px] font-semibold text-slate-400 uppercase">
@@ -239,7 +238,6 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
           </div>
         </div>
 
-        {/* Contact info grid */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
           <div className="p-3 rounded-lg border border-slate-100 dark:border-slate-800 relative group">
             <span className="text-slate-400 flex items-center gap-1 mb-1">
@@ -291,7 +289,6 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
           </div>
         </div>
 
-        {/* Statement Table */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">

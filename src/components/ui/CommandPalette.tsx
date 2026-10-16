@@ -81,6 +81,28 @@ export const CommandPalette: React.FC = () => {
   const allItems: PaletteItem[] = useMemo(() => {
     const actions: PaletteItem[] = [
       {
+        id: 'act-ciro-matrisi',
+        category: 'Hızlı Eylemler',
+        title: 'Ciro ve Finansal Analiz Matrisi (Excel Uyumlu)',
+        subtitle: '12 aylık ciro, ortalama kârlılık ve 2025 büyüme tablosu',
+        icon: <FileSpreadsheet className="w-4 h-4 text-emerald-400" />,
+        action: () => {
+          closeCommandPalette();
+          setActiveTab('reports');
+        },
+      },
+      {
+        id: 'act-ciro-import',
+        category: 'Hızlı Eylemler',
+        title: 'Ciro Excel İçe Aktar (Data Importer)',
+        subtitle: 'Yıllık ciro Excel tablosunu sisteme toplu yükle',
+        icon: <FileSpreadsheet className="w-4 h-4 text-indigo-400" />,
+        action: () => {
+          closeCommandPalette();
+          openDataImporter('ciro');
+        },
+      },
+      {
         id: 'act-import-mal',
         category: 'Hızlı Eylemler',
         title: 'Yalın Mal Alımı Yap (Data Importer)',
@@ -121,7 +143,7 @@ export const CommandPalette: React.FC = () => {
         icon: <ShoppingBag className="w-4 h-4 text-amber-500" />,
         action: () => {
           closeCommandPalette();
-          openTransactionModal({ type: 'Mal Alımı' });
+          openTransactionModal({ type: 'Mal Alım' });
         },
       },
       {
@@ -161,7 +183,7 @@ export const CommandPalette: React.FC = () => {
         id: 'act-excel',
         category: 'Hızlı Eylemler',
         title: 'Tüm Mali Raporları Excel İndir (.xlsx)',
-        subtitle: '4 sekmeli resmi muhasebe Excel tablosu',
+        subtitle: 'Resmi muhasebe Excel tablosu',
         icon: <FileSpreadsheet className="w-4 h-4 text-emerald-600" />,
         action: () => {
           closeCommandPalette();
@@ -182,6 +204,16 @@ export const CommandPalette: React.FC = () => {
     ];
 
     const navigation: PaletteItem[] = [
+      {
+        id: 'nav-reports',
+        category: 'Modüllere Git',
+        title: 'Raporlar (Ciro & Finansal Analiz Matrisi)',
+        icon: <FileBarChart2 className="w-4 h-4 text-indigo-400" />,
+        action: () => {
+          setActiveTab('reports');
+          closeCommandPalette();
+        },
+      },
       {
         id: 'nav-dashboard',
         category: 'Modüllere Git',
@@ -205,7 +237,7 @@ export const CommandPalette: React.FC = () => {
       {
         id: 'nav-stock',
         category: 'Modüllere Git',
-        title: 'Mal Alımı & Stok Yönetimi',
+        title: 'Mal Alım & Stok Yönetimi',
         icon: <Boxes className="w-4 h-4 text-sky-400" />,
         action: () => {
           setActiveTab('stock');
@@ -348,7 +380,7 @@ export const CommandPalette: React.FC = () => {
               setSelectedIndex(0);
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Bir işlem, modül, cari veya ürün arayın... (Örn: Mal Alımı, Bosch, Bambi)"
+            placeholder="Bir işlem, modül, cari veya ürün arayın... (Örn: Ciro, Altus, Bambi)"
             className="w-full bg-transparent text-sm font-medium placeholder-slate-400 outline-none text-slate-900 dark:text-white"
           />
           <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-mono font-medium text-slate-400 bg-slate-100 dark:bg-slate-800 rounded">

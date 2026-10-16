@@ -127,17 +127,15 @@ export const DataImporter: React.FC<{
       } else {
         XLSX.writeFile(wb, sampleFileName, { bookType: 'csv' });
       }
-      showToast(`2 Kolonlu Yalın Mal Alımı ${format.toUpperCase()} şablonu indirildi`, 'success');
+      showToast(`2 Kolonlu Yalın Mal Alımı ${format.toUpperCase()} Şablonu indirildi`, 'success');
     } catch (err) {
       console.error('Template download error:', err);
       showToast('Şablon indirilemedi', 'error');
     }
   };
 
-  // Helper normalize
   const normalize = (val: any) => String(val || '').toLowerCase().trim().replace(/[\s\-_]/g, '');
 
-  // Process File with 3-Level Category Matching
   const processUploadedFile = async (file: File) => {
     if (!selectedPriceList) {
       showToast('Lütfen önce bir Fiyat Listesi seçiniz.', 'error');
@@ -145,7 +143,6 @@ export const DataImporter: React.FC<{
     }
     setIsParsing(true);
     setFileName(file.name);
-
     try {
       const buffer = await file.arrayBuffer();
       const workbook = XLSX.read(buffer, { type: 'array' });
@@ -158,7 +155,6 @@ export const DataImporter: React.FC<{
         return;
       }
 
-      // 1. Price List Map
       const priceListMap = new Map<
         string,
         {
@@ -177,7 +173,6 @@ export const DataImporter: React.FC<{
           selectedPriceList.listType === 'Toptan'
             ? (item.toptanFiyat ?? item.costPrice ?? item.perakendeFiyat ?? 0)
             : (item.perakendeFiyat ?? item.salePrice ?? item.toptanFiyat ?? 0);
-
         if (itemCode) {
           priceListMap.set(normalize(itemCode), {
             name: item.urunAdi || item.name || itemCode,
@@ -190,7 +185,6 @@ export const DataImporter: React.FC<{
         }
       });
 
-      // 2. Existing Stock Map
       const stockCodeMap = new Map<
         string,
         {
@@ -218,7 +212,6 @@ export const DataImporter: React.FC<{
         }
       });
 
-      // 3. Fallback default category from hierarchy
       const defaultHierarchy = categoryHierarchy[0] || {
         anaKategori: 'MOBİLYA',
         altKategori: 'BAMBİ',
@@ -267,7 +260,6 @@ export const DataImporter: React.FC<{
         let urunGrubu = defaultHierarchy.urunGrubu;
         let brand = 'GENEL';
 
-        // Check Price List match
         if (priceListMap.has(normCode)) {
           const match = priceListMap.get(normCode)!;
           urunAdi = match.name;
@@ -277,7 +269,6 @@ export const DataImporter: React.FC<{
           altKategori = match.altKategori || altKategori;
           urunGrubu = match.urunGrubu || urunGrubu;
           isMatched = true;
-
           if (stockCodeMap.has(normCode)) {
             matchedStockId = stockCodeMap.get(normCode)!.id;
           }
@@ -417,7 +408,6 @@ export const DataImporter: React.FC<{
   };
 
   const handleInlineUrunGrubuChange = (id: string, newGrup: string) => {
-    // Find matching hierarchy record to sync Ana and Alt
     const matchedHier = categoryHierarchy.find(
       c => c.urunGrubu.toUpperCase() === newGrup.toUpperCase()
     );
@@ -557,6 +547,7 @@ export const DataImporter: React.FC<{
             </p>
           </div>
         </div>
+
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -733,10 +724,11 @@ export const DataImporter: React.FC<{
                 <span>Özel Vade Tarihi</span>
               </button>
             </div>
+
             {vadeOption === 'ozel' && (
               <div className="pt-2 flex items-center gap-3">
                 <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-                  Özel Vade Tarihi Seç:
+                  Özel Vade Tarihi Seçin:
                 </span>
                 <input
                   type="date"
@@ -746,10 +738,11 @@ export const DataImporter: React.FC<{
                 />
               </div>
             )}
+
             {vadeOption === 'pesin' && (
               <div className="pt-2 flex items-center gap-3">
                 <span className="text-xs font-semibold text-slate-600 dark:text-slate-400">
-                  Çıkış Yapılacak Kasa / Banka Hesabı:
+                  Ödeme Yapılacak Kasa / Banka Hesabı:
                 </span>
                 <select
                   value={selectedAccountId}
@@ -832,10 +825,9 @@ export const DataImporter: React.FC<{
         </div>
       )}
 
-      {/* STEP 2: ÖNİZLEME VE ONAY (3 SEVİYELİ KATEGORİ SÜTUNLARIYLA) */}
+      {/* STEP 2: ÖNİZLEME VE ONAY */}
       {step === 2 && (
         <div className="p-4 sm:p-6 overflow-y-auto space-y-4 flex-1">
-          {/* İstatistik Şeridi */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
               <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold block">Gelen Çeşit</span>
@@ -869,7 +861,6 @@ export const DataImporter: React.FC<{
             </div>
           </div>
 
-          {/* Eksik Fiyat Uyarısı */}
           {summary.unmatchedCount > 0 && (
             <div className="p-3.5 bg-amber-50 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-700 rounded-xl flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
@@ -884,7 +875,6 @@ export const DataImporter: React.FC<{
             </div>
           )}
 
-          {/* Canlı İskonto / Kâr Marjı ve Arama Filtresi */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5">
@@ -943,7 +933,6 @@ export const DataImporter: React.FC<{
             </div>
           </div>
 
-          {/* ÖNİZLEME TABLOSU (3 Seviyeli Kategori Sütunlarıyla) */}
           <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-2xl max-h-96 overflow-y-auto">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 dark:bg-slate-900/80 text-slate-500 dark:text-slate-400 font-semibold uppercase sticky top-0 border-b border-slate-200 dark:border-slate-700 z-10 backdrop-blur-xs text-[10px]">
@@ -964,7 +953,7 @@ export const DataImporter: React.FC<{
                 {displayedRows.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="py-8 text-center text-slate-400">
-                      Filtreye uygun satır bulunamadı.
+                      Filtreye uygun satır bulunamadı
                     </td>
                   </tr>
                 ) : (
@@ -979,7 +968,6 @@ export const DataImporter: React.FC<{
                             : 'hover:bg-slate-50/70 dark:hover:bg-slate-800/40'
                         }`}
                       >
-                        {/* Durum */}
                         <td className="py-2.5 px-3 whitespace-nowrap">
                           {isMissing ? (
                             <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-950 px-2 py-0.5 rounded-full">
@@ -991,13 +979,9 @@ export const DataImporter: React.FC<{
                             </span>
                           )}
                         </td>
-
-                        {/* Stok Kodu */}
                         <td className="py-2.5 px-3 font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
                           {item.stokKodu}
                         </td>
-
-                        {/* Ürün Adı */}
                         <td className="py-2.5 px-3 max-w-[180px]">
                           <input
                             type="text"
@@ -1006,8 +990,6 @@ export const DataImporter: React.FC<{
                             className="w-full bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-slate-600 focus:border-sky-500 focus:outline-none font-medium text-slate-800 dark:text-slate-200 text-xs py-0.5"
                           />
                         </td>
-
-                        {/* 3 Seviyeli Kategori (Ana > Alt > Grup) */}
                         <td className="py-2.5 px-3 whitespace-nowrap">
                           <div className="flex flex-col gap-0.5">
                             <span className="text-[10px] text-slate-400 font-semibold">
@@ -1029,8 +1011,6 @@ export const DataImporter: React.FC<{
                             </div>
                           </div>
                         </td>
-
-                        {/* Gelen Adet */}
                         <td className="py-2.5 px-3 text-center">
                           <input
                             type="number"
@@ -1040,8 +1020,6 @@ export const DataImporter: React.FC<{
                             className="w-14 px-1.5 py-0.5 text-center bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg font-mono font-bold text-xs"
                           />
                         </td>
-
-                        {/* Baz Fiyat */}
                         <td className="py-2.5 px-3 text-right">
                           <input
                             type="number"
@@ -1057,25 +1035,17 @@ export const DataImporter: React.FC<{
                             }`}
                           />
                         </td>
-
-                        {/* Net Maliyet */}
                         <td className="py-2.5 px-3 text-right font-mono text-slate-600 dark:text-slate-300 whitespace-nowrap">
                           {formatCurrency(item.netMaliyet)}
                         </td>
-
-                        {/* Hesaplanan Satış Fiyatı (10 TL katına yuvarlanmış) */}
                         <td className="py-2.5 px-3 text-right whitespace-nowrap">
                           <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
                             {formatCurrency(item.hesaplananSatisFiyati)}
                           </span>
                         </td>
-
-                        {/* Satır Toplam Maliyet */}
                         <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">
                           {formatCurrency(item.toplamMaliyet)}
                         </td>
-
-                        {/* Sil */}
                         <td className="py-2.5 px-3 text-center">
                           <button
                             type="button"
@@ -1093,7 +1063,6 @@ export const DataImporter: React.FC<{
             </table>
           </div>
 
-          {/* Alt Onay Butonları */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-3 border-t border-slate-200 dark:border-slate-800 shrink-0">
             <button
               type="button"

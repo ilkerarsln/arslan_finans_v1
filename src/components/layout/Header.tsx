@@ -33,7 +33,7 @@ const TAB_TITLES: Record<ActiveTab, { title: string; subtitle: string }> = {
     subtitle: 'Peşin, kredi kartı ve senetli satış takibi, vade farkı maliyetleri ve kârlılık',
   },
   stock: {
-    title: 'Mal Alımı & Stok Yönetimi',
+    title: 'Mal Alım & Stok Yönetimi',
     subtitle: '3 seviyeli kategori hiyerarşisi, yalın 2 sütunlu Excel alım entegrasyonu ve stok takibi',
   },
   transactions: {
@@ -42,7 +42,7 @@ const TAB_TITLES: Record<ActiveTab, { title: string; subtitle: string }> = {
   },
   accounts: {
     title: 'Banka Hesapları & Kasalar',
-    subtitle: 'Kasa, banka ve POS hesapları dönemsel hareket ekstreleri ve transferler',
+    subtitle: 'Kasa, banka ve POS hesapları, dönemsel hareket ekstreleri ve transferler',
   },
   currents: {
     title: 'Cari Hesaplar',
@@ -57,8 +57,8 @@ const TAB_TITLES: Record<ActiveTab, { title: string; subtitle: string }> = {
     subtitle: 'Gelecek ödemeler, vadesi gelen çekler, senetler ve tedarikçi borçları',
   },
   reports: {
-    title: 'Mali Raporlar & Kategori Dağılımı',
-    subtitle: 'Kategorilere göre stok payı ve kâr analizi, aylık masraf detayları',
+    title: 'Ciro ve Finansal Analiz Matrisi',
+    subtitle: '12 aylık marka/kategori ciro analizi, aktif ortalama, 2025 büyümesi ve brüt kârlar',
   },
   audit: {
     title: 'İşlem Denetim Raporu & Onaylar',
@@ -124,10 +124,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         >
           <Menu className="w-5 h-5" />
         </button>
+
         <div
-          onClick={() => setActiveTab('dashboard')}
+          onClick={() => setActiveTab('reports')}
           className="cursor-pointer group"
-          title="Ana Özet Panele Dön"
+          title="Raporlar ve Ciro Matrisine Dön"
         >
           <div className="flex items-center gap-1.5">
             <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider hidden sm:inline">
@@ -252,12 +253,12 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
 
         {/* Primary Action Button: Data Importer */}
         <button
-          onClick={() => openDataImporter('stok')}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 md:py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm active:scale-95 shrink-0 border border-indigo-500/30"
-          title="Yalın Excel Mal Alımı ve Fiyat Listesi Eşleştirme"
+          onClick={() => openDataImporter('ciro')}
+          className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 md:py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm active:scale-95 shrink-0 border border-indigo-500/30 cursor-pointer"
+          title="Ciro Excel İçe Aktarma"
         >
           <FileSpreadsheet className="w-4 h-4" />
-          <span className="hidden sm:inline">Yalın Mal Alımı</span>
+          <span className="hidden sm:inline">Ciro İçe Aktar</span>
         </button>
 
         {/* Yeni İşlem Ekle */}

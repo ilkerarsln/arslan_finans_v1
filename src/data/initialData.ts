@@ -197,7 +197,6 @@ export const INITIAL_CARIS: Cari[] = [
   },
 ];
 
-// Stok ve Fiyat Listeleri - Tam 3 Seviyeli Kategori Hiyerarşisine Göre Başlatılır
 export const INITIAL_STOCK_ITEMS: StockItem[] = [
   {
     id: 'stk-1',
@@ -277,7 +276,7 @@ export const INITIAL_STOCK_ITEMS: StockItem[] = [
     name: 'Altus 9 Kg 1200 Devir Çamaşır Makinesi',
     anaKategori: 'BEYAZ EŞYA',
     altKategori: 'ALTUS',
-    urunGrubu: 'ALTUS ÇAMAŞIR MAKİNELERİ',
+    urunGrubu: 'ALTUS ÇMŞİR MAKİNELERİ',
     brand: 'ALTUS',
     category: 'BEYAZ EŞYA',
     subCategory: 'ALTUS',
@@ -365,7 +364,7 @@ export const INITIAL_STOCK_ITEMS: StockItem[] = [
     vadeDays: 90,
     minStockLevel: 1,
     lastPurchaseDate: '2026-09-22',
-    notes: 'Nubuck silinebilir kumaş gürgen iskelet',
+    notes: 'Nubuck silinebilir kumaş, gürgen iskelet',
   },
   {
     id: 'stk-8',
@@ -492,7 +491,7 @@ export const INITIAL_SALES: SaleRecord[] = [
     profitMargin: 21.2,
     salesPerson: 'İlker Arslan',
     accountId: 'acc-kasa',
-    notes: '12 ay eşit taksitli senetli satış, ilk peşinat 8.500 TL nakit alındı.',
+    notes: '12 ay eşit taksitli senetli satış, ilk peşinat 8.500 TL nakit alındı',
     createdAt: '2026-10-14T10:30:00Z',
     createdBy: 'ilkerarslan78@gmail.com',
   },

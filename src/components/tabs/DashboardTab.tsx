@@ -71,7 +71,7 @@ export const DashboardTab: React.FC = () => {
 
   const totalExpenseThisMonth = useMemo(() => {
     return currentMonthTxs
-      .filter(tx => tx.type === 'Gider' || tx.type === 'Mal Alımı')
+      .filter(tx => tx.type === 'Gider' || tx.type === 'Mal Alım')
       .reduce((sum, tx) => sum + tx.amount, 0);
   }, [currentMonthTxs]);
 
@@ -94,10 +94,11 @@ export const DashboardTab: React.FC = () => {
     .reduce((s, t) => s + t.amount, 0);
 
   const todayExpense = transactions
-    .filter(t => t.date === todayStr && (t.type === 'Gider' || t.type === 'Mal Alımı') && t.status !== 'İptal')
+    .filter(t => t.date === todayStr && (t.type === 'Gider' || t.type === 'Mal Alım') && t.status !== 'İptal')
     .reduce((s, t) => s + t.amount, 0);
 
   const recentTransactions = transactions.slice(0, 6);
+
   const activeDues = upcomingDues
     .filter(d => !d.isCompleted)
     .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
@@ -203,7 +204,7 @@ export const DashboardTab: React.FC = () => {
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mt-2 pt-2 border-t border-slate-100 dark:border-slate-800">
             <span>İşlem Adedi:</span>
             <span className="font-mono font-semibold text-slate-700 dark:text-slate-300">
-              {currentMonthTxs.filter(t => t.type === 'Gider' || t.type === 'Mal Alımı').length} ödeme
+              {currentMonthTxs.filter(t => t.type === 'Gider' || t.type === 'Mal Alım').length} ödeme
             </span>
           </div>
         </div>
@@ -275,7 +276,7 @@ export const DashboardTab: React.FC = () => {
           </div>
           <button
             onClick={() => setActiveTab('currents')}
-            className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline"
+            className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline cursor-pointer"
           >
             Carileri İncele
           </button>
@@ -297,7 +298,7 @@ export const DashboardTab: React.FC = () => {
           </div>
           <button
             onClick={() => setActiveTab('currents')}
-            className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 underline"
+            className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 underline cursor-pointer"
           >
             Borçları İncele
           </button>
@@ -311,175 +312,6 @@ export const DashboardTab: React.FC = () => {
         </div>
         <div className="lg:col-span-5 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <CategoryBreakdownChart transactions={currentMonthTxs} type="Gider" />
-        </div>
-      </div>
-
-      {/* Bottom 2-Column: Recent Transactions & Upcoming Dues */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
-          <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <div>
-              <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-                Son Finansal Hareketler
-              </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                En son eklenen nakit, banka ve virman kayıtları
-              </p>
-            </div>
-            <button
-              onClick={() => setActiveTab('transactions')}
-              className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
-            >
-              Tümü ({transactions.length})
-            </button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
-                <tr>
-                  <th className="py-2.5 px-4 font-semibold">Tarih</th>
-                  <th className="py-2.5 px-4 font-semibold">Tür</th>
-                  <th className="py-2.5 px-4 font-semibold">Firma / Cari</th>
-                  <th className="py-2.5 px-4 font-semibold">Kategori</th>
-                  <th className="py-2.5 px-4 text-right">Tutar</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {recentTransactions.map(tx => (
-                  <tr
-                    key={tx.id}
-                    className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition"
-                  >
-                    <td className="py-3 px-4 text-slate-500 dark:text-slate-400">
-                      {formatDate(tx.date)}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span
-                        className={`font-semibold inline-flex items-center gap-1 ${
-                          tx.type === 'Gelir'
-                            ? 'text-emerald-600 dark:text-emerald-400'
-                            : tx.type === 'Gider'
-                            ? 'text-rose-600 dark:text-rose-400'
-                            : tx.type === 'Mal Alımı'
-                            ? 'text-amber-600 dark:text-amber-400'
-                            : 'text-blue-600 dark:text-blue-400'
-                        }`}
-                      >
-                        {tx.type === 'Gelir' && <ArrowDownRight className="w-3 h-3" />}
-                        {tx.type === 'Gider' && <ArrowUpRight className="w-3 h-3" />}
-                        {tx.type === 'Mal Alımı' && <ShoppingBag className="w-3 h-3" />}
-                        {tx.type === 'Transfer' && <ArrowRightLeft className="w-3 h-3" />}
-                        {tx.type}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-medium text-slate-800 dark:text-slate-200 truncate max-w-[140px]">
-                      {tx.cariName || tx.desc || '-'}
-                    </td>
-                    <td className="py-3 px-4 text-slate-600 dark:text-slate-400">
-                      {tx.category}
-                    </td>
-                    <td
-                      className={`py-3 px-4 text-right font-mono font-bold ${
-                        tx.type === 'Gelir'
-                          ? 'text-emerald-600 dark:text-emerald-400'
-                          : tx.type === 'Mal Alımı'
-                          ? 'text-amber-600 dark:text-amber-400'
-                          : tx.type === 'Gider'
-                          ? 'text-rose-600 dark:text-rose-400'
-                          : 'text-blue-600 dark:text-blue-400'
-                      }`}
-                    >
-                      {tx.type === 'Gelir' ? '+' : tx.type === 'Gider' ? '-' : tx.type === 'Mal Alımı' ? '-' : ''}
-                      {formatCurrency(tx.amount)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-4 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 text-amber-500" />
-                <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-                  Yaklaşan Vade & Ödeme Takvimi
-                </h3>
-              </div>
-              <button
-                onClick={() => setActiveTab('upcoming')}
-                className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline"
-              >
-                Takvim ({upcomingDues.length})
-              </button>
-            </div>
-            <div className="divide-y divide-slate-100 dark:divide-slate-800 mt-2">
-              {activeDues.length === 0 ? (
-                <div className="py-8 text-center text-xs text-slate-400">
-                  Bekleyen planlı ödeme veya tahsilat bulunmuyor.
-                </div>
-              ) : (
-                activeDues.map(due => {
-                  const remaining = getDaysRemaining(due.dueDate);
-                  return (
-                    <div
-                      key={due.id}
-                      className="py-3 flex items-center justify-between gap-2 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 rounded-lg px-2 transition"
-                    >
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`w-2 h-2 rounded-full shrink-0 ${
-                              due.type === 'Gelir' ? 'bg-emerald-500' : 'bg-rose-500'
-                            }`}
-                          />
-                          <p className="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">
-                            {due.title}
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5 ml-4">
-                          <span>{formatDate(due.dueDate)}</span>
-                          <span>·</span>
-                          <span
-                            className={`font-medium ${
-                              remaining.status === 'overdue'
-                                ? 'text-rose-500 font-bold'
-                                : remaining.status === 'today'
-                                ? 'text-amber-500 font-bold'
-                                : 'text-slate-500'
-                            }`}
-                          >
-                            {remaining.text}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <span
-                          className={`text-xs font-mono font-bold ${
-                            due.type === 'Gelir'
-                              ? 'text-emerald-600 dark:text-emerald-400'
-                              : 'text-rose-600 dark:text-rose-400'
-                          }`}
-                        >
-                          {due.type === 'Gelir' ? '+' : '-'}
-                          {formatCurrency(due.amount)}
-                        </span>
-                        <button
-                          onClick={() => toggleUpcomingDue(due.id)}
-                          title="Ödendi / Alındı olarak işaretle"
-                          className="p-1 rounded text-slate-400 hover:text-emerald-600 transition"
-                        >
-                          <CheckCircle2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
         </div>
       </div>
     </div>

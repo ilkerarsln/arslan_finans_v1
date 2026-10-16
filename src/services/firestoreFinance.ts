@@ -696,12 +696,11 @@ export async function loginStaffWithUsername(
   const username = rawUsername.trim().toLowerCase();
   const password = rawPassword.trim();
   if (!username) {
-    throw new Error('Lütfen kullanıcı adını girin.');
+    throw new Error('Lütfen kullanıcı adınızı girin.');
   }
   if (!password) {
     throw new Error('Lütfen şifrenizi girin.');
   }
-
   let staff = await getStaffAccountByUsername(username);
   if (!staff) {
     const defaultStaff = DEFAULT_STAFF_ACCOUNTS.find(
@@ -724,7 +723,7 @@ export async function loginStaffWithUsername(
   }
 
   if (!staff) {
-    throw new Error('Kullanıcı bulunamadı. Lütfen kullanıcı adını kontrol edin.');
+    throw new Error('Kullanıcı hesabı bulunamadı. Lütfen kullanıcı adınızı kontrol edin.');
   }
 
   const isAdminUser =

@@ -46,7 +46,6 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
   onImportComplete,
 }) => {
   const { importCiroMatrixYearData, showToast } = useFinance();
-
   const now = new Date();
   const fallbackYear = String(now.getFullYear());
   const [targetYear, setTargetYear] = useState<string>(defaultYear || '2026');
@@ -71,8 +70,9 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
   const handleDownloadSampleTemplate = () => {
     try {
       const headers = [
+        'Grup',
         'Kategori / Marka',
-        'Kârlılık (%)',
+        'Ortalama Kârlılık (%)',
         'Ocak',
         'Şubat',
         'Mart',
@@ -86,36 +86,32 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
         'Kasım',
         'Aralık',
       ];
-
       const sampleRows = CIRO_ROW_DEFINITIONS.map(row => [
+        row.group,
         row.displayName,
         row.defaultProfitMargin,
-        150000,
-        160000,
-        175000,
-        190000,
-        210000,
-        225000,
-        240000,
         250000,
-        230000,
-        220000,
-        260000,
-        300000,
+        265000,
+        290000,
+        320000,
+        350000,
+        380000,
+        365000,
+        390000,
+        415000,
+        370000,
+        395000,
+        430000,
       ]);
-
       const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleRows]);
-
-      // Set column widths
       ws['!cols'] = [
-        { wch: 22 }, // Kategori
-        { wch: 14 }, // Kârlılık %
-        ...Array(12).fill({ wch: 14 }), // 12 Months
+        { wch: 14 },
+        { wch: 22 },
+        { wch: 20 },
+        ...Array(12).fill({ wch: 14 }),
       ];
-
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, targetYear || '2026');
-
       XLSX.writeFile(wb, `Arslan_Mobilya_Ciro_Sablonu_${targetYear || '2026'}.xlsx`);
       showToast('Ciro Excel şablonu başarıyla indirildi.', 'success');
     } catch (err) {
@@ -164,53 +160,41 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
     return undefined;
   };
 
-  // Parse Month Column
   const parseMonthIndex = (headerText: string, colIndex: number): number | null => {
     const clean = String(headerText || '').toLowerCase().trim();
 
-    // Check Turkish month names
     for (const m of CIRO_MONTHS) {
       if (clean.includes(m.name.toLowerCase()) || clean.includes(m.short.toLowerCase())) {
         return m.no;
       }
     }
 
-    // Check month number (1..12) or "ay 1", "1. ay"
     const numMatch = clean.match(/^(\d{1,2})$/) || clean.match(/(\d{1,2})\.?\s*ay/);
     if (numMatch) {
       const num = parseInt(numMatch[1], 10);
       if (num >= 1 && num <= 12) return num;
     }
 
-    // Fallback: If header is in position 2..13, it might map to months 1..12
-    if (colIndex >= 2 && colIndex <= 13) {
-      return colIndex - 1;
+    if (colIndex >= 3 && colIndex <= 14) {
+      return colIndex - 2;
     }
-
     return null;
   };
 
-  // Clean numeric currency/percentage value
   const parseNumericValue = (val: any): number => {
     if (typeof val === 'number') return isNaN(val) ? 0 : val;
     if (!val) return 0;
-
     let str = String(val).trim();
-    // Remove currency symbols and letters
-    str = str.replace(/[₺$€TLtl%]/g, '').trim();
-
-    // If format like "1.250.000,50" -> 1250000.50
+    str = str.replace(/[₺TLtl%]/g, '').trim();
     if (str.includes('.') && str.includes(',')) {
       str = str.replace(/\./g, '').replace(',', '.');
     } else if (str.includes(',')) {
       str = str.replace(',', '.');
     }
-
     const parsed = parseFloat(str);
     return isNaN(parsed) ? 0 : parsed;
   };
 
-  // Parse sheet
   const parseSheetData = (sheet: XLSX.WorkSheet, sheetYearHint?: string) => {
     const rawData: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
     if (!rawData || rawData.length === 0) {
@@ -218,7 +202,6 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
       return;
     }
 
-    // Try to detect header row (contains "Kategori" or "Ocak" or "Aylar")
     let headerRowIdx = 0;
     for (let i = 0; i < Math.min(rawData.length, 10); i++) {
       const rowStr = rawData[i].map(c => String(c).toLowerCase()).join(' ');
@@ -235,9 +218,7 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
     }
 
     const headerRow = rawData[headerRowIdx] || [];
-
-    // Map column indices
-    let categoryColIdx = 0;
+    let categoryColIdx = 1;
     let marginColIdx = -1;
     const monthColMap: { colIdx: number; monthNo: number }[] = [];
 
@@ -261,15 +242,13 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
       }
     });
 
-    // If margin col wasn't found by header, check if column 1 contains percentages
     if (marginColIdx === -1 && headerRow.length > 2) {
-      marginColIdx = 1;
+      marginColIdx = 2;
     }
 
     const results: ParsedCiroRow[] = [];
     let grandTotal = 0;
 
-    // Process data rows
     for (let r = headerRowIdx + 1; r < rawData.length; r++) {
       const row = rawData[r];
       if (!row || row.length === 0) continue;
@@ -277,7 +256,6 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
       const rawCategoryName = String(row[categoryColIdx] || '').trim();
       if (!rawCategoryName) continue;
 
-      // Ignore subtotal or total rows like "Genel Toplam", "Beyaz Eşya Toplamı"
       const lowerCat = rawCategoryName.toLowerCase();
       if (
         lowerCat.includes('toplam') ||
@@ -290,11 +268,9 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
 
       const match = matchCategoryName(rawCategoryName);
 
-      // Parse Margin
       let parsedMargin: number | undefined = undefined;
       if (marginColIdx !== -1 && row[marginColIdx] !== undefined && row[marginColIdx] !== '') {
         let rawMargin = parseNumericValue(row[marginColIdx]);
-        // If entered as 0.22, convert to 22
         if (rawMargin > 0 && rawMargin < 1) {
           rawMargin = rawMargin * 100;
         }
@@ -303,10 +279,8 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
         }
       }
 
-      // Parse 12 Months
       const monthsData: Record<number, number> = {};
       let rowSum = 0;
-
       for (let m = 1; m <= 12; m++) {
         monthsData[m] = 0;
       }
@@ -333,7 +307,6 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
           isValid: true,
         });
       } else {
-        // Unknown category
         results.push({
           rawName: rawCategoryName,
           matchedId: 'MOBILYA',
@@ -356,38 +329,31 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
     setParsedRows(results);
     setFileTotalTurnover(grandTotal);
 
-    // If sheet name looks like a year, set target year
     if (sheetYearHint && /^\d{4}$/.test(sheetYearHint)) {
       setTargetYear(sheetYearHint);
     }
-
     setStep(2);
     showToast(`${results.length} kategori ve ciro satırı başarıyla okundu.`, 'success');
   };
 
-  // Handle uploaded file
   const processUploadedFile = async (file: File) => {
     setIsParsing(true);
     setFileName(file.name);
-
     try {
       const buffer = await file.arrayBuffer();
       const wb = XLSX.read(buffer, { type: 'array' });
       setRawWorkbook(wb);
       setSheetNames(wb.SheetNames);
 
-      // Auto detect year from file name (e.g., "ciro_2025.xlsx" -> "2025")
       const fileNameYearMatch = file.name.match(/\b(202\d)\b/);
       const sheetYearMatch = wb.SheetNames[0]?.match(/\b(202\d)\b/);
       const detectedYear = fileNameYearMatch?.[1] || sheetYearMatch?.[1];
-
       if (detectedYear) {
         setTargetYear(detectedYear);
       }
 
       const activeSheetName = wb.SheetNames[0];
       setSelectedSheet(activeSheetName);
-
       parseSheetData(wb.Sheets[activeSheetName], detectedYear || activeSheetName);
     } catch (err) {
       console.error('File parsing error:', err);
@@ -397,7 +363,6 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
     }
   };
 
-  // Change active sheet if workbook has multiple sheets
   const handleSheetChange = (sheetName: string) => {
     if (!rawWorkbook) return;
     setSelectedSheet(sheetName);
@@ -405,7 +370,6 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
     parseSheetData(rawWorkbook.Sheets[sheetName], sheetYearMatch?.[1] || sheetName);
   };
 
-  // Drag and drop handlers
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(true);
@@ -429,7 +393,6 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
     }
   };
 
-  // Final Import execution
   const handleExecuteImport = () => {
     if (!targetYear || parsedRows.length === 0) {
       showToast('Aktarılacak geçerli veri bulunamadı.', 'error');
@@ -443,7 +406,6 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
     }));
 
     importCiroMatrixYearData(targetYear, payload);
-
     setStep(3);
     if (onImportComplete) {
       onImportComplete(targetYear, parsedRows.length);
@@ -467,21 +429,18 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
                 </span>
               </h2>
               <p className="text-xs text-slate-400">
-                Geçmiş ve cari ciro Excel tablolarını otomatik algılayıp ERP matrisine aktarır.
+                Geçmiş ve cari ciro Excel tablolarını otomatik algılayıp ERP matrisine aktarır
               </p>
             </div>
           </div>
-
           <div className="flex items-center gap-2">
             <button
               onClick={handleDownloadSampleTemplate}
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-slate-300 hover:text-white text-xs font-medium border border-slate-700 transition-all cursor-pointer"
               title="Örnek Ciro Excel Şablonunu İndir"
             >
-              <Download className="w-3.5 h-3.5 text-emerald-400" />
-              Örnek Şablon (.xlsx)
+              <Download className="w-3.5 h-3.5 text-emerald-400" /> Örnek Şablon (.xlsx)
             </button>
-
             {onClose && (
               <button
                 onClick={onClose}
@@ -510,9 +469,7 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
               </span>
               Dosya & Yıl Seçimi
             </span>
-
-            <span className="text-slate-700">→</span>
-
+            <span className="text-slate-700">›</span>
             <span
               className={`flex items-center gap-2 font-medium ${
                 step >= 2 ? 'text-indigo-400' : 'text-slate-500'
@@ -527,9 +484,7 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
               </span>
               Önizleme & Kategori Eşleme
             </span>
-
-            <span className="text-slate-700">→</span>
-
+            <span className="text-slate-700">›</span>
             <span
               className={`flex items-center gap-2 font-medium ${
                 step === 3 ? 'text-emerald-400' : 'text-slate-500'
@@ -545,7 +500,6 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
               Tamamlandı
             </span>
           </div>
-
           <div className="text-[11px] text-slate-400">
             {step === 1 && 'Adım 1/3'}
             {step === 2 && 'Adım 2/3'}
@@ -558,7 +512,6 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
           {/* STEP 1: Upload & Configuration */}
           {step === 1 && (
             <div className="max-w-2xl mx-auto space-y-6 py-4">
-              {/* Year Selection */}
               <div className="bg-slate-950/60 p-4 rounded-2xl border border-slate-800 space-y-3">
                 <label className="block text-xs font-bold text-slate-300">
                   Hedef Ciro Yılı (Matris Tablosu):
@@ -612,7 +565,6 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
                   className="hidden"
                   onChange={handleFileChange}
                 />
-
                 <div className="w-16 h-16 rounded-2xl bg-indigo-600/10 border border-indigo-500/20 text-indigo-400 flex items-center justify-center mb-4">
                   {isParsing ? (
                     <RefreshCw className="w-8 h-8 animate-spin text-indigo-400" />
@@ -620,17 +572,15 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
                     <Upload className="w-8 h-8" />
                   )}
                 </div>
-
                 <h3 className="text-base font-bold text-white mb-1">
                   {isParsing ? 'Excel Dosyası Okunuyor...' : 'Ciro Excel Dosyasını Buraya Sürükleyin veya Seçin'}
                 </h3>
                 <p className="text-xs text-slate-400 max-w-md">
-                  Desteklenen formatlar: <strong className="text-slate-300">.xlsx, .xls, .csv</strong> (2025, 2026 Ciro Tabloları)
+                  Desteklenen formatlar: <strong className="text-slate-300">.xlsx, .xls, .csv</strong> (Grup, Kategori, Kârlılık %, 12 Aylık Cirolar)
                 </p>
-
                 <div className="mt-5 flex items-center gap-2">
                   <span className="px-3.5 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-md shadow-indigo-900/30">
-                    Dosya Seçin
+                    Dosya Seç
                   </span>
                 </div>
               </div>
@@ -655,7 +605,7 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
                   </div>
                   <div className="bg-slate-900 p-2 rounded-lg border border-slate-800/80">
                     <strong className="text-indigo-300 block">Kârlılık Katsayısı:</strong>
-                    Satır kâr marjı (%) oranları
+                    Satır marjı (%) oranları
                   </div>
                 </div>
               </div>
@@ -665,7 +615,6 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
           {/* STEP 2: Preview & Validation */}
           {step === 2 && (
             <div className="space-y-4">
-              {/* Summary Bar */}
               <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -788,7 +737,6 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
               <p className="text-xs text-slate-400">
                 {targetYear} yılı için {parsedRows.length} kategori ve aylık ciro matrisi veritabanına kaydedildi. Tüm genel toplamlar, aylık ortalamalar ve büyüme oranları anlık olarak senkronize edildi.
               </p>
-
               <div className="p-4 rounded-2xl bg-slate-950/70 border border-slate-800 space-y-2 text-xs">
                 <div className="flex justify-between">
                   <span className="text-slate-400">İşlenen Yıl:</span>
@@ -805,7 +753,6 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
                   <span className="font-bold text-indigo-400">{parsedRows.length} Kalem</span>
                 </div>
               </div>
-
               <div className="pt-2">
                 <button
                   onClick={onClose}
@@ -830,7 +777,6 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
               </button>
             )}
           </div>
-
           <div className="flex items-center gap-2">
             {step !== 3 && onClose && (
               <button
@@ -840,7 +786,6 @@ export const CiroDataImporter: React.FC<CiroDataImporterProps> = ({
                 Vazgeç
               </button>
             )}
-
             {step === 2 && (
               <button
                 onClick={handleExecuteImport}

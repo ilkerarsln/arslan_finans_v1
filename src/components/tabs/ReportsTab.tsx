@@ -19,7 +19,6 @@ import { CiroMatrixModule } from '../reports/CiroMatrixModule';
 
 export const ReportsTab: React.FC = () => {
   const { transactions, upcomingDues, sales, stockItems, exportDataToExcel } = useFinance();
-
   const [activeReport, setActiveReport] = useState<'ciroMatrix' | 'flow' | 'category'>('ciroMatrix');
 
   const totalSalesRevenue = sales.reduce((sum, s) => sum + (s.totalSaleAmount || 0), 0);
@@ -39,7 +38,6 @@ export const ReportsTab: React.FC = () => {
             Excel uyumlu ciro matrisi, nakit akış projeksiyonları ve kategori bazlı finansal analizler.
           </p>
         </div>
-
         <button
           onClick={exportDataToExcel}
           className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-900/20 transition-all cursor-pointer"
@@ -61,7 +59,6 @@ export const ReportsTab: React.FC = () => {
           <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
           Ciro & Finansal Analiz Matrisi (Excel Uyumlu)
         </button>
-
         <button
           onClick={() => setActiveReport('flow')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
@@ -73,7 +70,6 @@ export const ReportsTab: React.FC = () => {
           <TrendingUp className="w-4 h-4 text-sky-400" />
           Aylık Nakit Akış Trendi
         </button>
-
         <button
           onClick={() => setActiveReport('category')}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
@@ -92,7 +88,6 @@ export const ReportsTab: React.FC = () => {
 
       {activeReport === 'flow' && (
         <div className="space-y-6">
-          {/* Flow KPIs */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800/80">
               <span className="text-xs text-slate-400">Toplam Satış Cirosu</span>

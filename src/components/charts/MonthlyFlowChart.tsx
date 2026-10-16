@@ -98,7 +98,7 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
       if (found) {
         if (tx.type === 'Gelir') {
           found.realizedIncome += tx.amount;
-        } else if (tx.type === 'Gider' || tx.type === 'Mal Alımı') {
+        } else if (tx.type === 'Gider' || tx.type === 'Mal Alım') {
           found.realizedExpense += tx.amount;
         }
       }

@@ -25,7 +25,7 @@ export const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const filtered = transactions.filter(
-    t => (t.type === type || (type === 'Gider' && t.type === 'Mal Alımı')) && t.status !== 'İptal'
+    t => (t.type === type || (type === 'Gider' && t.type === 'Mal Alım')) && t.status !== 'İptal'
   );
 
   const total = filtered.reduce((acc, curr) => acc + curr.amount, 0);
@@ -49,6 +49,7 @@ export const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({
   const radius = (size - strokeWidth) / 2;
   const center = size / 2;
   const circumference = 2 * Math.PI * radius;
+
   let accumulatedPercent = 0;
 
   return (
@@ -69,7 +70,7 @@ export const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({
 
       {total === 0 ? (
         <div className="h-48 flex items-center justify-center text-slate-400 text-xs">
-          Bu dönem için {type.toLowerCase()} kaydı bulunamadı.
+          Bu dönem için {type.toLowerCase()} kaydı bulunamadı
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">

@@ -20,9 +20,9 @@ export const INITIAL_CATEGORY_HIERARCHY: CategoryHierarchyItem[] = [
   { id: 'cat-14', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS ANKASTRE DAVLUMBAZLAR' },
   { id: 'cat-15', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS ANKASTRE FIRINLAR' },
   { id: 'cat-16', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS ANKASTRE OCAKLAR' },
-  { id: 'cat-17', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS ASPİRATÖR' },
+  { id: 'cat-17', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS ASPİR' },
   { id: 'cat-18', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS BULAŞIK MAKİNELERİ' },
-  { id: 'cat-19', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS ÇAMAŞIR MAKİNELERİ' },
+  { id: 'cat-19', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS ÇMŞİR MAKİNELERİ' },
   { id: 'cat-20', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS ÇEKMECELİ DERİN DONDURUCU' },
   { id: 'cat-21', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS ÇİFT KAPILI BUZDOLAPLARI' },
   { id: 'cat-22', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS ÇİFT KAPILI NF BUZDOLAPLARI' },
@@ -30,7 +30,7 @@ export const INITIAL_CATEGORY_HIERARCHY: CategoryHierarchyItem[] = [
   { id: 'cat-24', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS KLİMA' },
   { id: 'cat-25', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS KOMBİ NF BUZDOLAPLARI' },
   { id: 'cat-26', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS NOFROST ÇEKMECELİ DERİN DONDURUCU' },
-  { id: 'cat-27', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS SOLO SETÜSTÜ OCAKLAR' },
+  { id: 'cat-27', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS SOLO SETÜST OCAKLAR' },
   { id: 'cat-28', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS TEK KAPILI BUZDOLAPLARI' },
   { id: 'cat-29', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS TV' },
   { id: 'cat-30', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS ÜSTTEN KAPAKLI DERİN DONDURUCU' },
@@ -46,9 +46,9 @@ export const INITIAL_CATEGORY_HIERARCHY: CategoryHierarchyItem[] = [
 
   // 6. BEYAZ EŞYA -> HOOVER
   { id: 'cat-36', anaKategori: 'BEYAZ EŞYA', altKategori: 'HOOVER', urunGrubu: 'HOOVER BULAŞIK MAKİNELERİ' },
-  { id: 'cat-37', anaKategori: 'BEYAZ EŞYA', altKategori: 'HOOVER', urunGrubu: 'HOOVER ÇAMAŞIR MAKİNELERİ' },
+  { id: 'cat-37', anaKategori: 'BEYAZ EŞYA', altKategori: 'HOOVER', urunGrubu: 'HOOVER ÇMŞİR MAKİNELERİ' },
   { id: 'cat-38', anaKategori: 'BEYAZ EŞYA', altKategori: 'HOOVER', urunGrubu: 'HOOVER KURUTMA MAKİNELERİ' },
-  { id: 'cat-39', anaKategori: 'BEYAZ EŞYA', altKategori: 'HOOVER', urunGrubu: 'HOOVER KURUTMALI ÇAMAŞIR MAKİNESİ' },
+  { id: 'cat-39', anaKategori: 'BEYAZ EŞYA', altKategori: 'HOOVER', urunGrubu: 'HOOVER KURUTMALI ÇMŞR MAK' },
 
   // 7. BEYAZ EŞYA -> UGUR
   { id: 'cat-40', anaKategori: 'BEYAZ EŞYA', altKategori: 'UGUR', urunGrubu: 'UGUR ANKASTRE DAVLUMBAZ' },
@@ -56,20 +56,20 @@ export const INITIAL_CATEGORY_HIERARCHY: CategoryHierarchyItem[] = [
   { id: 'cat-42', anaKategori: 'BEYAZ EŞYA', altKategori: 'UGUR', urunGrubu: 'UGUR ANKASTRE OCAK' },
   { id: 'cat-43', anaKategori: 'BEYAZ EŞYA', altKategori: 'UGUR', urunGrubu: 'UGUR BUZDOLABI' },
   { id: 'cat-44', anaKategori: 'BEYAZ EŞYA', altKategori: 'UGUR', urunGrubu: 'UGUR CEKMECELI DONDURUCU' },
-  { id: 'cat-45', anaKategori: 'BEYAZ EŞYA', altKategori: 'UGUR', urunGrubu: 'UGUR ÇAMAŞIR MAKİNESİ' },
-  { id: 'cat-46', anaKategori: 'BEYAZ EŞYA', altKategori: 'UGUR', urunGrubu: 'UGUR KURUTMA MAKİNESİ' },
+  { id: 'cat-45', anaKategori: 'BEYAZ EŞYA', altKategori: 'UGUR', urunGrubu: 'UGUR ÇMŞİR MAK' },
+  { id: 'cat-46', anaKategori: 'BEYAZ EŞYA', altKategori: 'UGUR', urunGrubu: 'UGUR KURUTMA MAK' },
   { id: 'cat-47', anaKategori: 'BEYAZ EŞYA', altKategori: 'UGUR', urunGrubu: 'UGUR NF CEKMECELİ DONDURUCU' },
   { id: 'cat-48', anaKategori: 'BEYAZ EŞYA', altKategori: 'UGUR', urunGrubu: 'UGUR SETUSTU OCAK' },
   { id: 'cat-49', anaKategori: 'BEYAZ EŞYA', altKategori: 'UGUR', urunGrubu: 'UGUR SU ARITMA' },
   { id: 'cat-50', anaKategori: 'BEYAZ EŞYA', altKategori: 'UGUR', urunGrubu: 'UGUR ÜSTTEN KAPAKLI DONDURUCU' },
-  { id: 'cat-51', anaKategori: 'BEYAZ EŞYA', altKategori: 'UGUR', urunGrubu: 'UGUR BULASIK MAKİNESİ' },
+  { id: 'cat-51', anaKategori: 'BEYAZ EŞYA', altKategori: 'UGUR', urunGrubu: 'UGUR BULASIK MAK' },
 
-  // 8. MOBİLYA -> MOBİLYA
+  // 8. MOBİLYA -> MOBİLİYA
   { id: 'cat-52', anaKategori: 'MOBİLYA', altKategori: 'MOBİLYA', urunGrubu: 'AKABE' },
   { id: 'cat-53', anaKategori: 'MOBİLYA', altKategori: 'MOBİLYA', urunGrubu: 'ANKARA MOBİLYA' },
   { id: 'cat-54', anaKategori: 'MOBİLYA', altKategori: 'MOBİLYA', urunGrubu: 'AYTASHOME' },
-  { id: 'cat-55', anaKategori: 'MOBİLYA', altKategori: 'MOBİLYA', urunGrubu: 'BENİMODAM' },
-  { id: 'cat-56', anaKategori: 'MOBİLYA', altKategori: 'MOBİLYA', urunGrubu: 'HALİ' },
+  { id: 'cat-55', anaKategori: 'MOBİLYA', altKategori: 'MOBİLYA', urunGrubu: 'BEN MODAM' },
+  { id: 'cat-56', anaKategori: 'MOBİLYA', altKategori: 'MOBİLYA', urunGrubu: 'HALI' },
   { id: 'cat-57', anaKategori: 'MOBİLYA', altKategori: 'MOBİLYA', urunGrubu: 'İPEK' },
   { id: 'cat-58', anaKategori: 'MOBİLYA', altKategori: 'MOBİLYA', urunGrubu: 'LADİN' },
   { id: 'cat-59', anaKategori: 'MOBİLYA', altKategori: 'MOBİLYA', urunGrubu: 'ÖREN MOBİLYA' },
@@ -102,7 +102,6 @@ export const INITIAL_CATEGORY_HIERARCHY: CategoryHierarchyItem[] = [
   { id: 'cat-76', anaKategori: 'BEYAZ EŞYA', altKategori: 'TV', urunGrubu: 'SKYTECH' },
 ];
 
-// Helper functions for Cascading UI
 export const getUniqueAnaKategoriler = (hierarchy: CategoryHierarchyItem[]): string[] => {
   const set = new Set<string>();
   hierarchy.forEach(item => {
@@ -140,7 +139,6 @@ export const getUniqueUrunGruplari = (
   return Array.from(set).sort();
 };
 
-// Popular brands list
 export const POPULAR_BRANDS = [
   'BOSCH',
   'ALTUS',

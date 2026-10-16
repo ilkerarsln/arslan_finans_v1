@@ -29,7 +29,7 @@ export const LoginScreen: React.FC = () => {
     setErrorMessage(null);
     const cleanUsername = username.trim();
     if (!cleanUsername) {
-      setErrorMessage('Lütfen kullanıcı adını girin.');
+      setErrorMessage('Lütfen kullanıcı adınızı girin.');
       return;
     }
     if (!password) {
@@ -56,7 +56,6 @@ export const LoginScreen: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-center items-center px-4 relative overflow-hidden selection:bg-emerald-500/30 selection:text-emerald-200">
       <div className="w-full max-w-md relative z-10">
-        {/* Logo and Brand */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-white shadow-xl shadow-emerald-500/20 mb-3">
             <TrendingUp className="w-9 h-9" />
@@ -69,7 +68,6 @@ export const LoginScreen: React.FC = () => {
           </p>
         </div>
 
-        {/* Card */}
         <div className="bg-slate-800/85 backdrop-blur-xl border border-slate-700/70 rounded-2xl p-6 md:p-7 shadow-2xl">
           <div className="flex items-center justify-between pb-4 mb-5 border-b border-slate-700/60">
             <div className="flex items-center gap-2 text-emerald-400 text-sm font-semibold">
@@ -86,7 +84,6 @@ export const LoginScreen: React.FC = () => {
             </div>
           </div>
 
-          {/* Mode Selector */}
           <div className="grid grid-cols-2 p-1 bg-slate-900/70 rounded-xl border border-slate-700/60 mb-5">
             <button
               type="button"
@@ -212,7 +209,7 @@ export const LoginScreen: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSubmitting || isCloudSyncing}
-                className="w-full mt-3 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-emerald-500/20 transition-all duration-200 disabled:opacity-60 disabled:pointer-events-none"
+                className="w-full mt-3 flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white font-semibold py-3 px-4 rounded-xl shadow-lg shadow-emerald-500/20 transition-all duration-200 disabled:opacity-60 disabled:pointer-events-none cursor-pointer"
               >
                 {isSubmitting || isCloudSyncing ? (
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -235,7 +232,7 @@ export const LoginScreen: React.FC = () => {
                 type="button"
                 onClick={loginWithGoogle}
                 disabled={isCloudSyncing}
-                className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-800 font-semibold py-3.5 px-4 rounded-xl shadow-lg transition-all duration-200 active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none group"
+                className="w-full flex items-center justify-center gap-3 bg-white hover:bg-slate-100 text-slate-900 font-semibold py-3.5 px-4 rounded-xl shadow-lg transition-all duration-200 active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none group cursor-pointer"
               >
                 {isCloudSyncing ? (
                   <div className="w-5 h-5 border-2 border-slate-400 border-t-slate-800 rounded-full animate-spin" />

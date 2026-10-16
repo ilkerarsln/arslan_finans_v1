@@ -52,6 +52,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
   const navItems: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
     {
+      id: 'reports',
+      label: 'Ciro & Finansal Matris',
+      icon: <FileSpreadsheet className="w-4 h-4 text-emerald-400" />,
+    },
+    {
       id: 'dashboard',
       label: 'Genel Bakış',
       icon: <LayoutDashboard className="w-4 h-4" />,
@@ -63,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     },
     {
       id: 'stock',
-      label: 'Mal Alımı & Stok',
+      label: 'Mal Alım & Stok',
       icon: <Boxes className="w-4 h-4 text-sky-400" />,
     },
     {
@@ -85,11 +90,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       id: 'definitions',
       label: 'Tanımlamalar',
       icon: <SlidersHorizontal className="w-4 h-4 text-amber-400" />,
-    },
-    {
-      id: 'reports',
-      label: 'Raporlar & Analiz',
-      icon: <FileBarChart2 className="w-4 h-4" />,
     },
     {
       id: 'upcoming',
@@ -146,9 +146,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         {/* Brand Header */}
         <div className="p-4 flex items-center justify-between border-b border-slate-800/80">
           <div
-            onClick={() => handleSelectTab('dashboard')}
+            onClick={() => handleSelectTab('reports')}
             className="flex items-center gap-3 cursor-pointer group"
-            title="Ana Özet Panele Dön"
+            title="Ciro ve Finansal Analiz Matrisine Git"
           >
             <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
               <Wallet className="w-5 h-5 text-emerald-400" />
@@ -235,20 +235,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             );
           })}
 
-          {/* Yalın Mal Alımı Butonu */}
+          {/* Ciro Excel İçe Aktar Butonu */}
           <div className="pt-2 mt-2 border-t border-slate-800/80 space-y-1">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3">
-              Veri & Alım Sihirbazı
+              Veri & Ciro Sihirbazı
             </span>
             <button
               onClick={() => {
-                openDataImporter('stok');
+                openDataImporter('ciro');
                 onClose();
               }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-sky-400 hover:text-white hover:bg-sky-950/40 border border-sky-500/20 transition group"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-400 hover:text-white hover:bg-emerald-950/40 border border-emerald-500/20 transition group"
             >
-              <FileSpreadsheet className="w-4 h-4 text-sky-400 group-hover:scale-110 transition-transform" />
-              <span className="truncate">Yalın Mal Alımı (Data Importer)</span>
+              <FileSpreadsheet className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+              <span className="truncate">Ciro Excel İçe Aktar</span>
             </button>
           </div>
         </nav>
@@ -276,7 +276,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 <Monitor className="w-3 h-3 text-emerald-400" />
                 <span>Ofis PC</span>
               </span>
-              <span className="text-emerald-400 font-bold">⇄</span>
+              <span className="text-emerald-400 font-bold">⇌</span>
               <span className="flex items-center gap-1">
                 <Smartphone className="w-3 h-3 text-emerald-400" />
                 <span>Cep Telefonu</span>

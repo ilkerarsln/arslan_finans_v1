@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useFinance } from '../../context/FinanceContext';
 import {
   TrendingUp,
@@ -41,11 +41,9 @@ export const CiroMatrixModule: React.FC = () => {
 
   const now = new Date();
   const currentYearStr = String(now.getFullYear());
-
   const [selectedYear, setSelectedYear] = useState<string>(currentYearStr);
   const [filterGroup, setFilterGroup] = useState<'ALL' | 'BEYAZ EŞYA' | 'MOBİLYA'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showSalesBreakdown, setShowSalesBreakdown] = useState(false);
 
   // New Year modal
   const [isAddYearModalOpen, setIsAddYearModalOpen] = useState(false);
@@ -54,95 +52,70 @@ export const CiroMatrixModule: React.FC = () => {
   // Ciro Importer Modal
   const [isImporterOpen, setIsImporterOpen] = useState(false);
 
-  // Cell Edit Modal State
-  const [editingCell, setEditingCell] = useState<{
-    year: string;
+  // Direct Inline Cell Editing State: rowId + month (or 'margin')
+  const [inlineEditingCell, setInlineEditingCell] = useState<{
     rowId: string;
-    rowName: string;
-    month: number;
-    monthName: string;
-    manualAmount: number;
-    liveSalesAmount: number;
-    currentTotal: number;
-    note?: string;
-    contributingSales: any[];
+    field: number | 'margin'; // number: 1..12 month, 'margin': profit margin %
   } | null>(null);
 
-  const [inputManualAmount, setInputManualAmount] = useState<string>('0');
-  const [inputCellNote, setInputCellNote] = useState<string>('');
+  const [inlineValue, setInlineValue] = useState<string>('');
+  const inlineInputRef = useRef<HTMLInputElement>(null);
 
-  // Profit Margin Edit Modal State
-  const [editingMargin, setEditingMargin] = useState<{
-    year: string;
-    rowId: string;
-    rowName: string;
-    currentMargin: number;
-  } | null>(null);
+  // Focus input when inline editing starts
+  useEffect(() => {
+    if (inlineEditingCell && inlineInputRef.current) {
+      inlineInputRef.current.focus();
+      inlineInputRef.current.select();
+    }
+  }, [inlineEditingCell]);
 
-  const [inputMargin, setInputMargin] = useState<string>('25');
-
-  // Core Matrix Calculations
+  // Core Matrix Calculations (Auto-calculation Engine)
   const matrixResult = useMemo(() => {
     return calculateCiroMatrix(selectedYear, ciroMatrixData, sales);
   }, [selectedYear, ciroMatrixData, sales]);
 
-  // Open Cell Edit Modal
-  const handleCellClick = (row: ComputedRowData, monthNum: number) => {
-    const cell = row.months[monthNum];
-    const monthObj = CIRO_MONTHS.find(m => m.no === monthNum);
-
-    setEditingCell({
-      year: selectedYear,
-      rowId: row.id,
-      rowName: row.displayName,
-      month: monthNum,
-      monthName: monthObj?.name || `${monthNum}. Ay`,
-      manualAmount: cell.manualAmount,
-      liveSalesAmount: cell.liveSalesAmount,
-      currentTotal: cell.totalAmount,
-      note: cell.note || '',
-      contributingSales: cell.contributingSales || [],
-    });
-    setInputManualAmount(String(cell.manualAmount));
-    setInputCellNote(cell.note || '');
+  // Start inline editing a month cell
+  const startInlineMonthEdit = (rowId: string, month: number, currentManual: number, currentTotal: number) => {
+    setInlineEditingCell({ rowId, field: month });
+    // Default to the current manual value (or current total if manual is 0)
+    setInlineValue(String(currentManual || currentTotal || ''));
   };
 
-  // Save Cell
-  const handleSaveCell = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingCell) return;
-
-    const parsed = parseFloat(inputManualAmount.replace(/\./g, '').replace(',', '.')) || 0;
-    updateCiroCell(editingCell.year, editingCell.rowId, editingCell.month, {
-      manualAmount: parsed,
-      note: inputCellNote.trim() || undefined,
-    });
-    setEditingCell(null);
+  // Start inline editing profit margin %
+  const startInlineMarginEdit = (rowId: string, currentMargin: number) => {
+    setInlineEditingCell({ rowId, field: 'margin' });
+    setInlineValue(String(currentMargin));
   };
 
-  // Open Margin Edit Modal
-  const handleMarginClick = (row: ComputedRowData) => {
-    setEditingMargin({
-      year: selectedYear,
-      rowId: row.id,
-      rowName: row.displayName,
-      currentMargin: row.profitMargin,
-    });
-    setInputMargin(String(row.profitMargin));
-  };
+  // Commit inline edit
+  const commitInlineEdit = () => {
+    if (!inlineEditingCell) return;
 
-  // Save Margin
-  const handleSaveMargin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingMargin) return;
-
-    const parsed = parseFloat(inputMargin.replace(',', '.')) || 0;
-    if (parsed < 0 || parsed > 100) {
-      showToast('Kâr marjı %0 ile %100 arasında olmalıdır', 'error');
-      return;
+    if (inlineEditingCell.field === 'margin') {
+      const parsedMargin = parseFloat(inlineValue.replace(',', '.')) || 0;
+      if (parsedMargin >= 0 && parsedMargin <= 100) {
+        updateCiroRowMargin(selectedYear, inlineEditingCell.rowId, parsedMargin);
+      }
+    } else {
+      const monthNum = inlineEditingCell.field as number;
+      const cleanStr = inlineValue.replace(/\s+/g, '').replace(/\./g, '').replace(',', '.');
+      const parsedAmount = parseFloat(cleanStr) || 0;
+      updateCiroCell(selectedYear, inlineEditingCell.rowId, monthNum, {
+        manualAmount: parsedAmount,
+      });
     }
-    updateCiroRowMargin(editingMargin.year, editingMargin.rowId, parsed);
-    setEditingMargin(null);
+
+    setInlineEditingCell(null);
+  };
+
+  // Handle keyboard events in inline input
+  const handleInlineKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commitInlineEdit();
+    } else if (e.key === 'Escape') {
+      setInlineEditingCell(null);
+    }
   };
 
   // Add Year
@@ -150,7 +123,7 @@ export const CiroMatrixModule: React.FC = () => {
     e.preventDefault();
     const clean = newYearInput.trim();
     if (!clean || isNaN(Number(clean)) || clean.length !== 4) {
-      showToast('Lütfen geçerli 4 haneli bir yıl girin (Örn: 2027)', 'error');
+      showToast('Lütfen geçerli 4 haneli bir yıl girin (örn: 2027)', 'error');
       return;
     }
     addNewCiroYear(clean);
@@ -159,38 +132,24 @@ export const CiroMatrixModule: React.FC = () => {
     setNewYearInput('');
   };
 
-  // Filter rows based on search and group
-  const filteredRows = useMemo(() => {
-    return matrixResult.rows.filter(r => {
-      if (filterGroup !== 'ALL' && r.group !== filterGroup) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        if (!r.displayName.toLowerCase().includes(q) && !r.group.toLowerCase().includes(q)) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }, [matrixResult.rows, filterGroup, searchQuery]);
-
   return (
     <div className="space-y-6">
-      {/* Top Banner & Control Bar */}
-      <div className="bg-slate-900/70 backdrop-blur-md p-5 rounded-2xl border border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* Top Banner & Action Controls */}
+      <div className="bg-slate-900/80 backdrop-blur-md p-5 rounded-2xl border border-slate-800 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+          <div className="flex items-center gap-3">
+            <span className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
               <FileSpreadsheet className="w-5 h-5" />
             </span>
             <div>
               <h1 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
                 Ciro ve Finansal Analiz Matrisi
-                <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                   Excel Şablonu Uyumlu
                 </span>
               </h1>
-              <p className="text-xs text-slate-400 mt-0.5">
-                Yıllık ve aylık kategori/marka bazlı ciro, ortalama kârlılık, alt toplamlar ve geçmiş yıl büyüme karşılaştırması.
+              <p className="text-xs text-slate-400 mt-1">
+                Kategori ve marka bazlı 12 aylık ciro, dinamik kârlılık, alt toplam payları ve 2025 büyüme analizi.
               </p>
             </div>
           </div>
@@ -199,29 +158,27 @@ export const CiroMatrixModule: React.FC = () => {
         <div className="flex items-center flex-wrap gap-2.5">
           <button
             onClick={() => setIsImporterOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-900/30 transition-all cursor-pointer"
-            title="Ciro Excel Dosyasını Sisteme Aktar"
+            className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white rounded-xl text-xs font-semibold shadow-lg shadow-indigo-900/30 transition-all cursor-pointer active:scale-95"
+            title="Ciro Excel Dosyası Yükle (Data Importer)"
           >
             <Upload className="w-4 h-4" />
             Ciro Excel İçe Aktar
           </button>
-
           <button
             onClick={() => exportCiroMatrixToExcel(matrixResult)}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-emerald-900/20 transition-all cursor-pointer"
-            title="Ciro Matrisini Excel Dosyası (.xlsx) olarak İndir"
+            className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-emerald-900/20 transition-all cursor-pointer active:scale-95"
+            title="Ciro Matrisini Excel Dosyası (.xlsx) Olarak İndir"
           >
             <Download className="w-4 h-4" />
             Excel'e Aktar (.xlsx)
           </button>
-
           <button
             onClick={() => {
-              if (window.confirm('Ciro matrisi fabrika verilerine döndürülsün mü?')) {
+              if (window.confirm('Ciro matrisi fabrika başlangıç verilerine döndürülsün mü?')) {
                 resetCiroMatrixToDefault();
               }
             }}
-            className="flex items-center gap-1 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium border border-slate-700 transition-all cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium border border-slate-700 transition-all cursor-pointer"
             title="Fabrika Başlangıç Verilerini Geri Yükle"
           >
             <RefreshCw className="w-3.5 h-3.5 text-slate-400" />
@@ -230,7 +187,7 @@ export const CiroMatrixModule: React.FC = () => {
         </div>
       </div>
 
-      {/* Year Tabs & Filtering Bar */}
+      {/* Year Tabs & Filtering Toolbar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-800/80 pb-4">
         {/* Year Pills */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 max-w-full">
@@ -253,7 +210,6 @@ export const CiroMatrixModule: React.FC = () => {
               </button>
             );
           })}
-
           <button
             onClick={() => setIsAddYearModalOpen(true)}
             className="flex items-center gap-1 px-3 py-2 rounded-xl text-xs font-medium bg-slate-900/40 text-slate-400 hover:text-indigo-300 hover:bg-slate-850 border border-dashed border-slate-700 transition-all shrink-0 cursor-pointer"
@@ -268,17 +224,17 @@ export const CiroMatrixModule: React.FC = () => {
           <div className="inline-flex rounded-xl bg-slate-900/80 p-1 border border-slate-800">
             <button
               onClick={() => setFilterGroup('ALL')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 filterGroup === 'ALL'
                   ? 'bg-indigo-600 text-white shadow-xs'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              Tümü ({matrixResult.rows.length})
+              Tüm Gruplar ({matrixResult.rows.length})
             </button>
             <button
               onClick={() => setFilterGroup('BEYAZ EŞYA')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 filterGroup === 'BEYAZ EŞYA'
                   ? 'bg-indigo-600 text-white shadow-xs'
                   : 'text-slate-400 hover:text-white'
@@ -288,7 +244,7 @@ export const CiroMatrixModule: React.FC = () => {
             </button>
             <button
               onClick={() => setFilterGroup('MOBİLYA')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                 filterGroup === 'MOBİLYA'
                   ? 'bg-indigo-600 text-white shadow-xs'
                   : 'text-slate-400 hover:text-white'
@@ -297,14 +253,13 @@ export const CiroMatrixModule: React.FC = () => {
               Mobilya ({matrixResult.mobilyaRows.length})
             </button>
           </div>
-
           <div className="relative">
             <input
               type="text"
               placeholder="Marka / Kategori ara..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="bg-slate-900/80 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 w-44"
+              className="bg-slate-900/80 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-hidden focus:ring-1 focus:ring-indigo-500 w-48"
             />
             {searchQuery && (
               <button
@@ -318,31 +273,31 @@ export const CiroMatrixModule: React.FC = () => {
         </div>
       </div>
 
-      {/* KPI Cards: Dynamic Calculations & Comparison with Past Year */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+      {/* KPI Cards: Dynamic Formulas & 2025 Growth Overview */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Grand Total */}
-        <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/80 shadow-xs relative overflow-hidden">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-            <span>{selectedYear} Genel Cirosu</span>
+        <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 shadow-xs relative overflow-hidden">
+          <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+            <span className="font-semibold">{selectedYear} Genel Toplam</span>
             <span className="p-1 rounded-lg bg-indigo-500/10 text-indigo-400">
-              <TrendingUp className="w-3.5 h-3.5" />
+              <TrendingUp className="w-4 h-4" />
             </span>
           </div>
-          <div className="text-xl font-bold text-white tracking-tight">
+          <div className="text-xl font-bold text-white font-mono tracking-tight">
             {formatCurrency(matrixResult.grandTotal.yearTotal)}
           </div>
-          <div className="mt-1.5 text-[11px] text-slate-400 flex items-center gap-1.5">
-            <span>Aylık Ort:</span>
-            <span className="text-slate-300 font-semibold">
+          <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between">
+            <span>Aylık Ortalama:</span>
+            <span className="text-slate-200 font-semibold font-mono">
               {formatCurrency(matrixResult.grandTotal.monthlyAverage)}
             </span>
           </div>
         </div>
 
-        {/* Growth Comparison vs Past Year */}
-        <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/80 shadow-xs relative overflow-hidden">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-            <span>Geçmiş Yıl ({matrixResult.pastYear}) Kıyas</span>
+        {/* 2025 Year Comparison & Growth */}
+        <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 shadow-xs relative overflow-hidden">
+          <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+            <span className="font-semibold">{matrixResult.comparisonYear} Büyüme Farkı</span>
             <span
               className={`p-1 rounded-lg ${
                 matrixResult.grandTotal.growthAmount >= 0
@@ -351,24 +306,24 @@ export const CiroMatrixModule: React.FC = () => {
               }`}
             >
               {matrixResult.grandTotal.growthAmount >= 0 ? (
-                <ArrowUpRight className="w-3.5 h-3.5" />
+                <ArrowUpRight className="w-4 h-4" />
               ) : (
-                <ArrowDownRight className="w-3.5 h-3.5" />
+                <ArrowDownRight className="w-4 h-4" />
               )}
             </span>
           </div>
           <div
-            className={`text-xl font-bold tracking-tight ${
+            className={`text-xl font-bold font-mono tracking-tight ${
               matrixResult.grandTotal.growthAmount >= 0 ? 'text-emerald-400' : 'text-rose-400'
             }`}
           >
             {matrixResult.grandTotal.growthAmount >= 0 ? '+' : ''}
             {formatCurrency(matrixResult.grandTotal.growthAmount)}
           </div>
-          <div className="mt-1.5 text-[11px] text-slate-400 flex items-center gap-1.5">
-            <span>Büyüme:</span>
+          <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between">
+            <span>Büyüme Oranı:</span>
             <span
-              className={`font-bold px-1.5 py-0.2 rounded text-[10px] ${
+              className={`font-bold font-mono px-2 py-0.5 rounded text-[11px] ${
                 matrixResult.grandTotal.growthRate >= 0
                   ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                   : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
@@ -380,130 +335,141 @@ export const CiroMatrixModule: React.FC = () => {
         </div>
 
         {/* Beyaz Eşya Subtotal & Share */}
-        <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/80 shadow-xs relative overflow-hidden">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-            <span>Beyaz Eşya Cirosu</span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20">
+        <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 shadow-xs relative overflow-hidden">
+          <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+            <span className="font-semibold">Beyaz Eşya Grubu</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-500/10 text-sky-400 border border-sky-500/20 font-mono">
               Payı: %{matrixResult.beyazEsyaSubtotal.sharePercent.toFixed(1)}
             </span>
           </div>
-          <div className="text-xl font-bold text-sky-400 tracking-tight">
+          <div className="text-xl font-bold text-sky-400 font-mono tracking-tight">
             {formatCurrency(matrixResult.beyazEsyaSubtotal.yearTotal)}
           </div>
-          <div className="mt-1.5 text-[11px] text-slate-400 flex items-center justify-between">
-            <span>Kâr: {formatCurrency(matrixResult.beyazEsyaSubtotal.estimatedProfit)}</span>
-            <span className="text-sky-300 font-semibold">%{matrixResult.beyazEsyaSubtotal.weightedMargin.toFixed(1)} Marj</span>
+          <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between">
+            <span>Tahmini Kâr:</span>
+            <span className="text-sky-300 font-semibold font-mono">
+              {formatCurrency(matrixResult.beyazEsyaSubtotal.estimatedProfit)}
+            </span>
           </div>
         </div>
 
         {/* Mobilya Subtotal & Share */}
-        <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/80 shadow-xs relative overflow-hidden">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-            <span>Mobilya Cirosu</span>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
+        <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 shadow-xs relative overflow-hidden">
+          <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+            <span className="font-semibold">Mobilya Grubu</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-mono">
               Payı: %{matrixResult.mobilyaSubtotal.sharePercent.toFixed(1)}
             </span>
           </div>
-          <div className="text-xl font-bold text-amber-400 tracking-tight">
+          <div className="text-xl font-bold text-amber-400 font-mono tracking-tight">
             {formatCurrency(matrixResult.mobilyaSubtotal.yearTotal)}
           </div>
-          <div className="mt-1.5 text-[11px] text-slate-400 flex items-center justify-between">
-            <span>Kâr: {formatCurrency(matrixResult.mobilyaSubtotal.estimatedProfit)}</span>
-            <span className="text-amber-300 font-semibold">%{matrixResult.mobilyaSubtotal.weightedMargin.toFixed(1)} Marj</span>
+          <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between">
+            <span>Tahmini Kâr:</span>
+            <span className="text-amber-300 font-semibold font-mono">
+              {formatCurrency(matrixResult.mobilyaSubtotal.estimatedProfit)}
+            </span>
           </div>
         </div>
 
         {/* Total Estimated Gross Profit & Weighted Margin */}
-        <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800/80 shadow-xs relative overflow-hidden">
-          <div className="flex items-center justify-between text-xs text-slate-400 mb-1">
-            <span>Tahmini Brüt Kâr</span>
+        <div className="bg-slate-900/60 p-4 rounded-2xl border border-slate-800 shadow-xs relative overflow-hidden">
+          <div className="flex items-center justify-between text-xs text-slate-400 mb-1.5">
+            <span className="font-semibold">Tahmini Brüt Kâr</span>
             <span className="p-1 rounded-lg bg-emerald-500/10 text-emerald-400">
-              <Percent className="w-3.5 h-3.5" />
+              <Percent className="w-4 h-4" />
             </span>
           </div>
-          <div className="text-xl font-bold text-emerald-400 tracking-tight">
+          <div className="text-xl font-bold text-emerald-400 font-mono tracking-tight">
             {formatCurrency(matrixResult.grandTotal.totalEstimatedProfit)}
           </div>
-          <div className="mt-1.5 text-[11px] text-slate-400 flex items-center justify-between">
-            <span>Ağırlıklı Ortalama:</span>
-            <span className="font-bold text-emerald-300 bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">
+          <div className="mt-2 text-[11px] text-slate-400 flex items-center justify-between">
+            <span>Ağırlıklı Kârlılık:</span>
+            <span className="font-bold text-emerald-300 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-500/30 font-mono">
               %{matrixResult.grandTotal.weightedMargin.toFixed(1)}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Helpful Hint banner */}
-      <div className="flex items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-slate-900/40 border border-slate-800/80 text-[11px] text-slate-400">
+      {/* Interactive Guidance Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 rounded-xl bg-slate-900/50 border border-slate-800 text-xs text-slate-300">
         <div className="flex items-center gap-2">
           <HelpCircle className="w-4 h-4 text-indigo-400 shrink-0" />
           <span>
-            <strong className="text-slate-300">İpucu:</strong> Matristeki herhangi bir <span className="text-indigo-300 font-semibold">ay hücresine</span> veya satır başındaki <span className="text-emerald-300 font-semibold">Kârlılık %</span> değerine tıklayarak doğrudan düzenleme yapabilirsiniz. Sistemdeki onaylı satışlar hücrelere anlık yansıtılır.
+            <strong className="text-white">Excel Doğrudan Düzenleme:</strong> Tablodaki herhangi bir ay hücresine veya <span className="text-emerald-400 font-semibold">Ortalama Kârlılık %</span> alanına tıklayıp doğrudan yeni tutarı yazabilirsiniz. Enter veya dışarı tıklama ile anında tüm alt toplamlar ve kârlar hesaplanır.
           </span>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-4 shrink-0 text-[11px]">
           <span className="flex items-center gap-1.5">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span className="text-slate-300">Otomatik ERP Satışı</span>
+            <span className="text-slate-300">Canlı Satıştan Gelen</span>
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-slate-600"></span>
-            <span>Manuel Kayıt</span>
+            <span className="w-2 h-2 rounded-full bg-indigo-400"></span>
+            <span>Doğrudan Düzenlenebilir</span>
           </span>
         </div>
       </div>
 
-      {/* Main Ciro Matrix Table */}
-      <div className="bg-slate-900/50 rounded-2xl border border-slate-800/90 shadow-xl overflow-hidden">
-        <div className="overflow-x-auto max-h-[680px]">
+      {/* MAIN CIRO MATRIX TABLE CONTAINER - AUTO-HEIGHT (NO INNER VERTICAL SCROLLBAR) */}
+      <div className="bg-slate-900/50 rounded-2xl border border-slate-800 shadow-xl overflow-hidden">
+        {/* Only horizontal scroll for the wide 22-column set, NO VERTICAL SCROLLBAR (auto-height) */}
+        <div className="overflow-x-auto w-full">
           <table className="w-full text-left border-collapse text-xs whitespace-nowrap">
             {/* Table Header */}
-            <thead className="bg-slate-950/90 sticky top-0 z-20 backdrop-blur-md border-b border-slate-800 text-slate-300">
+            <thead className="bg-slate-950 border-b border-slate-800 text-slate-300 font-semibold sticky top-0 z-20">
               <tr>
-                <th className="py-3 px-3.5 sticky left-0 z-30 bg-slate-950 font-bold min-w-[170px] shadow-sm">
+                {/* 1. Grup */}
+                <th className="py-3.5 px-3 text-slate-400 font-bold min-w-[100px] border-r border-slate-800/60 uppercase text-[10px] tracking-wider">
+                  Grup
+                </th>
+                {/* 2. Kategori / Marka (Sticky Column) */}
+                <th className="py-3.5 px-3.5 sticky left-0 z-30 bg-slate-950 font-bold text-white min-w-[150px] shadow-sm border-r border-slate-800">
                   Kategori / Marka
                 </th>
-                <th className="py-3 px-2.5 text-center font-bold text-emerald-400 min-w-[70px]">
-                  Kârlılık
+                {/* 3. Ortalama Kârlılık (%) */}
+                <th className="py-3.5 px-3 text-center font-bold text-emerald-400 min-w-[90px] border-r border-slate-800/60">
+                  Ort. Kârlılık (%)
                 </th>
+                {/* 4. 12 Aylık Ciro Sütunları */}
                 {CIRO_MONTHS.map(m => (
-                  <th key={m.no} className="py-3 px-2 text-right font-semibold text-slate-300 min-w-[95px]">
+                  <th key={m.no} className="py-3.5 px-3 text-right font-semibold text-slate-300 min-w-[105px] border-r border-slate-800/40">
                     {m.name}
                   </th>
                 ))}
-                <th className="py-3 px-3 text-right font-bold text-white bg-slate-900/80 min-w-[120px]">
-                  Genel Toplam
+                {/* 5. Genel Toplam (TL) */}
+                <th className="py-3.5 px-3.5 text-right font-bold text-white bg-slate-950/90 min-w-[130px] border-r border-slate-800">
+                  Genel Toplam (TL)
                 </th>
-                <th className="py-3 px-3 text-right font-semibold text-slate-300 min-w-[110px]">
-                  Aylık Ort.
+                {/* 6. Aylık Ortalama (TL) */}
+                <th className="py-3.5 px-3.5 text-right font-semibold text-indigo-300 min-w-[125px] border-r border-slate-800/60">
+                  Aylık Ortalama (TL)
                 </th>
-                <th className="py-3 px-3 text-right font-semibold text-slate-400 min-w-[115px]">
-                  {matrixResult.pastYear} Toplamı
+                {/* 7. 2025 Yılı Toplamı (TL) */}
+                <th className="py-3.5 px-3.5 text-right font-semibold text-slate-400 min-w-[125px] border-r border-slate-800/60">
+                  {matrixResult.comparisonYear} Yılı Toplamı (TL)
                 </th>
-                <th className="py-3 px-3 text-right font-semibold text-slate-300 min-w-[105px]">
+                {/* 8. Büyüme (TL) */}
+                <th className="py-3.5 px-3.5 text-right font-semibold text-slate-300 min-w-[115px] border-r border-slate-800/60">
                   Büyüme (TL)
                 </th>
-                <th className="py-3 px-3 text-center font-bold text-slate-300 min-w-[85px]">
-                  Büyüme %
+                {/* 9. Büyüme Oranı (%) */}
+                <th className="py-3.5 px-3 text-center font-bold text-slate-300 min-w-[95px] border-r border-slate-800/60">
+                  Büyüme Oranı (%)
                 </th>
-                <th className="py-3 px-3 text-right font-bold text-emerald-400 min-w-[115px]">
-                  Tahmini Kâr
+                {/* 10. Tahmini Brüt Kâr (TL) */}
+                <th className="py-3.5 px-4 text-right font-bold text-emerald-400 bg-emerald-950/20 min-w-[135px]">
+                  Tahmini Brüt Kâr (TL)
                 </th>
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-slate-800/60 font-mono text-[11px]">
-              {/* Group 1: BEYAZ EŞYA */}
+            {/* Table Body */}
+            <tbody className="divide-y divide-slate-800/60 font-mono text-xs">
+              {/* GROUP 1: BEYAZ EŞYA */}
               {(filterGroup === 'ALL' || filterGroup === 'BEYAZ EŞYA') && (
                 <>
-                  {/* Group Header Row */}
-                  <tr className="bg-sky-950/20 text-sky-300 font-sans font-bold">
-                    <td colSpan={18} className="py-2 px-3.5 text-xs tracking-wider uppercase flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-sky-400"></span>
-                      BEYAZ EŞYA GRUBU ({matrixResult.beyazEsyaRows.length} Marka)
-                    </td>
-                  </tr>
-
                   {matrixResult.beyazEsyaRows
                     .filter(r => !searchQuery.trim() || r.displayName.toLowerCase().includes(searchQuery.toLowerCase()))
                     .map(row => renderDataRow(row))}
@@ -513,17 +479,9 @@ export const CiroMatrixModule: React.FC = () => {
                 </>
               )}
 
-              {/* Group 2: MOBİLYA */}
+              {/* GROUP 2: MOBİLYA */}
               {(filterGroup === 'ALL' || filterGroup === 'MOBİLYA') && (
                 <>
-                  {/* Group Header Row */}
-                  <tr className="bg-amber-950/20 text-amber-300 font-sans font-bold">
-                    <td colSpan={18} className="py-2.5 px-3.5 text-xs tracking-wider uppercase flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                      MOBİLYA GRUBU ({matrixResult.mobilyaRows.length} Kategori/Marka)
-                    </td>
-                  </tr>
-
                   {matrixResult.mobilyaRows
                     .filter(r => !searchQuery.trim() || r.displayName.toLowerCase().includes(searchQuery.toLowerCase()))
                     .map(row => renderDataRow(row))}
@@ -533,204 +491,16 @@ export const CiroMatrixModule: React.FC = () => {
                 </>
               )}
 
-              {/* Grand Total Row */}
+              {/* GRAND TOTAL: GENEL FİRMA TOPLAMI */}
               {renderGrandTotalRow(matrixResult.grandTotal)}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Cell Edit Modal */}
-      {editingCell && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/50">
-              <div className="flex items-center gap-2">
-                <span className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400">
-                  <Edit3 className="w-4 h-4" />
-                </span>
-                <div>
-                  <h3 className="text-sm font-bold text-white">
-                    {editingCell.rowName} — {editingCell.monthName} {editingCell.year} Cirosu
-                  </h3>
-                  <p className="text-[11px] text-slate-400">Hücre değerini manuel düzenleyin veya güncelleyin</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setEditingCell(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveCell} className="p-5 space-y-4">
-              {/* Live Sales Notice */}
-              <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800 space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400 flex items-center gap-1.5">
-                    <ShoppingBag className="w-3.5 h-3.5 text-emerald-400" />
-                    Sistem Satışlarından Gelen (Otomatik):
-                  </span>
-                  <span className="font-bold text-emerald-400 font-mono">
-                    {formatCurrency(editingCell.liveSalesAmount)}
-                  </span>
-                </div>
-                {editingCell.contributingSales.length > 0 && (
-                  <div className="text-[10px] text-slate-500">
-                    * Bu ay onaylanan {editingCell.contributingSales.length} adet faturadan otomatik hesaplanmaktadır.
-                  </div>
-                )}
-              </div>
-
-              {/* Manual Input */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Manuel / Geçmiş Ciro Tutarı (TL)
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 font-bold">₺</span>
-                  <input
-                    type="number"
-                    step="any"
-                    value={inputManualAmount}
-                    onChange={e => setInputManualAmount(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl pl-8 pr-4 py-2.5 text-sm font-bold text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500"
-                    placeholder="0"
-                    autoFocus
-                  />
-                </div>
-                <p className="text-[10px] text-slate-500 mt-1">
-                  Excel geçmişinden aktarılan veya manuel eklenen net tutar.
-                </p>
-              </div>
-
-              {/* Net Computed Cell Preview */}
-              <div className="p-3 rounded-xl bg-indigo-950/20 border border-indigo-900/30 flex items-center justify-between">
-                <span className="text-xs text-indigo-300 font-medium">Bu Ayki Net Hücre Toplamı:</span>
-                <span className="text-sm font-bold text-white font-mono">
-                  {formatCurrency((parseFloat(inputManualAmount) || 0) + editingCell.liveSalesAmount)}
-                </span>
-              </div>
-
-              {/* Note */}
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Açıklama / Not (Opsiyonel)
-                </label>
-                <input
-                  type="text"
-                  value={inputCellNote}
-                  onChange={e => setInputCellNote(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-hidden focus:ring-1 focus:ring-indigo-500"
-                  placeholder="Örn: Yıl sonu bayi kampanyası, toplu ihale satışı vb."
-                />
-              </div>
-
-              {/* Actions */}
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingCell(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition-all cursor-pointer"
-                >
-                  Vazgeç
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-950/40 transition-all cursor-pointer flex items-center gap-1.5"
-                >
-                  <Check className="w-4 h-4" /> Değeri Kaydet
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Margin Edit Modal */}
-      {editingMargin && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
-          <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden animate-in fade-in zoom-in-95">
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between bg-slate-950/50">
-              <div className="flex items-center gap-2">
-                <span className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
-                  <Percent className="w-4 h-4" />
-                </span>
-                <div>
-                  <h3 className="text-sm font-bold text-white">
-                    {editingMargin.rowName} Kârlılık Oranı (%)
-                  </h3>
-                  <p className="text-[11px] text-slate-400">Tahmini brüt kâr hesaplamasında kullanılır</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setEditingMargin(null)}
-                className="text-slate-400 hover:text-white p-1 rounded-lg"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveMargin} className="p-4 space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1.5">
-                  Ortalama Kâr Oranı (%)
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="100"
-                    value={inputMargin}
-                    onChange={e => setInputMargin(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-base font-bold text-emerald-400 focus:outline-hidden focus:ring-2 focus:ring-emerald-500"
-                    placeholder="25"
-                    autoFocus
-                  />
-                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">%</span>
-                </div>
-              </div>
-
-              {/* Preset buttons */}
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-[10px] text-slate-400 mr-1">Hızlı Seç:</span>
-                {[20, 22, 25, 28, 30, 32, 35, 38].map(rate => (
-                  <button
-                    key={rate}
-                    type="button"
-                    onClick={() => setInputMargin(String(rate))}
-                    className="px-2 py-1 text-[11px] font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 cursor-pointer"
-                  >
-                    %{rate}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingMargin(null)}
-                  className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 transition-all cursor-pointer"
-                >
-                  Vazgeç
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-500 shadow-md shadow-emerald-950/40 transition-all cursor-pointer flex items-center gap-1.5"
-                >
-                  <Check className="w-4 h-4" /> Kâr Oranını Kaydet
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* Add Year Modal */}
       {isAddYearModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl w-full max-w-sm shadow-2xl p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
@@ -743,7 +513,7 @@ export const CiroMatrixModule: React.FC = () => {
             <form onSubmit={handleAddYear} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Yıl (Örn: 2027)
+                  Yıl (örn: 2027)
                 </label>
                 <input
                   type="number"
@@ -766,7 +536,7 @@ export const CiroMatrixModule: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-500 shadow-md shadow-indigo-900/30"
                 >
                   Yılı Oluştur
                 </button>
@@ -790,87 +560,135 @@ export const CiroMatrixModule: React.FC = () => {
     </div>
   );
 
-  // Helper to render individual brand/category row
+  // Helper: Render Data Row with Direct Excel-style Inline Editing
   function renderDataRow(row: ComputedRowData) {
     const isPositive = row.growthAmount >= 0;
+    const isEditingMargin = inlineEditingCell?.rowId === row.id && inlineEditingCell?.field === 'margin';
 
     return (
       <tr key={row.id} className="hover:bg-slate-800/40 transition-colors group">
-        {/* Name and Group Badge */}
-        <td className="py-2.5 px-3.5 sticky left-0 z-10 bg-slate-900 group-hover:bg-slate-850 font-sans font-semibold text-white border-r border-slate-800/50 flex items-center justify-between gap-2 shadow-xs">
-          <span className="truncate">{row.displayName}</span>
+        {/* 1. Grup */}
+        <td className="py-3 px-3 text-slate-400 font-sans font-medium border-r border-slate-800/60">
           <span
-            className={`text-[9px] px-1.5 py-0.2 rounded font-mono ${
+            className={`text-[10px] font-bold px-2 py-0.5 rounded font-sans ${
               row.group === 'BEYAZ EŞYA'
                 ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
                 : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
             }`}
           >
-            {row.group === 'BEYAZ EŞYA' ? 'B.EŞYA' : 'MOB'}
+            {row.group}
           </span>
         </td>
 
-        {/* Profit Margin (Clickable) */}
+        {/* 2. Kategori / Marka (Sticky Column) */}
+        <td className="py-3 px-3.5 sticky left-0 z-10 bg-slate-900 group-hover:bg-slate-850 font-sans font-bold text-white border-r border-slate-800 shadow-xs">
+          <span>{row.displayName}</span>
+        </td>
+
+        {/* 3. Ortalama Kârlılık (%) - Direct Inline Editable */}
         <td
-          onClick={() => handleMarginClick(row)}
-          className="py-2 px-2 text-center text-emerald-400 font-bold hover:bg-emerald-500/10 cursor-pointer transition-colors border-r border-slate-800/40"
-          title="Kâr marjını düzenlemek için tıklayın"
+          onClick={() => {
+            if (!isEditingMargin) startInlineMarginEdit(row.id, row.profitMargin);
+          }}
+          className="py-2.5 px-3 text-center border-r border-slate-800/60 cursor-pointer transition-colors hover:bg-indigo-500/15"
+          title="Doğrudan tıklayarak kârlılık oranını değiştirin"
         >
-          <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20">
-            %{row.profitMargin.toFixed(0)}
-          </span>
+          {isEditingMargin ? (
+            <div className="flex items-center justify-center">
+              <input
+                ref={inlineInputRef}
+                type="number"
+                step="0.5"
+                min="0"
+                max="100"
+                value={inlineValue}
+                onChange={e => setInlineValue(e.target.value)}
+                onBlur={commitInlineEdit}
+                onKeyDown={handleInlineKeyDown}
+                className="w-16 bg-slate-950 border border-indigo-500 rounded px-1.5 py-1 text-center font-mono font-bold text-emerald-400 text-xs outline-none shadow-inner"
+              />
+            </div>
+          ) : (
+            <span className="font-bold text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-2 py-1 rounded inline-block">
+              %{row.profitMargin.toFixed(0)}
+            </span>
+          )}
         </td>
 
-        {/* 12 Months Cells (Clickable) */}
+        {/* 4. 12 Aylık Ciro Sütunları - Direct Inline Editable */}
         {CIRO_MONTHS.map(m => {
           const cell = row.months[m.no];
+          const isEditingThisCell = inlineEditingCell?.rowId === row.id && inlineEditingCell?.field === m.no;
           const hasSales = cell.liveSalesAmount > 0;
           const isZero = cell.totalAmount === 0;
 
           return (
             <td
               key={m.no}
-              onClick={() => handleCellClick(row, m.no)}
-              className={`py-2 px-2 text-right cursor-pointer transition-all hover:bg-indigo-500/20 border-r border-slate-800/30 ${
+              onClick={() => {
+                if (!isEditingThisCell) {
+                  startInlineMonthEdit(row.id, m.no, cell.manualAmount, cell.totalAmount);
+                }
+              }}
+              className={`py-2.5 px-3 text-right cursor-pointer transition-all border-r border-slate-800/40 hover:bg-indigo-500/20 ${
                 isZero
                   ? 'text-slate-600 hover:text-slate-300'
                   : 'text-slate-200 font-medium'
               } ${hasSales ? 'bg-emerald-500/5' : ''}`}
-              title={`${row.displayName} - ${m.name}: ${formatCurrency(cell.totalAmount)} (Düzenlemek için tıkla)`}
+              title={`${row.displayName} - ${m.name}: ${formatCurrency(cell.totalAmount)} (Doğrudan düzenlemek için tıklayın)`}
             >
-              <div className="flex items-center justify-end gap-1">
-                {hasSales && (
-                  <span
-                    className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"
-                    title={`Sistemden otomatik: ${formatCurrency(cell.liveSalesAmount)}`}
+              {isEditingThisCell ? (
+                <div className="flex items-center justify-end">
+                  <input
+                    ref={inlineInputRef}
+                    type="number"
+                    step="any"
+                    value={inlineValue}
+                    onChange={e => setInlineValue(e.target.value)}
+                    onBlur={commitInlineEdit}
+                    onKeyDown={handleInlineKeyDown}
+                    className="w-24 bg-slate-950 border border-indigo-500 rounded px-2 py-1 text-right font-mono font-bold text-white text-xs outline-none shadow-inner"
+                    placeholder="0"
                   />
-                )}
-                <span>
-                  {isZero ? '-' : Math.round(cell.totalAmount).toLocaleString('tr-TR')}
-                </span>
-              </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-end gap-1.5">
+                  {hasSales && (
+                    <span
+                      className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0"
+                      title={`ERP Satışlarından gelen: ${formatCurrency(cell.liveSalesAmount)}`}
+                    />
+                  )}
+                  <span>
+                    {isZero ? '-' : Math.round(cell.totalAmount).toLocaleString('tr-TR')}
+                  </span>
+                </div>
+              )}
             </td>
           );
         })}
 
-        {/* Year Total */}
-        <td className="py-2.5 px-3 text-right font-bold text-white bg-slate-950/40 border-r border-slate-800/50">
+        {/* 5. Genel Toplam (TL) */}
+        <td className="py-3 px-3.5 text-right font-bold text-white bg-slate-950/40 border-r border-slate-800">
           {formatCurrency(row.yearTotal)}
         </td>
 
-        {/* Monthly Average */}
-        <td className="py-2.5 px-3 text-right text-slate-300 border-r border-slate-800/30">
+        {/* 6. Aylık Ortalama (TL) [Aktif Ay Sayısına Bölünmüş] */}
+        <td
+          className="py-3 px-3.5 text-right text-indigo-300 font-medium border-r border-slate-800/60"
+          title={`Genel Toplam / ${row.activeMonthsCount} Aktif Ay`}
+        >
           {formatCurrency(row.monthlyAverage)}
         </td>
 
-        {/* Past Year Total */}
-        <td className="py-2.5 px-3 text-right text-slate-400 border-r border-slate-800/30">
+        {/* 7. 2025 Yılı Toplamı (TL) */}
+        <td className="py-3 px-3.5 text-right text-slate-400 border-r border-slate-800/60">
           {formatCurrency(row.pastYearTotal)}
         </td>
 
-        {/* Growth TL */}
+        {/* 8. Büyüme (TL) */}
         <td
-          className={`py-2.5 px-3 text-right font-semibold border-r border-slate-800/30 ${
+          className={`py-3 px-3.5 text-right font-semibold border-r border-slate-800/60 ${
             isPositive ? 'text-emerald-400' : 'text-rose-400'
           }`}
         >
@@ -878,13 +696,13 @@ export const CiroMatrixModule: React.FC = () => {
           {formatCurrency(row.growthAmount)}
         </td>
 
-        {/* Growth Rate % */}
-        <td className="py-2.5 px-2 text-center border-r border-slate-800/30">
+        {/* 9. Büyüme Oranı (%) */}
+        <td className="py-3 px-3 text-center border-r border-slate-800/60">
           <span
-            className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${
+            className={`px-2 py-0.5 rounded text-[11px] font-bold ${
               isPositive
-                ? 'bg-emerald-500/10 text-emerald-400'
-                : 'bg-rose-500/10 text-rose-400'
+                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
             }`}
           >
             {isPositive ? '+' : ''}
@@ -892,54 +710,76 @@ export const CiroMatrixModule: React.FC = () => {
           </span>
         </td>
 
-        {/* Estimated Profit */}
-        <td className="py-2.5 px-3 text-right font-bold text-emerald-400 bg-emerald-950/10">
+        {/* 10. Tahmini Brüt Kâr (TL) */}
+        <td className="py-3 px-4 text-right font-bold text-emerald-400 bg-emerald-950/10">
           {formatCurrency(row.estimatedProfit)}
         </td>
       </tr>
     );
   }
 
-  // Helper to render Subtotal row
+  // Helper: Render Subtotal Row
   function renderSubtotalRow(subtotal: typeof matrixResult.beyazEsyaSubtotal, theme: 'sky' | 'amber') {
     const isPositive = subtotal.growthAmount >= 0;
-    const bgClass = theme === 'sky' ? 'bg-sky-950/30 text-sky-200' : 'bg-amber-950/30 text-amber-200';
-    const borderClass = theme === 'sky' ? 'border-sky-800/50' : 'border-amber-800/50';
+    const isSky = theme === 'sky';
+    const bgClass = isSky ? 'bg-sky-950/30 text-sky-200' : 'bg-amber-950/30 text-amber-200';
+    const borderClass = isSky ? 'border-sky-800/60' : 'border-amber-800/60';
+    const labelTitle = isSky ? 'BEYAZ EŞYA ALT TOPLAM' : 'MOBİLYA ALT TOPLAM';
 
     return (
       <tr className={`font-bold ${bgClass} border-t-2 border-b-2 ${borderClass}`}>
-        <td className="py-3 px-3.5 sticky left-0 z-10 bg-slate-900 font-sans tracking-tight">
-          <div className="flex items-center justify-between">
-            <span>{subtotal.group} ALT TOPLAM</span>
-            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-white/10">
+        {/* 1. Grup */}
+        <td className="py-3.5 px-3 uppercase text-[11px] font-sans tracking-wider border-r border-slate-800/60">
+          {subtotal.group}
+        </td>
+
+        {/* 2. Kategori / Marka (Sticky) */}
+        <td className="py-3.5 px-3.5 sticky left-0 z-10 bg-slate-900 font-sans tracking-tight border-r border-slate-800">
+          <div className="flex items-center justify-between gap-2">
+            <span>{labelTitle}</span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/10 font-bold text-white">
               Payı: %{subtotal.sharePercent.toFixed(1)}
             </span>
           </div>
         </td>
-        <td className="py-3 px-2 text-center text-emerald-400 font-bold">
+
+        {/* 3. Ağırlıklı Ortalama Kârlılık % */}
+        <td className="py-3.5 px-3 text-center text-emerald-400 font-bold border-r border-slate-800/60">
           %{subtotal.weightedMargin.toFixed(1)}
         </td>
+
+        {/* 4. 12 Aylar */}
         {CIRO_MONTHS.map(m => (
-          <td key={m.no} className="py-3 px-2 text-right">
+          <td key={m.no} className="py-3.5 px-3 text-right border-r border-slate-800/40">
             {Math.round(subtotal.months[m.no] || 0).toLocaleString('tr-TR')}
           </td>
         ))}
-        <td className="py-3 px-3 text-right text-white font-bold bg-slate-950/60">
+
+        {/* 5. Genel Toplam */}
+        <td className="py-3.5 px-3.5 text-right text-white font-bold bg-slate-950/60 border-r border-slate-800">
           {formatCurrency(subtotal.yearTotal)}
         </td>
-        <td className="py-3 px-3 text-right">
+
+        {/* 6. Aylık Ortalama (Aktif Ay Sayısına Göre) */}
+        <td className="py-3.5 px-3.5 text-right border-r border-slate-800/60 text-indigo-300">
           {formatCurrency(subtotal.monthlyAverage)}
         </td>
-        <td className="py-3 px-3 text-right text-slate-300">
+
+        {/* 7. 2025 Yılı Toplamı */}
+        <td className="py-3.5 px-3.5 text-right text-slate-300 border-r border-slate-800/60">
           {formatCurrency(subtotal.pastYearTotal)}
         </td>
-        <td className={`py-3 px-3 text-right ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+
+        {/* 8. Büyüme (TL) */}
+        <td className={`py-3.5 px-3.5 text-right border-r border-slate-800/60 ${isPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
           {isPositive ? '+' : ''}
           {formatCurrency(subtotal.growthAmount)}
         </td>
-        <td className="py-3 px-2 text-center">
+
+        {/* 9. Büyüme Oranı (%) */}
+        <td className="py-3.5 px-3 text-center border-r border-slate-800/60">
           <span
-            className={`px-1.5 py-0.5 rounded text-[10px] ${
+            className={`px-2 py-0.5 rounded text-[11px] font-bold ${
               isPositive ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
             }`}
           >
@@ -947,51 +787,73 @@ export const CiroMatrixModule: React.FC = () => {
             {subtotal.growthRate.toFixed(1)}%
           </span>
         </td>
-        <td className="py-3 px-3 text-right text-emerald-300">
+
+        {/* 10. Tahmini Brüt Kâr */}
+        <td className="py-3.5 px-4 text-right text-emerald-300 bg-emerald-950/20">
           {formatCurrency(subtotal.estimatedProfit)}
         </td>
       </tr>
     );
   }
 
-  // Helper to render Grand Total row
+  // Helper: Render Grand Total Row (GENEL FİRMA TOPLAMI)
   function renderGrandTotalRow(grand: typeof matrixResult.grandTotal) {
     const isPositive = grand.growthAmount >= 0;
 
     return (
-      <tr className="bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 font-bold text-white border-t-4 border-indigo-500/60 text-xs shadow-lg">
-        <td className="py-3.5 px-3.5 sticky left-0 z-10 bg-slate-950 font-sans tracking-wide text-indigo-300 flex items-center gap-1.5">
-          <Sparkles className="w-4 h-4 text-indigo-400" />
-          GENEL CİRO TOPLAMI
+      <tr className="bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 font-bold text-white border-t-4 border-indigo-500/70 text-xs shadow-lg">
+        {/* 1. Grup */}
+        <td className="py-4 px-3 font-sans tracking-wide text-indigo-300 uppercase text-[11px] border-r border-slate-800/60">
+          GENEL
         </td>
-        <td className="py-3.5 px-2 text-center text-emerald-400 font-bold">
+
+        {/* 2. Kategori / Marka (Sticky) */}
+        <td className="py-4 px-3.5 sticky left-0 z-10 bg-slate-950 font-sans tracking-wider text-indigo-300 flex items-center gap-2 border-r border-slate-800">
+          <Sparkles className="w-4 h-4 text-indigo-400 shrink-0" />
+          <span>GENEL FİRMA TOPLAMI</span>
+        </td>
+
+        {/* 3. Ağırlıklı Kârlılık % */}
+        <td className="py-4 px-3 text-center text-emerald-400 font-bold border-r border-slate-800/60">
           %{grand.weightedMargin.toFixed(1)}
         </td>
+
+        {/* 4. 12 Aylar */}
         {CIRO_MONTHS.map(m => (
-          <td key={m.no} className="py-3.5 px-2 text-right font-mono">
+          <td key={m.no} className="py-4 px-3 text-right font-mono border-r border-slate-800/40">
             {Math.round(grand.months[m.no] || 0).toLocaleString('tr-TR')}
           </td>
         ))}
-        <td className="py-3.5 px-3 text-right font-bold text-emerald-300 font-mono bg-slate-950/80">
+
+        {/* 5. Genel Toplam */}
+        <td className="py-4 px-3.5 text-right font-bold text-emerald-300 font-mono bg-slate-950/80 border-r border-slate-800 text-sm">
           {formatCurrency(grand.yearTotal)}
         </td>
-        <td className="py-3.5 px-3 text-right font-mono text-slate-200">
+
+        {/* 6. Aylık Ortalama */}
+        <td className="py-4 px-3.5 text-right font-mono text-slate-200 border-r border-slate-800/60">
           {formatCurrency(grand.monthlyAverage)}
         </td>
-        <td className="py-3.5 px-3 text-right font-mono text-slate-300">
+
+        {/* 7. 2025 Toplamı */}
+        <td className="py-4 px-3.5 text-right font-mono text-slate-300 border-r border-slate-800/60">
           {formatCurrency(grand.pastYearTotal)}
         </td>
+
+        {/* 8. Büyüme (TL) */}
         <td
-          className={`py-3.5 px-3 text-right font-mono ${
+          className={`py-4 px-3.5 text-right font-mono border-r border-slate-800/60 ${
             isPositive ? 'text-emerald-400' : 'text-rose-400'
           }`}
         >
           {isPositive ? '+' : ''}
           {formatCurrency(grand.growthAmount)}
         </td>
-        <td className="py-3.5 px-2 text-center">
+
+        {/* 9. Büyüme Oranı (%) */}
+        <td className="py-4 px-3 text-center border-r border-slate-800/60">
           <span
-            className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+            className={`px-2.5 py-0.5 rounded text-[11px] font-bold ${
               isPositive
                 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                 : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
@@ -1001,7 +863,9 @@ export const CiroMatrixModule: React.FC = () => {
             {grand.growthRate.toFixed(1)}%
           </span>
         </td>
-        <td className="py-3.5 px-3 text-right font-bold text-emerald-400 font-mono bg-emerald-950/20">
+
+        {/* 10. Tahmini Brüt Kâr */}
+        <td className="py-4 px-4 text-right font-bold text-emerald-400 font-mono bg-emerald-950/30 text-sm">
           {formatCurrency(grand.totalEstimatedProfit)}
         </td>
       </tr>

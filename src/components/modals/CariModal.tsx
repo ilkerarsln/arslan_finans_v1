@@ -188,7 +188,7 @@ export const CariModal: React.FC<CariModalProps> = ({
               className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono focus:ring-2 focus:ring-emerald-500"
             />
             <p className="text-[11px] text-slate-400 mt-1">
-              * Pozitif değer alacağımızı (+), negatif değer firmaya borcumuzu (-) ifade eder.
+              * Pozitif değer alacağı (+), negatif değer firmaya borcumuzu (-) ifade eder.
             </p>
           </div>
 

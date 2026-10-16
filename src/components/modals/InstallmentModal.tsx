@@ -218,7 +218,7 @@ export const InstallmentModal: React.FC = () => {
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                  Toplam Tutar (₺) *
+                  Toplam Tutar (₺)
                 </label>
                 {parsedTotal > 0 && activeCount > 0 && (
                   <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400">
@@ -237,7 +237,6 @@ export const InstallmentModal: React.FC = () => {
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-base font-bold font-mono outline-none focus:ring-2 focus:ring-emerald-500 text-slate-900 dark:text-white"
               />
             </div>
-
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">

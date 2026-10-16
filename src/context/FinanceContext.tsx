@@ -101,7 +101,6 @@ interface FinanceContextType {
   caris: Cari[];
   upcomingDues: UpcomingDue[];
   categories: CategoryItem[];
-
   // Role & Authorization state (RBAC)
   userProfile: UserProfile | null;
   userRole: UserRole;
@@ -113,14 +112,12 @@ interface FinanceContextType {
   isRoleSimulated: boolean;
   toggleRoleSimulation: () => void;
   permissions: UserPermissions;
-
   // Staff & Hybrid Authentication
   staffAccounts: StaffAccount[];
   loginWithUsername: (username: string, password: string) => Promise<boolean>;
   createStaffAccount: (staff: StaffAccount) => Promise<void>;
   updateStaffAccount: (staff: StaffAccount) => Promise<void>;
   removeStaffAccount: (username: string) => Promise<void>;
-
   // Silme & İptal Onay Mekanizması & Denetim (Audit)
   deletionRequests: DeletionRequest[];
   auditLogs: AuditLogEntry[];
@@ -129,23 +126,19 @@ interface FinanceContextType {
   approveDeletionRequest: (requestId: string) => Promise<void>;
   rejectDeletionRequest: (requestId: string, reason?: string) => Promise<void>;
   logAudit: (entry: Omit<AuditLogEntry, 'id' | 'timestamp' | 'performedBy' | 'performedByName' | 'userRole'>) => Promise<void>;
-
   // Transaction actions
   addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt'>) => Transaction;
   updateTransaction: (tx: Transaction) => void;
   deleteTransaction: (id: string, reason?: string) => void;
-
   // Account actions
   addAccount: (acc: Omit<Account, 'id'>) => Account;
   updateAccount: (acc: Account) => void;
   deleteAccount: (id: string) => void;
   executeTransfer: (fromAccountId: string, toAccountId: string, amount: number, desc?: string, date?: string) => void;
-
   // Cari actions
   addCari: (cari: Omit<Cari, 'id'>) => Cari;
   updateCari: (cari: Cari) => void;
   deleteCari: (id: string, reason?: string) => void;
-
   // Upcoming Dues & Installments
   addUpcomingDue: (due: Omit<UpcomingDue, 'id'>) => UpcomingDue;
   toggleUpcomingDue: (id: string) => void;
@@ -153,10 +146,8 @@ interface FinanceContextType {
   createInstallmentPlan: (plan: InstallmentPlanRequest) => void;
   deleteInstallmentGroup: (groupId: string) => void;
   getWhatsAppReminderUrl: (dueId: string) => string;
-
   // Category actions
   addCategory: (name: string, type: 'Gelir' | 'Gider', color?: string) => void;
-
   // Modal controls
   isTransactionModalOpen: boolean;
   prefillTransaction: Partial<Transaction> | null;
@@ -166,39 +157,32 @@ interface FinanceContextType {
   installmentModalPrefill: Partial<InstallmentPlanRequest> | null;
   openInstallmentModal: (prefill?: Partial<InstallmentPlanRequest>) => void;
   closeInstallmentModal: () => void;
-
   // Command Palette & Quick Search
   isCommandPaletteOpen: boolean;
   openCommandPalette: () => void;
   closeCommandPalette: () => void;
-
   // Currency Converter Quick Calculator Modal
   isCurrencyConverterOpen: boolean;
   openCurrencyConverter: () => void;
   closeCurrencyConverter: () => void;
-
   // Data Importer Wizard Modal
   isDataImporterOpen: boolean;
   dataImporterTemplate: 'stok' | 'fiyatListesi' | 'cari' | 'ciro';
   openDataImporter: (template?: 'stok' | 'fiyatListesi' | 'cari' | 'ciro') => void;
   closeDataImporter: () => void;
-
   // Theme (Dark / Light)
   isDarkMode: boolean;
   toggleDarkMode: () => void;
-
   // Data management
   exportDataToExcel: () => void;
   exportDataAsJson: () => string;
   importDataFromJson: (jsonStr: string) => boolean;
   importDataFromExcel: (file: File) => Promise<{ transactionsCount: number; carisCount: number }>;
   clearAllToZero: () => Promise<void>;
-
   // Toast notifications
   toastMessage: { text: string; type: 'success' | 'info' | 'error' } | null;
   showToast: (text: string, type?: 'success' | 'info' | 'error') => void;
-
-  // ERP Mal Alımı & Stok Yönetimi
+  // ERP Mal Alım & Stok Yönetimi
   stockItems: StockItem[];
   purchases: StockPurchaseRecord[];
   addStockPurchase: (purchase: Omit<StockPurchaseRecord, 'id' | 'createdAt'>) => StockPurchaseRecord;
@@ -209,24 +193,20 @@ interface FinanceContextType {
   deleteStockItem: (id: string) => void;
   adjustStockQuantity: (id: string, delta: number) => void;
   importStockItemsBulk: (items: Array<Omit<StockItem, 'id'>>) => void;
-
-  // Yalın Mal Alımı Onay & Toplu İşleme Metodu
+  // Yalın Mal Alım Onay & Toplu İşleme Metodu
   executeBatchLeanMalAlimi: (
     config: LeanMalAlimiConfig,
     previewItems: LeanImportPreviewItem[]
   ) => Promise<{ success: boolean; totalCount: number; totalCost: number }>;
-
   // ERP Kâr Takip & Satış Yönetimi
   sales: SaleRecord[];
   addSaleRecord: (sale: Omit<SaleRecord, 'id' | 'createdAt'>) => SaleRecord;
   updateSaleRecord: (sale: SaleRecord) => void;
   deleteSaleRecord: (id: string) => void;
   importSalesBulk: (sales: Array<Omit<SaleRecord, 'id' | 'createdAt'>>) => void;
-
   // Quick prefill for sale from stock
   saleModalPrefillProduct: StockItem | null;
   setSaleModalPrefillProduct: (item: StockItem | null) => void;
-
   // ERP Tanımlamalar
   productCategories: ProductCategory[];
   productSubCategories: ProductSubCategory[];
@@ -244,20 +224,17 @@ interface FinanceContextType {
   addPriceList: (priceList: Omit<PriceListEntry, 'id'>) => void;
   updatePriceList: (priceList: PriceListEntry) => void;
   deletePriceList: (id: string) => void;
-
   // 3 Seviyeli Kategori Hiyerarşisi (Ana Kategori > Alt Kategori > Ürün Grubu)
   categoryHierarchy: CategoryHierarchyItem[];
   addCategoryHierarchyItem: (item: Omit<CategoryHierarchyItem, 'id'>) => void;
   updateCategoryHierarchyItem: (item: CategoryHierarchyItem) => void;
   deleteCategoryHierarchyItem: (id: string) => void;
   resetCategoryHierarchy: () => void;
-
-  // Kapsamlı Düzenleme Modal
+  // Kapsamlı Düzenleme Modalı
   isProductEditModalOpen: boolean;
   editingProduct: StockItem | null;
   openProductEditModal: (product: StockItem) => void;
   closeProductEditModal: () => void;
-
   // Cloud Sync state
   user: User | null;
   isAuthLoading: boolean;
@@ -266,7 +243,6 @@ interface FinanceContextType {
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   syncLocalToCloud: () => Promise<void>;
-
   // Ciro & Finansal Analiz Matrisi (Excel Uyumlu)
   ciroMatrixData: CiroMatrixDataStore;
   updateCiroCell: (year: string, rowId: string, month: number, updates: Partial<CiroCellEntry>) => void;
@@ -286,7 +262,7 @@ interface FinanceContextType {
 const FinanceContext = createContext<FinanceContextType | undefined>(undefined);
 
 export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [activeTab, setActiveTabState] = useState<ActiveTab>('dashboard');
+  const [activeTab, setActiveTabState] = useState<ActiveTab>('reports');
 
   // Dark mode state
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
@@ -348,17 +324,20 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return null;
     }
   });
+
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [staffAccounts, setStaffAccounts] = useState<StaffAccount[]>(DEFAULT_STAFF_ACCOUNTS);
   const [isRoleSimulated, setIsRoleSimulated] = useState<boolean>(false);
 
   const COMPANY_OWNER_ID = '1krfu1eTFcPHsQ3RW3EWplQLOIi2';
+
   const isStaffUser = Boolean(
     user?.email?.toLowerCase().endsWith('@arslanfinans.internal') ||
     userProfile?.isStaff ||
     userProfile?.username ||
     user?.isStaff
   );
+
   const dataStoreUid = user ? (isStaffUser ? COMPANY_OWNER_ID : user.uid) : '';
 
   const isPrimaryAdmin =
@@ -512,8 +491,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Ciro & Finansal Analiz Matrisi State (Excel Birebir Uyumlu)
   const [ciroMatrixData, setCiroMatrixData] = useState<CiroMatrixDataStore>(() => {
     try {
-      const saved = localStorage.getItem('arslan_ciro_matrix_v2');
+      const saved = localStorage.getItem('arslan_ciro_matrix_v3');
       if (saved) return JSON.parse(saved);
+      const savedOld = localStorage.getItem('arslan_ciro_matrix_v2');
+      if (savedOld) return JSON.parse(savedOld);
     } catch (e) {
       console.error('Failed to parse ciroMatrixData:', e);
     }
@@ -599,6 +580,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } catch {}
   }, [categoryHierarchy]);
 
+  // Ciro Matrisi LocalStorage Sync
+  useEffect(() => {
+    try {
+      localStorage.setItem('arslan_ciro_matrix_v3', JSON.stringify(ciroMatrixData));
+    } catch {}
+  }, [ciroMatrixData]);
+
   // 3 Seviyeli Kategori Metodları
   const addCategoryHierarchyItem = (item: Omit<CategoryHierarchyItem, 'id'>) => {
     const newItem: CategoryHierarchyItem = {
@@ -637,26 +625,17 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     showToast('Kategori hiyerarşisi varsayılan tam 13 gruba sıfırlandı.', 'success');
   };
 
-  // Ciro Matrisi LocalStorage Sync
-  useEffect(() => {
-    try {
-      localStorage.setItem('arslan_ciro_matrix_v2', JSON.stringify(ciroMatrixData));
-    } catch {}
-  }, [ciroMatrixData]);
-
   // Ciro Matrisi Metodları
   const updateCiroCell = (year: string, rowId: string, month: number, updates: Partial<CiroCellEntry>) => {
     setCiroMatrixData(prev => {
       const yearConfig = prev[year] || { rowMargins: {}, cells: {} };
       const rowCells = yearConfig.cells?.[rowId] || {};
       const existingCell = rowCells[month] || {};
-
       const updatedCell: CiroCellEntry = {
         ...existingCell,
         ...updates,
         updatedAt: new Date().toISOString(),
       };
-
       return {
         ...prev,
         [year]: {
@@ -712,7 +691,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const resetCiroMatrixToDefault = () => {
     setCiroMatrixData(INITIAL_CIRO_MATRIX_DATA);
-    showToast('Ciro matrisi fabrika başlangıç ayarlarına döndürüldü.', 'info');
+    showToast('Ciro matrisi fabrika başlangıç ayarlarına döndü.', 'info');
   };
 
   const importCiroMatrixYearData = (
@@ -725,7 +704,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   ) => {
     const trimmedYear = year.trim();
     if (!trimmedYear) return;
-
     setCiroMatrixData(prev => {
       const existingYearConfig = prev[trimmedYear] || { rowMargins: {}, cells: {} };
       const updatedRowMargins = { ...(existingYearConfig.rowMargins || {}) };
@@ -735,7 +713,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (row.profitMargin !== undefined && row.profitMargin !== null && !isNaN(row.profitMargin)) {
           updatedRowMargins[row.rowId] = row.profitMargin;
         }
-
         const existingRowCells = updatedCells[row.rowId] || {};
         const newRowCells = { ...existingRowCells };
 
@@ -761,7 +738,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         },
       };
     });
-
     showToast(`${trimmedYear} yılı Ciro Excel verileri başarıyla sisteme aktarıldı!`, 'success');
   };
 
@@ -793,8 +769,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   const [prefillTransaction, setPrefillTransaction] = useState<Partial<Transaction> | null>(null);
+
   const [isInstallmentModalOpen, setIsInstallmentModalOpen] = useState(false);
   const [installmentModalPrefill, setInstallmentModalPrefill] = useState<Partial<InstallmentPlanRequest> | null>(null);
+
   const [isDataImporterOpen, setIsDataImporterOpen] = useState(false);
   const [dataImporterTemplate, setDataImporterTemplate] = useState<'stok' | 'fiyatListesi' | 'cari' | 'ciro'>('stok');
 
@@ -802,9 +780,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (template) setDataImporterTemplate(template);
     setIsDataImporterOpen(true);
   };
+
   const closeDataImporter = () => setIsDataImporterOpen(false);
 
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'info' | 'error' } | null>(null);
+
   const showToast = (text: string, type: 'success' | 'info' | 'error' = 'success') => {
     setToastMessage({ text, type });
     setTimeout(() => {
@@ -859,6 +839,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       isInitialCloudSyncDone.current = false;
       return;
     }
+
     const userId = user.uid;
     const targetFinanceId = dataStoreUid;
 
@@ -883,6 +864,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           ? 'Admin'
           : (preAssigned?.role || 'Standart');
         const assignedBy = preAssigned?.assignedBy || (isPrimaryAdmin ? 'Sistem (Ana Yönetici)' : undefined);
+
         const newProfile: UserProfile = {
           uid: userId,
           email: user.email || '',
@@ -1104,7 +1086,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         action: 'Kalıcı Silme',
         entityType: 'Personel',
         entityId: username,
-        description: `'${username}' personel hesabı sistemden kaldırıldı`,
+        description: `'${username}' personel hesabı sistemden kaldırıldı.`,
       });
       showToast(`${username} personel hesabı silindi.`, 'success');
     } catch (e: any) {
@@ -1137,7 +1119,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsRoleSimulated(prev => {
       const next = !prev;
       if (next) {
-        showToast('Standart Kullanıcı (Yetkisiz) simülasyonu başladı.', 'info');
+        showToast('Standart Kullanıcı (Yetkisiz) simülasyonu başlatıldı.', 'info');
       } else {
         showToast('Yönetici (Admin) görünümüne geri dönüldü.', 'success');
       }
@@ -1175,6 +1157,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setPrefillTransaction(prefill || null);
     setIsTransactionModalOpen(true);
   };
+
   const closeTransactionModal = () => {
     setIsTransactionModalOpen(false);
     setPrefillTransaction(null);
@@ -1184,6 +1167,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setInstallmentModalPrefill(prefill || null);
     setIsInstallmentModalOpen(true);
   };
+
   const closeInstallmentModal = () => {
     setIsInstallmentModalOpen(false);
     setInstallmentModalPrefill(null);
@@ -1241,14 +1225,14 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (newTx.cariId) {
         adjustCariBalance(newTx.cariId, newTx.amount);
       }
-    } else if (newTx.type === 'Mal Alımı') {
+    } else if (newTx.type === 'Mal Alım') {
       if (newTx.cariId) {
         adjustCariBalance(newTx.cariId, -newTx.amount);
       }
       if (newTx.dueDate) {
         const newDue: UpcomingDue = {
           id: `due-mal-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          title: `Mal Alımı Borcu - ${newTx.cariName || newTx.desc || 'Tedarikçi'}`,
+          title: `Mal Alım Borcu - ${newTx.cariName || newTx.desc || 'Tedarikçi'}`,
           type: 'Gider',
           amount: newTx.amount,
           dueDate: newTx.dueDate,
@@ -1304,7 +1288,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } else if (oldTx.type === 'Gider') {
       adjustAccountBalance(oldTx.accountId, oldTx.amount);
       if (oldTx.cariId) adjustCariBalance(oldTx.cariId, -oldTx.amount);
-    } else if (oldTx.type === 'Mal Alımı') {
+    } else if (oldTx.type === 'Mal Alım') {
       if (oldTx.cariId) adjustCariBalance(oldTx.cariId, oldTx.amount);
     } else if (oldTx.type === 'Transfer' && oldTx.targetAccountId) {
       adjustAccountBalance(oldTx.accountId, oldTx.amount);
@@ -1320,7 +1304,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } else if (updatedTx.type === 'Gider') {
       adjustAccountBalance(updatedTx.accountId, -updatedTx.amount);
       if (updatedTx.cariId) adjustCariBalance(updatedTx.cariId, updatedTx.amount);
-    } else if (updatedTx.type === 'Mal Alımı') {
+    } else if (updatedTx.type === 'Mal Alım') {
       if (updatedTx.cariId) adjustCariBalance(updatedTx.cariId, -updatedTx.amount);
     } else if (updatedTx.type === 'Transfer' && updatedTx.targetAccountId) {
       adjustAccountBalance(updatedTx.accountId, -updatedTx.amount);
@@ -1344,6 +1328,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const deleteTransaction = (id: string, reason?: string) => {
     const tx = transactions.find(t => t.id === id);
     if (!tx) return;
+
     if (!isAdmin) {
       requestDeleteTransaction(id, reason || 'Personel işlem iptal talebi');
       return;
@@ -1358,7 +1343,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } else if (tx.type === 'Gider') {
       adjustAccountBalance(tx.accountId, tx.amount);
       if (tx.cariId) adjustCariBalance(tx.cariId, -tx.amount);
-    } else if (tx.type === 'Mal Alımı') {
+    } else if (tx.type === 'Mal Alım') {
       if (tx.cariId) adjustCariBalance(tx.cariId, tx.amount);
     } else if (tx.type === 'Transfer' && tx.targetAccountId) {
       adjustAccountBalance(tx.accountId, tx.amount);
@@ -1388,13 +1373,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const requestDeleteTransaction = async (id: string, reason?: string) => {
     const tx = transactions.find(t => t.id === id);
     if (!tx) return;
+
     if (isAdmin) {
       deleteTransaction(id);
       return;
     }
+
     const actorUser = userProfile?.username || user?.email || 'Personel';
     const actorName = userProfile?.displayName || user?.displayName || userProfile?.username || user?.email || 'Personel';
     const reqId = `del-tx-${Date.now()}`;
+
     const req: DeletionRequest = {
       id: reqId,
       targetType: 'transaction',
@@ -1407,10 +1395,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       reason: reason?.trim() || 'Personel tarafından silme/iptal talebi oluşturuldu.',
       status: 'pending',
     };
+
     setDeletionRequests(prev => [req, ...prev]);
     if (user && dataStoreUid) {
       saveDeletionRequestToCloud(dataStoreUid, req);
     }
+
     const flaggedTx: Transaction = {
       ...tx,
       pendingDeletion: true,
@@ -1423,6 +1413,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (user && dataStoreUid) {
       syncTransactionToCloud(dataStoreUid, flaggedTx);
     }
+
     showToast('Silme talebiniz oluşturuldu ve Yönetici onayına iletildi.', 'info');
   };
 
@@ -1441,7 +1432,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       date,
       type: 'Transfer',
       category: 'Virman',
-      desc: desc || `${fromAcc.name} → ${toAcc.name} Transfer`,
+      desc: desc || `${fromAcc.name} ➔ ${toAcc.name} Transfer`,
       amount,
       accountId: fromAccountId,
       targetAccountId: toAccountId,
@@ -1496,10 +1487,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const deleteCari = (id: string, reason?: string) => {
     const cari = caris.find(c => c.id === id);
     if (!cari) return;
+
     if (!isAdmin) {
       requestDeleteCari(id, reason || 'Personel cari kart silme talebi');
       return;
     }
+
     setCaris(prev => prev.filter(c => c.id !== id));
     if (user && dataStoreUid) deleteCariFromCloud(dataStoreUid, id);
     showToast(`'${cari.name}' cari kartı silindi`, 'info');
@@ -1508,13 +1501,16 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const requestDeleteCari = async (id: string, reason?: string) => {
     const cari = caris.find(c => c.id === id);
     if (!cari) return;
+
     if (isAdmin) {
       deleteCari(id);
       return;
     }
+
     const actorUser = userProfile?.username || user?.email || 'Personel';
     const actorName = userProfile?.displayName || user?.displayName || userProfile?.username || user?.email || 'Personel';
     const reqId = `del-cari-${Date.now()}`;
+
     const req: DeletionRequest = {
       id: reqId,
       targetType: 'cari',
@@ -1527,10 +1523,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       reason: reason?.trim() || 'Personel tarafından cari silme talebi oluşturuldu.',
       status: 'pending',
     };
+
     setDeletionRequests(prev => [req, ...prev]);
     if (user && dataStoreUid) {
       saveDeletionRequestToCloud(dataStoreUid, req);
     }
+
     showToast('Cari kart silme talebiniz Yönetici (Admin) onayına iletildi.', 'info');
   };
 
@@ -1554,7 +1552,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         } else if (tx.type === 'Gider') {
           adjustAccountBalance(tx.accountId, tx.amount);
           if (tx.cariId) adjustCariBalance(tx.cariId, -tx.amount);
-        } else if (tx.type === 'Mal Alımı') {
+        } else if (tx.type === 'Mal Alım') {
           if (tx.cariId) adjustCariBalance(tx.cariId, tx.amount);
         } else if (tx.type === 'Transfer' && tx.targetAccountId) {
           adjustAccountBalance(tx.accountId, tx.amount);
@@ -1567,6 +1565,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setCaris(prev => prev.filter(c => c.id !== req.targetId));
       if (user && dataStoreUid) deleteCariFromCloud(dataStoreUid, req.targetId);
     }
+
     setDeletionRequests(prev => prev.filter(r => r.id !== requestId));
     if (user && dataStoreUid) {
       deleteDeletionRequestFromCloud(dataStoreUid, requestId);
@@ -1597,6 +1596,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (user && dataStoreUid) syncTransactionToCloud(dataStoreUid, unflagged);
       }
     }
+
     setDeletionRequests(prev => prev.filter(r => r.id !== requestId));
     if (user && dataStoreUid) {
       deleteDeletionRequestFromCloud(dataStoreUid, requestId);
@@ -1639,6 +1639,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const remainder = Math.round((plan.totalAmount - baseAmount * count) * 100) / 100;
     const groupId = `inst-group-${Date.now()}`;
     const firmName = plan.cariName || plan.title || 'Taksit';
+
     const newDues: UpcomingDue[] = [];
 
     for (let i = 1; i <= count; i++) {
@@ -1664,6 +1665,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       newDues.push(dueItem);
       if (user && dataStoreUid) syncUpcomingDueToCloud(dataStoreUid, dueItem);
     }
+
     setUpcomingDues(prev => [...prev, ...newDues]);
     showToast(`${count} taksitli vade planı başarıyla oluşturuldu`, 'success');
   };
@@ -1762,6 +1764,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       vadeRates,
       priceLists,
       categoryHierarchy,
+      ciroMatrixData,
     };
     return JSON.stringify(backup, null, 2);
   };
@@ -1787,6 +1790,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (Array.isArray(data.vadeRates)) setVadeRates(data.vadeRates);
       if (Array.isArray(data.priceLists)) setPriceLists(data.priceLists);
       if (Array.isArray(data.categoryHierarchy)) setCategoryHierarchy(data.categoryHierarchy);
+      if (data.ciroMatrixData) setCiroMatrixData(data.ciroMatrixData);
+
       showToast('Yedek başarıyla yüklendi!', 'success');
       return true;
     } catch (e) {
@@ -1802,28 +1807,34 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     try {
       const buffer = await file.arrayBuffer();
       const result = parseExcelData(buffer, accounts, caris);
+
       if (result.errors.length > 0 && result.newTransactions.length === 0) {
         showToast(`Excel aktarım hatası: ${result.errors[0]}`, 'error');
         return { transactionsCount: 0, carisCount: 0 };
       }
+
       if (result.newTransactions.length === 0) {
         showToast('Excel dosyasında içe aktarılacak geçerli satır bulunamadı.', 'error');
         return { transactionsCount: 0, carisCount: 0 };
       }
+
       if (result.newCaris.length > 0) {
         setCaris(prev => [...prev, ...result.newCaris]);
         if (user && dataStoreUid) {
           result.newCaris.forEach(c => syncCariToCloud(dataStoreUid, c));
         }
       }
+
       setTransactions(prev => [...result.newTransactions, ...prev]);
       if (user && dataStoreUid) {
         result.newTransactions.forEach((tx: Transaction) => syncTransactionToCloud(dataStoreUid, tx));
       }
+
       setAccounts(result.updatedAccounts);
       if (user && dataStoreUid) {
         result.updatedAccounts.forEach(acc => syncAccountToCloud(dataStoreUid, acc));
       }
+
       showToast(
         `Excel'den ${result.newTransactions.length} işlem ve ${result.newCaris.length} yeni cari eklendi!`,
         'success'
@@ -1857,6 +1868,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         const existingIdx = updatedList.findIndex(
           s => (item.productId && s.id === item.productId) || (item.stokKodu && s.code && s.code.toLowerCase() === item.stokKodu.toLowerCase()) || (s.name.trim().toLowerCase() === item.name.trim().toLowerCase())
         );
+
         if (existingIdx >= 0) {
           const old = updatedList[existingIdx];
           const newQty = old.quantity + item.quantity;
@@ -1898,6 +1910,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (newPurchase.supplierId) {
       adjustCariBalance(newPurchase.supplierId, -newPurchase.totalAmount);
     }
+
     if (newPurchase.paymentType === 'Peşin Kasa/Banka' && newPurchase.accountId) {
       adjustAccountBalance(newPurchase.accountId, -newPurchase.totalAmount);
     }
@@ -1905,7 +1918,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     addTransaction({
       date: newPurchase.date,
       dueDate: newPurchase.dueDate,
-      type: 'Mal Alımı',
+      type: 'Mal Alım',
       category: 'Mal / Stok Alımı',
       cariId: newPurchase.supplierId,
       cariName: newPurchase.supplierName,
@@ -1918,7 +1931,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     if (newPurchase.dueDate && newPurchase.paymentType !== 'Peşin Kasa/Banka') {
       addUpcomingDue({
-        title: `Mal Alımı Ödemesi - ${newPurchase.supplierName}`,
+        title: `Mal Alım Ödemesi - ${newPurchase.supplierName}`,
         type: 'Gider',
         amount: newPurchase.totalAmount,
         dueDate: newPurchase.dueDate,
@@ -1948,6 +1961,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
     const pur = purchases.find(p => p.id === id);
     if (!pur) return;
+
     if (window.confirm(`"${pur.documentNo}" nolu mal alım kaydını silmek istediğinize emin misiniz?`)) {
       if (pur.supplierId) {
         adjustCariBalance(pur.supplierId, pur.totalAmount);
@@ -2035,7 +2049,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     showToast(`${formatted.length} adet stok kartı başarıyla içe aktarıldı!`, 'success');
   };
 
-  // YALIN MAL ALIMI (2 SÜTUN: STOKKODU, ALISADETI) & VADELİ CARİ ONAY MOTORU
+  // YALIN MAL ALIMI
   const executeBatchLeanMalAlimi = async (
     config: LeanMalAlimiConfig,
     previewItems: LeanImportPreviewItem[]
@@ -2066,7 +2080,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       finalDueDate = config.customDueDate || addDays(todayStr, 30);
     }
 
-    // 2. Stokları güncelle (3 seviyeli kategori hiyerarşisiyle)
+    // 2. Stokları güncelle
     setStockItems(prev => {
       const updatedList = [...prev];
       for (const item of previewItems) {
@@ -2074,7 +2088,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           s => (item.matchedStockId && s.id === item.matchedStockId) ||
                (s.code && s.code.toLowerCase().trim() === item.stokKodu.toLowerCase().trim())
         );
-
         if (existingIdx >= 0) {
           const old = updatedList[existingIdx];
           const newQty = old.quantity + item.gelenAdet;
@@ -2135,7 +2148,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // 5. Vade Takvimi
     if (paymentTypeStr === 'Vadeli (Cari Borca Ekle)' && finalDueDate) {
       addUpcomingDue({
-        title: `Mal Alımı Borcu - ${config.supplierName || 'Tedarikçi'} (${config.donemMonthKey})`,
+        title: `Mal Alım Borcu - ${config.supplierName || 'Tedarikçi'} (${config.donemMonthKey})`,
         type: 'Gider',
         amount: totalAmount,
         dueDate: finalDueDate,
@@ -2152,7 +2165,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     addTransaction({
       date: todayStr,
       dueDate: finalDueDate,
-      type: 'Mal Alımı',
+      type: 'Mal Alım',
       category: 'Mal / Stok Alımı',
       cariId: config.supplierId,
       cariName: config.supplierName,
@@ -2205,7 +2218,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         batch.set(purRef, newPurchaseRecord);
         await batch.commit();
       } catch (fErr) {
-        console.warn('Firestore mal alımı batch uyarısı:', fErr);
+        console.warn('Firestore mal alım batch uyarısı:', fErr);
       }
     }
 
@@ -2294,6 +2307,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
     const sale = sales.find(s => s.id === id);
     if (!sale) return;
+
     if (window.confirm(`"${sale.customerName}" adına yapılan ${sale.productName} satışını silmek istediğinize emin misiniz?`)) {
       if (sale.productId) {
         setStockItems(prev =>

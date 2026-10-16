@@ -13,7 +13,7 @@ export function exportCiroMatrixToExcel(data: ComputedMatrixResult): void {
     ...CIRO_MONTHS.map(m => m.name),
     'Genel Toplam (TL)',
     'Aylık Ortalama (TL)',
-    `${data.pastYear} Yılı Toplamı (TL)`,
+    `${data.comparisonYear} Yılı Toplamı (TL)`,
     'Büyüme (TL)',
     'Büyüme Oranı (%)',
     'Tahmini Brüt Kâr (TL)',
@@ -122,10 +122,10 @@ export function exportCiroMatrixToExcel(data: ComputedMatrixResult): void {
   // Blank line
   rows.push([]);
 
-  // 3. Genel Toplam
+  // 3. Genel Firma Toplamı
   addDataRow(
     'GENEL',
-    'GENEL CİRO TOPLAMI',
+    'GENEL FİRMA TOPLAMI',
     data.grandTotal.weightedMargin,
     data.grandTotal.months,
     data.grandTotal.yearTotal,

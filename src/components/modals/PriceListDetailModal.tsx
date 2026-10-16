@@ -45,7 +45,6 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCatFilter, setSelectedCatFilter] = useState('ALL');
 
-  // Add Item form state
   const [isAddingItem, setIsAddingItem] = useState(false);
   const [newItemCode, setNewItemCode] = useState('');
   const [newItemName, setNewItemName] = useState('');
@@ -55,7 +54,6 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
   const [newItemBrand, setNewItemBrand] = useState('BAMBI');
   const [newItemPrice, setNewItemPrice] = useState<number>(0);
 
-  // Editing Item
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editPrice, setEditPrice] = useState<number>(0);
 
@@ -117,7 +115,6 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
   const handleAddItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemName.trim() || !newItemCode.trim()) return;
-
     const numPrice = Number(newItemPrice) || 0;
     const newItem: PriceListItem = {
       id: `pli-${Date.now()}`,
@@ -136,7 +133,6 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
       costPrice: isToptan ? numPrice : undefined,
       salePrice: !isToptan ? numPrice : undefined,
     };
-
     setItems(prev => [newItem, ...prev]);
     setIsAddingItem(false);
     setNewItemName('');
@@ -216,7 +212,6 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-xs overflow-y-auto">
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 max-w-5xl w-full p-5 sm:p-6 shadow-2xl space-y-4 my-6 max-h-[92vh] flex flex-col">
-        {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4 shrink-0">
           <div>
             <div className="flex items-center gap-2 mb-1">
@@ -244,12 +239,6 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="file"
-              ref={fileInputRef}
-              accept=".xlsx, .xls, .csv"
-              className="hidden"
-            />
             <button
               onClick={handleExportExcel}
               className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
@@ -277,7 +266,6 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
           </div>
         </div>
 
-        {/* Toolbar & Filter */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2 flex-1">
             <div className="relative flex-1 max-w-sm">
@@ -303,7 +291,6 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
               ))}
             </select>
           </div>
-
           <button
             onClick={() => setIsAddingItem(!isAddingItem)}
             className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition self-start sm:self-auto"
@@ -313,7 +300,6 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
           </button>
         </div>
 
-        {/* Add Item Row Form */}
         {isAddingItem && (
           <form
             onSubmit={handleAddItem}
@@ -382,7 +368,6 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
           </form>
         )}
 
-        {/* Table of items */}
         <div className="flex-1 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10 backdrop-blur-md">
@@ -400,7 +385,7 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
               {filteredItems.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="py-8 text-center text-slate-400">
-                    Fiyat listesinde kayıt bulunamadı.
+                    Fiyat listesinde kayıt bulunamadı
                   </td>
                 </tr>
               ) : (
@@ -478,7 +463,6 @@ export const PriceListDetailModal: React.FC<PriceListDetailModalProps> = ({
           </table>
         </div>
 
-        {/* Footer */}
         <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800 shrink-0">
           <div className="text-xs text-slate-500">
             Toplam <strong>{items.length} ürün kalemi</strong> kayıtlı
