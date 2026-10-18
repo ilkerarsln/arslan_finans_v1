@@ -61,7 +61,6 @@ export const AccountModal: React.FC<AccountModalProps> = ({
     e.preventDefault();
     const numBalance = parseFloat(balance) || 0;
     const numLimit = creditLimit ? parseFloat(creditLimit) : undefined;
-
     const icon =
       type === 'Kasa (Nakit)'
         ? 'Vault'
@@ -105,7 +104,6 @@ export const AccountModal: React.FC<AccountModalProps> = ({
         icon,
       });
     }
-
     onClose();
   };
 
@@ -132,7 +130,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-3.5">
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Hesap Türü *
+              Hesap Türü
             </label>
             <select
               value={type}
@@ -247,7 +245,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className="block text-[11px] text-slate-500 dark:text-slate-400 mb-0.5">
-                    Tarih Seçimi
+                    Tarih Seç
                   </label>
                   <input
                     type="date"
@@ -283,7 +281,7 @@ export const AccountModal: React.FC<AccountModalProps> = ({
                 </div>
               </div>
               <p className="text-[10px] text-amber-700 dark:text-amber-400">
-                Ekstre kesim gününde kart harcamalarınızın hesap özeti çıkar ve ödeme takviminde takip edilir.
+                Ekstre kesim gününde kart harcamalarının hesap özeti çıkar ve ödeme takviminde takip edilir.
               </p>
             </div>
           )}

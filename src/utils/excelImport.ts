@@ -17,7 +17,7 @@ function normalizeKey(key: string): string {
   return key
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9ğüşıöç]/gi, '');
+    .replace(/[^a-z0-9 ]/gi, '');
 }
 
 /**
@@ -39,7 +39,6 @@ export function parseExcelDate(val: any): string {
   }
 
   const str = String(val).trim();
-
   // Format DD.MM.YYYY or DD/MM/YYYY
   const dmYMatch = str.match(/^(\d{1,2})[./\-](\d{1,2})[./\-](\d{4})/);
   if (dmYMatch) {
@@ -75,7 +74,6 @@ export function parseExcelAmount(val: any): number {
   if (!val) return 0;
 
   let str = String(val).trim().replace(/[₺$€\s]/g, '');
-
   // Detect Turkish format with period as thousand separator and comma as decimal (e.g. 1.250,50)
   if (str.includes(',') && str.includes('.')) {
     if (str.lastIndexOf(',') > str.lastIndexOf('.')) {
@@ -111,7 +109,7 @@ export function parseExcelData(
   };
 
   if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
-    result.errors.push('Excel dosyasında sayfa bulunamadı.');
+    result.errors.push('Excel dosyasında çalışma sayfası bulunamadı.');
     return result;
   }
 
@@ -129,7 +127,6 @@ export function parseExcelData(
 
   // Convert to JSON objects with raw rows
   const rawRows: any[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
-
   if (rawRows.length === 0) {
     result.errors.push('Excel tablosunda veri satırı bulunamadı.');
     return result;
@@ -170,7 +167,6 @@ export function parseExcelData(
       rowMap['toplam'] ??
       rowMap['bakiye'];
     const amount = parseExcelAmount(amountVal);
-
     if (amount <= 0) {
       // Skip empty or header-like rows
       return;
@@ -185,7 +181,7 @@ export function parseExcelData(
         ''
     ).trim().toLowerCase();
 
-    let type: 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alımı' = 'Gider';
+    let type: 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alışı' = 'Gider';
     if (
       typeVal.includes('gelir') ||
       typeVal.includes('tahsilat') ||
@@ -194,13 +190,13 @@ export function parseExcelData(
     ) {
       type = 'Gelir';
     } else if (
-      typeVal.includes('mal alım') ||
+      typeVal.includes('mal alımı') ||
       typeVal.includes('malalim') ||
       typeVal.includes('tedarikçi borc') ||
       typeVal.includes('borçlan') ||
       typeVal.includes('purchase')
     ) {
-      type = 'Mal Alımı';
+      type = 'Mal Alışı';
     } else if (
       typeVal.includes('transfer') ||
       typeVal.includes('virman')
@@ -278,7 +274,6 @@ export function parseExcelData(
       let existingCari = currentCaris.find(
         c => c.name.toLowerCase() === cariNameRaw.toLowerCase()
       );
-
       if (!existingCari) {
         // Automatically create Cari
         const newCari: Cari = {
@@ -292,7 +287,6 @@ export function parseExcelData(
         addedCaris.push(newCari);
         existingCari = newCari;
       }
-
       matchedCariId = existingCari.id;
 
       // Update Cari balance according to movement
@@ -303,14 +297,14 @@ export function parseExcelData(
       } else if (existingCari.type === 'Tedarikçi') {
         if (type === 'Gider') {
           existingCari.balance += amount; // Ödeme yaptıkça borç kapanır
-        } else if (type === 'Mal Alımı') {
-          existingCari.balance -= amount; // Mal alımı yapıldıkça borç artar
+        } else if (type === 'Mal Alışı') {
+          existingCari.balance -= amount; // Mal alışı yaptıkça borç artar
         }
       }
     }
 
-    // Update account balance (Kasadan nakit sadece Gelir veya Gider'de değişir, Mal Alımı doğrudan borçtur)
-    if (targetAcc && type !== 'Mal Alımı') {
+    // Update account balance (Kasadan nakit sadece Gelir veya Gider'de değişir, Mal Alışı doğrudan borçtur)
+    if (targetAcc && type !== 'Mal Alışı') {
       if (type === 'Gelir') {
         targetAcc.balance += amount;
       } else if (type === 'Gider') {
@@ -342,7 +336,6 @@ export function parseExcelData(
       documentNo,
       createdAt: new Date().toISOString(),
     };
-
     newTransactions.push(newTx);
   });
 
@@ -351,6 +344,5 @@ export function parseExcelData(
   result.updatedAccounts = currentAccounts;
   result.transactionsCount = newTransactions.length;
   result.carisCount = addedCaris.length;
-
   return result;
 }

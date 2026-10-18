@@ -60,8 +60,8 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
   const months: MonthData[] = useMemo(() => {
     const now = new Date();
     const result: MonthData[] = [];
-
     let offsets: number[] = [];
+
     if (rangeMode === 'centered') {
       // Tam ortada güncel ay (offset: 0):
       // Sol tarafta önceki 2 ay: -2, -1
@@ -106,7 +106,6 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
       if (tx.status === 'İptal') return;
       const txKey = extractYearMonth(tx.date);
       if (!txKey) return;
-
       const found = result.find(m => m.monthKey === txKey);
       if (found) {
         if (tx.type === 'Gelir') {
@@ -122,7 +121,6 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
       if (due.isCompleted) return; // Tamamlananlar zaten işlem olarak girilmiştir
       const dueKey = extractYearMonth(due.dueDate);
       if (!dueKey) return;
-
       const found = result.find(m => m.monthKey === dueKey);
       if (found) {
         if (due.type === 'Gelir') {
@@ -174,7 +172,7 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
             </h4>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Geçmiş aylar ➔ İçinde bulunduğumuz ay ➔ Gelecek aylar (planlanan)
+            Geçmiş aylar • İçinde bulunduğumuz ay • Gelecek aylar (planlanan)
           </p>
         </div>
 
@@ -190,7 +188,7 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
               }`}
               title="6 Aylık Akış (Geçmiş ve Gelecek Vadeler)"
             >
-              6 Aylık Dönem
+              6 Aylık
             </button>
             <button
               onClick={() => setRangeMode('past6')}
@@ -267,7 +265,6 @@ export const MonthlyFlowChart: React.FC<MonthlyFlowChartProps> = ({
             const centerX = groupX + groupWidth / 2;
             const incH = (m.income / roundedMax) * chartHeight;
             const expH = (m.expense / roundedMax) * chartHeight;
-
             const isHovered = hoveredIndex === idx;
 
             return (

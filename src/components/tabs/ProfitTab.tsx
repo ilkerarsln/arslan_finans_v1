@@ -99,19 +99,15 @@ export const ProfitTab: React.FC = () => {
     return sales.filter(s => {
       // Year filter
       if (selectedYear !== 'ALL' && !s.date.startsWith(selectedYear)) return false;
-
       // Month filter
       if (selectedMonth !== 'ALL') {
         const saleMonth = s.date.substring(5, 7);
         if (saleMonth !== selectedMonth) return false;
       }
-
       // Sale Type
       if (selectedSaleType !== 'ALL' && s.saleType !== selectedSaleType) return false;
-
       // Category
       if (selectedCategory !== 'ALL' && s.category !== selectedCategory) return false;
-
       // Search term
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase();
@@ -124,7 +120,6 @@ export const ProfitTab: React.FC = () => {
           return false;
         }
       }
-
       return true;
     });
   }, [sales, selectedYear, selectedMonth, selectedSaleType, selectedCategory, searchTerm]);
@@ -140,7 +135,7 @@ export const ProfitTab: React.FC = () => {
     e.preventDefault();
     const prod = stockItems.find(p => p.id === selectedProductId);
     if (!prod && !selectedProductId) {
-      alert('Lütfen satışı yapılan ürünü seçin.');
+      alert('Lütfen satış yapılan ürünü seçin.');
       return;
     }
 
@@ -196,7 +191,6 @@ export const ProfitTab: React.FC = () => {
       alert('Dışa aktarılacak satış kaydı bulunamadı.');
       return;
     }
-
     const headers = [
       'Tarih',
       'Belge No',
@@ -214,7 +208,6 @@ export const ProfitTab: React.FC = () => {
       'Kâr Marjı (%)',
       'Satış Personeli',
     ];
-
     const rows = filteredSales.map(s => [
       s.date,
       `"${s.documentNo || '-'}"`,
@@ -259,14 +252,14 @@ export const ProfitTab: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 shrink-0">
-          {/* Quick "Mal Alımı Yap" button linking directly to unified stock screen */}
+          {/* Quick "Mal Alışı Yap" button linking directly to unified stock screen */}
           <button
             onClick={() => setActiveTab('stock')}
             className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition active:scale-95"
             title="Tedarikçi Mal Alım & Stok Ekranına Git"
           >
             <Boxes className="w-4 h-4 text-sky-400" />
-            <span>Mal Alımı Yap</span>
+            <span>Mal Alışı Yap</span>
             <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
           </button>
 
@@ -460,7 +453,7 @@ export const ProfitTab: React.FC = () => {
               <ShoppingBag className="w-6 h-6" />
             </div>
             <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-              Seçilen kriterlere uygun satış kaydı bulunamadı.
+              Seçilen kriterlere uygun satış kaydı bulunamadı
             </p>
             <p className="text-xs text-slate-400">
               Filtreleri değiştirebilir veya yeni bir satış kaydı ekleyebilirsiniz.
@@ -500,11 +493,9 @@ export const ProfitTab: React.FC = () => {
                           </span>
                         )}
                       </td>
-
                       <td className="py-3 px-3.5 whitespace-nowrap font-medium text-slate-900 dark:text-slate-100">
                         {sale.customerName}
                       </td>
-
                       <td className="py-3 px-3.5 max-w-[220px]">
                         <span className="font-semibold text-slate-800 dark:text-slate-200 block truncate">
                           {sale.productName}
@@ -520,11 +511,9 @@ export const ProfitTab: React.FC = () => {
                           )}
                         </div>
                       </td>
-
                       <td className="py-3 px-3.5 text-center font-bold font-mono-num text-slate-800 dark:text-slate-200">
                         {sale.quantity}
                       </td>
-
                       <td className="py-3 px-3.5 whitespace-nowrap">
                         <span
                           className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -543,11 +532,9 @@ export const ProfitTab: React.FC = () => {
                           </span>
                         )}
                       </td>
-
                       <td className="py-3 px-3.5 text-right font-mono-num text-slate-600 dark:text-slate-400 whitespace-nowrap">
                         {formatCurrency(sale.totalCost)}
                       </td>
-
                       <td className="py-3 px-3.5 text-right font-mono-num whitespace-nowrap">
                         {sale.vadeFarkiAmount ? (
                           <span className="text-amber-600 dark:text-amber-400 font-medium">
@@ -557,15 +544,12 @@ export const ProfitTab: React.FC = () => {
                           <span className="text-slate-400">-</span>
                         )}
                       </td>
-
                       <td className="py-3 px-3.5 text-right font-mono-num font-bold text-slate-900 dark:text-white whitespace-nowrap">
                         {formatCurrency(sale.totalSaleAmount)}
                       </td>
-
                       <td className="py-3 px-3.5 text-right font-mono-num font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                         +{formatCurrency(sale.netProfit)}
                       </td>
-
                       <td className="py-3 px-3.5 text-center whitespace-nowrap">
                         <span
                           className={`font-mono-num font-bold px-1.5 py-0.5 rounded text-[11px] ${
@@ -579,7 +563,6 @@ export const ProfitTab: React.FC = () => {
                           %{sale.profitMargin.toFixed(1)}
                         </span>
                       </td>
-
                       {/* Satış Personeli Sütunu (Kullanıcı Talebi 4) */}
                       <td className="py-3 px-3.5 whitespace-nowrap">
                         <div className="flex items-center gap-1.5 text-slate-700 dark:text-slate-300 font-medium">
@@ -587,7 +570,6 @@ export const ProfitTab: React.FC = () => {
                           <span>{sale.salesPerson}</span>
                         </div>
                       </td>
-
                       <td className="py-3 px-3 text-center whitespace-nowrap">
                         {isAdmin && (
                           <button
@@ -649,7 +631,6 @@ export const ProfitTab: React.FC = () => {
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
-
                 {/* Belge No */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -675,11 +656,10 @@ export const ProfitTab: React.FC = () => {
                     required
                     value={customerName}
                     onChange={e => setCustomerName(e.target.value)}
-                    placeholder="Müşteri adını girin..."
+                    placeholder="Müşteri adı girin..."
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                   />
                 </div>
-
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Kayıtlı Cari Seç (İsteğe Bağlı)
@@ -709,7 +689,7 @@ export const ProfitTab: React.FC = () => {
               {/* Ürün Seçimi */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Satılan Ürün (Stoktan Seç) *
+                  Satılan Ürün (Stoktan Seçin) *
                 </label>
                 <select
                   required
@@ -741,7 +721,6 @@ export const ProfitTab: React.FC = () => {
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono-num font-bold focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
-
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Birim Maliyet (₺) *
@@ -755,7 +734,6 @@ export const ProfitTab: React.FC = () => {
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none font-mono-num focus:ring-2 focus:ring-emerald-500"
                   />
                 </div>
-
                 <div>
                   <label className="block text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-1">
                     Birim Satış (₺) *
@@ -771,7 +749,7 @@ export const ProfitTab: React.FC = () => {
                 </div>
               </div>
 
-              {/* SATIŞ ŞEKLİ SEÇİMİ (Peşin, Kredi Kartı, Senetli Satış) */}
+              {/* SATIŞ ŞEKLİ (Peşin, Kredi Kartı, Senetli Satış) */}
               <div className="p-3.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700 space-y-3">
                 <label className="block text-xs font-bold text-slate-800 dark:text-slate-200">
                   Satış Şekli *
@@ -864,7 +842,6 @@ export const ProfitTab: React.FC = () => {
                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 font-medium"
                   />
                 </div>
-
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                     Tahsilat Hesabı / Kasa

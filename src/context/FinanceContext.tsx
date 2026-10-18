@@ -95,7 +95,6 @@ interface FinanceContextType {
   caris: Cari[];
   upcomingDues: UpcomingDue[];
   categories: CategoryItem[];
-
   // Role & Authorization state (RBAC)
   userProfile: UserProfile | null;
   userRole: UserRole;
@@ -107,14 +106,12 @@ interface FinanceContextType {
   isRoleSimulated: boolean;
   toggleRoleSimulation: () => void;
   permissions: UserPermissions;
-
   // Staff & Hybrid Authentication
   staffAccounts: StaffAccount[];
   loginWithUsername: (username: string, password: string) => Promise<boolean>;
   createStaffAccount: (staff: StaffAccount) => Promise<void>;
   updateStaffAccount: (staff: StaffAccount) => Promise<void>;
   removeStaffAccount: (username: string) => Promise<void>;
-
   // Silme & İptal Onay Mekanizması & Denetim (Audit)
   deletionRequests: DeletionRequest[];
   auditLogs: AuditLogEntry[];
@@ -123,55 +120,45 @@ interface FinanceContextType {
   approveDeletionRequest: (requestId: string) => Promise<void>;
   rejectDeletionRequest: (requestId: string, reason?: string) => Promise<void>;
   logAudit: (entry: Omit<AuditLogEntry, 'id' | 'timestamp' | 'performedBy' | 'performedByName' | 'userRole'>) => Promise<void>;
-
   // Transaction actions
   addTransaction: (tx: Omit<Transaction, 'id' | 'createdAt'>) => Transaction;
   updateTransaction: (tx: Transaction) => void;
   deleteTransaction: (id: string, reason?: string) => void;
-
   // Account actions
   addAccount: (acc: Omit<Account, 'id'>) => Account;
   updateAccount: (acc: Account) => void;
   deleteAccount: (id: string) => void;
   executeTransfer: (fromAccountId: string, toAccountId: string, amount: number, desc?: string, date?: string) => void;
-
   // Cari actions
   addCari: (cari: Omit<Cari, 'id'>) => Cari;
   updateCari: (cari: Cari) => void;
   deleteCari: (id: string, reason?: string) => void;
-
   // Upcoming Dues & Installments
   addUpcomingDue: (due: Omit<UpcomingDue, 'id'>) => UpcomingDue;
   toggleUpcomingDue: (id: string) => void;
   deleteUpcomingDue: (id: string) => void;
   createInstallmentPlan: (plan: InstallmentPlanRequest) => void;
   deleteInstallmentGroup: (groupId: string) => void;
-
   // Category actions
   addCategory: (name: string, type: 'Gelir' | 'Gider', color?: string) => void;
-
   // Modal controls
   isTransactionModalOpen: boolean;
   prefillTransaction: Partial<Transaction> | null;
   openTransactionModal: (prefill?: Partial<Transaction>) => void;
   closeTransactionModal: () => void;
-
   isInstallmentModalOpen: boolean;
   installmentModalPrefill: Partial<InstallmentPlanRequest> | null;
   openInstallmentModal: (prefill?: Partial<InstallmentPlanRequest>) => void;
   closeInstallmentModal: () => void;
-
   // Data management
   exportDataToExcel: () => void;
   exportDataAsJson: () => string;
   importDataFromJson: (jsonStr: string) => boolean;
   importDataFromExcel: (file: File) => Promise<{ transactionsCount: number; carisCount: number }>;
   clearAllToZero: () => Promise<void>;
-
   // Toast notifications
   toastMessage: { text: string; type: 'success' | 'info' | 'error' } | null;
   showToast: (text: string, type?: 'success' | 'info' | 'error') => void;
-
   // ERP Mal Alım & Stok Yönetimi
   stockItems: StockItem[];
   purchases: StockPurchaseRecord[];
@@ -182,13 +169,11 @@ interface FinanceContextType {
   deleteStockItem: (id: string) => void;
   importStockItemsBulk: (items: Array<Omit<StockItem, 'id'>>) => void;
   importPurchasesBulk: (purchases: Array<Omit<StockPurchaseRecord, 'id' | 'createdAt'>>) => void;
-
   // ERP Kâr Takip & Satış Yönetimi
   sales: SaleRecord[];
   addSaleRecord: (sale: Omit<SaleRecord, 'id' | 'createdAt'>) => SaleRecord;
   updateSaleRecord: (sale: SaleRecord) => void;
   deleteSaleRecord: (id: string) => void;
-
   // 3 Seviyeli Kategori Hiyerarşisi (Ana Kategori > Alt Kategori > Ürün Grubu)
   productCategories: ProductCategory[];
   productSubCategories: ProductSubCategory[];
@@ -212,11 +197,9 @@ interface FinanceContextType {
   getVadeRateForMonth: (monthKey: string) => number;
   addPriceList: (priceList: Omit<PriceListEntry, 'id'>) => void;
   deletePriceList: (id: string) => void;
-
   // Kasa / Banka Detay Sayfası / Modal Seçimi
   selectedAccountForDetail: Account | null;
   setSelectedAccountForDetail: (acc: Account | null) => void;
-
   // Ciro ve Finansal Analiz Matrisi
   ciroMatrixData: CiroMatrixYearData[];
   updateMatrixCell: (year: number, rowId: string, monthIndex: number, amount: number) => void;
@@ -226,7 +209,6 @@ interface FinanceContextType {
   addMatrixYear: (year: number) => void;
   isCiroImportModalOpen: boolean;
   setIsCiroImportModalOpen: (open: boolean) => void;
-
   // Cloud Sync & Multi-device state
   user: User | null;
   isAuthLoading: boolean;
@@ -257,10 +239,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Corporate workspace & Multi-user shared data
   const COMPANY_OWNER_ID = '1krfu1eTFcPHsQ3RW3EWplQLOIi2';
   const isStaffUser = Boolean(
-    user?.email?.toLowerCase().endsWith('@arslanfinans.internal') ||
+    user?.email?.toLowerCase().includes('arslanfinans.internal') ||
     userProfile?.isStaff ||
     userProfile?.username
   );
+
   // Both Google primary admin and staff users share the company financial database
   const dataStoreUid = user ? (isStaffUser ? COMPANY_OWNER_ID : user.uid) : '';
 
@@ -268,7 +251,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const isPrimaryAdmin =
     user?.email?.toLowerCase() === 'ilkerarslan78@gmail.com' ||
     userProfile?.username === 'admin' ||
-    (user?.email?.toLowerCase().startsWith('admin@') && user?.email?.toLowerCase().endsWith('@arslanfinans.internal'));
+    (user?.email?.toLowerCase().startsWith('admin@') && user?.email?.toLowerCase().includes('arslanfinans.internal'));
 
   const realRole: UserRole = isPrimaryAdmin ? 'Admin' : (userProfile?.role || 'Standart');
   const userRole: UserRole = isRoleSimulated ? 'Standart' : realRole;
@@ -292,6 +275,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return INITIAL_TRANSACTIONS;
     }
   });
+
   const [accounts, setAccounts] = useState<Account[]>(() => {
     try {
       const saved = localStorage.getItem('arslan_accounts');
@@ -300,6 +284,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return INITIAL_ACCOUNTS;
     }
   });
+
   const [caris, setCaris] = useState<Cari[]>(() => {
     try {
       const saved = localStorage.getItem('arslan_caris');
@@ -308,6 +293,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return INITIAL_CARIS;
     }
   });
+
   const [upcomingDues, setUpcomingDues] = useState<UpcomingDue[]>(() => {
     try {
       const saved = localStorage.getItem('arslan_upcoming_dues');
@@ -316,6 +302,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       return INITIAL_UPCOMING_DUES;
     }
   });
+
   const [categories, setCategories] = useState<CategoryItem[]>(INITIAL_CATEGORIES);
   const [deletionRequests, setDeletionRequests] = useState<DeletionRequest[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
@@ -547,13 +534,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Modal controls
   const [isTransactionModalOpen, setIsTransactionModalOpen] = useState(false);
   const [prefillTransaction, setPrefillTransaction] = useState<Partial<Transaction> | null>(null);
-
   const [isInstallmentModalOpen, setIsInstallmentModalOpen] = useState(false);
   const [installmentModalPrefill, setInstallmentModalPrefill] = useState<Partial<InstallmentPlanRequest> | null>(null);
 
   // Toast
   const [toastMessage, setToastMessage] = useState<{ text: string; type: 'success' | 'info' | 'error' } | null>(null);
-
   const showToast = (text: string, type: 'success' | 'info' | 'error' = 'success') => {
     setToastMessage({ text, type });
     setTimeout(() => {
@@ -561,13 +546,22 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }, 4000);
   };
 
+  // Watchdog timer to ensure sync indicator never gets stuck in UI
+  useEffect(() => {
+    if (isCloudSyncing) {
+      const timer = setTimeout(() => {
+        setIsCloudSyncing(false);
+      }, 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [isCloudSyncing]);
+
   // Auth listener & live Firestore connection
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, currentUser => {
       setUser(currentUser);
       setIsAuthLoading(false);
     });
-
     return () => unsubscribeAuth();
   }, []);
 
@@ -622,7 +616,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
           ? 'Admin'
           : (preAssigned?.role || 'Standart');
         const assignedBy = preAssigned?.assignedBy || (isPrimaryAdmin ? 'Sistem (Ana Yönetici)' : undefined);
-
         const newProfile: UserProfile = {
           uid: userId,
           email: user.email || '',
@@ -648,23 +641,21 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         INITIAL_ACCOUNTS.forEach(acc => syncAccountToCloud(targetFinanceId, acc));
         setAccounts(INITIAL_ACCOUNTS);
       }
-
       if (cloudData.categories.length > 0) {
         setCategories(cloudData.categories);
       } else {
         INITIAL_CATEGORIES.forEach(cat => syncCategoryToCloud(targetFinanceId, cat));
         setCategories(INITIAL_CATEGORIES);
       }
-
       setTransactions(cloudData.transactions);
       setCaris(cloudData.caris);
       setUpcomingDues(cloudData.upcomingDues);
       setDeletionRequests(cloudData.deletionRequests || []);
       setAuditLogs(cloudData.auditLogs || []);
-      setIsCloudSyncing(false);
       isInitialCloudSyncDone.current = true;
     }).catch(err => {
-      console.error('Initial getDocs error:', err);
+      console.warn('Initial getDocs notice:', err);
+    }).finally(() => {
       setIsCloudSyncing(false);
     });
 
@@ -902,22 +893,30 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Manual one-click sync all local data to cloud
   const syncLocalToCloud = async () => {
     if (!user) {
-      showToast('Buluta aktarım için önce Google ile giriş yapmalısınız.', 'error');
+      showToast('Buluta eşitlemek için lütfen oturum açın.', 'error');
       return;
     }
+    const targetId = dataStoreUid || user.uid;
     try {
       setIsCloudSyncing(true);
-      await uploadAllInitialDataToCloud(user.uid, {
+      await uploadAllInitialDataToCloud(targetId, {
         accounts,
         transactions,
         caris,
         upcomingDues,
         categories,
       });
-      showToast('Tüm veriler bulut veritabanına başarıyla senkronize edildi!', 'success');
-    } catch (error) {
+      // Fetch fresh state from cloud to ensure total consistency across devices
+      const cloudData = await fetchUserDataFromFirestore(targetId);
+      if (cloudData.accounts.length > 0) setAccounts(cloudData.accounts);
+      if (cloudData.transactions.length > 0) setTransactions(cloudData.transactions);
+      if (cloudData.caris.length > 0) setCaris(cloudData.caris);
+      if (cloudData.upcomingDues.length > 0) setUpcomingDues(cloudData.upcomingDues);
+      if (cloudData.categories.length > 0) setCategories(cloudData.categories);
+      showToast('Ofis ve cep telefonu verileri bulut veritabanıyla başarıyla eşitlendi!', 'success');
+    } catch (error: any) {
       console.error('Manual sync error:', error);
-      showToast('Bulut eşitleme sırasında hata oluştu.', 'error');
+      showToast(`Bulut eşitleme hatası: ${error?.message || 'Bağlantı kurulamadı'}`, 'error');
     } finally {
       setIsCloudSyncing(false);
     }
@@ -977,7 +976,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const addTransaction = (data: Omit<Transaction, 'id' | 'createdAt'>): Transaction => {
     const actorUser = userProfile?.username || user?.email || 'Anonim';
     const actorName = userProfile?.displayName || user?.displayName || userProfile?.username || user?.email || 'Personel';
-
     const newTx: Transaction = {
       ...data,
       id: `tx-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -993,7 +991,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
       // POS Tahsilatı & Tedarikçi Cari Eşleştirmesi (Mahsup)
       if (newTx.isPosOffset && newTx.supplierCariId) {
-        // Tedarikçi borcundan düşülür
+        // Tedarikçi borcundan düş
         adjustCariBalance(newTx.supplierCariId, newTx.amount);
       }
     } else if (newTx.type === 'Gider') {
@@ -1001,7 +999,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (newTx.cariId) {
         adjustCariBalance(newTx.cariId, newTx.amount);
       }
-    } else if (newTx.type === 'Mal Alımı') {
+    } else if (newTx.type === 'Mal Alışı') {
       // Kasadan nakit düşmeden doğrudan ilgili tedarikçiye borç olarak kaydedilir
       if (newTx.cariId) {
         adjustCariBalance(newTx.cariId, -newTx.amount);
@@ -1010,13 +1008,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (newTx.dueDate) {
         const newDue: UpcomingDue = {
           id: `due-mal-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          title: `Mal Alımı Borcu - ${newTx.cariName || newTx.desc || 'Tedarikçi'}`,
+          title: `Mal Alışı Borcu - ${newTx.cariName || newTx.desc || 'Tedarikçi'}`,
           type: 'Gider',
           amount: newTx.amount,
           dueDate: newTx.dueDate,
           cariId: newTx.cariId,
           cariName: newTx.cariName,
-          category: newTx.category || 'Mal Alımı',
+          category: newTx.category || 'Mal Alışı',
           isCompleted: false,
           recurrence: 'Tek Seferlik',
           accountId: newTx.accountId || accounts[0]?.id,
@@ -1055,8 +1053,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     showToast(
       newTx.isPosOffset
         ? `POS tahsilatı ve tedarikçi mahsubu kaydedildi: ₺${newTx.amount.toLocaleString('tr-TR')}`
-        : newTx.type === 'Mal Alımı'
-        ? `Mal alımı ve tedarikçi borcu kaydedildi: ₺${newTx.amount.toLocaleString('tr-TR')}`
+        : newTx.type === 'Mal Alışı'
+        ? `Mal alışı ve tedarikçi borcu kaydedildi: ₺${newTx.amount.toLocaleString('tr-TR')}`
         : `Yeni işlem kaydedildi: ₺${newTx.amount.toLocaleString('tr-TR')}`,
       'success'
     );
@@ -1077,7 +1075,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } else if (oldTx.type === 'Gider') {
       adjustAccountBalance(oldTx.accountId, oldTx.amount);
       if (oldTx.cariId) adjustCariBalance(oldTx.cariId, -oldTx.amount);
-    } else if (oldTx.type === 'Mal Alımı') {
+    } else if (oldTx.type === 'Mal Alışı') {
       if (oldTx.cariId) adjustCariBalance(oldTx.cariId, oldTx.amount);
     } else if (oldTx.type === 'Transfer' && oldTx.targetAccountId) {
       adjustAccountBalance(oldTx.accountId, oldTx.amount);
@@ -1094,7 +1092,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } else if (updatedTx.type === 'Gider') {
       adjustAccountBalance(updatedTx.accountId, -updatedTx.amount);
       if (updatedTx.cariId) adjustCariBalance(updatedTx.cariId, updatedTx.amount);
-    } else if (updatedTx.type === 'Mal Alımı') {
+    } else if (updatedTx.type === 'Mal Alışı') {
       if (updatedTx.cariId) adjustCariBalance(updatedTx.cariId, -updatedTx.amount);
     } else if (updatedTx.type === 'Transfer' && updatedTx.targetAccountId) {
       adjustAccountBalance(updatedTx.accountId, -updatedTx.amount);
@@ -1111,7 +1109,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       amount: updatedTx.amount,
       description: `${updatedTx.type} işlemi güncellendi: ₺${updatedTx.amount.toLocaleString('tr-TR')}`,
     });
-
     showToast('İşlem güncellendi', 'info');
   };
 
@@ -1135,7 +1132,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } else if (tx.type === 'Gider') {
       adjustAccountBalance(tx.accountId, tx.amount);
       if (tx.cariId) adjustCariBalance(tx.cariId, -tx.amount);
-    } else if (tx.type === 'Mal Alımı') {
+    } else if (tx.type === 'Mal Alışı') {
       if (tx.cariId) adjustCariBalance(tx.cariId, tx.amount);
     } else if (tx.type === 'Transfer' && tx.targetAccountId) {
       adjustAccountBalance(tx.accountId, tx.amount);
@@ -1159,7 +1156,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       amount: tx.amount,
       description: `${tx.type} işlemi yönetici tarafından kalıcı olarak silindi: ₺${tx.amount.toLocaleString('tr-TR')} (${tx.desc || tx.category})`,
     });
-
     showToast('İşlem kalıcı olarak silindi ve bakiyeler geri alındı', 'info');
   };
 
@@ -1174,7 +1170,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const actorUser = userProfile?.username || user?.email || 'Personel';
     const actorName = userProfile?.displayName || user?.displayName || userProfile?.username || user?.email || 'Personel';
-
     const reqId = `del-tx-${Date.now()}`;
     const req: DeletionRequest = {
       id: reqId,
@@ -1215,7 +1210,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       amount: tx.amount,
       description: `${tx.type} işlemi için silme talebi oluşturuldu (${req.reason}). Yönetici onayı bekleniyor.`,
     });
-
     showToast('Silme talebiniz oluşturuldu ve Yönetici (Admin) onayına iletildi.', 'info');
   };
 
@@ -1234,7 +1228,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       date,
       type: 'Transfer',
       category: 'Virman',
-      desc: desc || `${fromAcc.name} ➔ ${toAcc.name} Transfer`,
+      desc: desc || `${fromAcc.name} → ${toAcc.name} Transfer`,
       amount,
       accountId: fromAccountId,
       targetAccountId: toAccountId,
@@ -1314,7 +1308,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       amount: cari.balance,
       description: `'${cari.name}' (${cari.type}) cari kartı yönetici tarafından silindi.`,
     });
-
     showToast(`'${cari.name}' cari kartı silindi`, 'info');
   };
 
@@ -1329,7 +1322,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const actorUser = userProfile?.username || user?.email || 'Personel';
     const actorName = userProfile?.displayName || user?.displayName || userProfile?.username || user?.email || 'Personel';
-
     const reqId = `del-cari-${Date.now()}`;
     const req: DeletionRequest = {
       id: reqId,
@@ -1356,7 +1348,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       amount: cari.balance,
       description: `'${cari.name}' cari hesabı için silme talebi oluşturuldu (${req.reason}). Yönetici onayı bekleniyor.`,
     });
-
     showToast('Cari kart silme talebiniz Yönetici (Admin) onayına iletildi.', 'info');
   };
 
@@ -1365,7 +1356,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       showToast('Silme taleplerini yalnızca Yöneticiler (Admin) onaylayabilir.', 'error');
       return;
     }
-
     const req = deletionRequests.find(r => r.id === requestId);
     if (!req) return;
 
@@ -1382,13 +1372,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         } else if (tx.type === 'Gider') {
           adjustAccountBalance(tx.accountId, tx.amount);
           if (tx.cariId) adjustCariBalance(tx.cariId, -tx.amount);
-        } else if (tx.type === 'Mal Alımı') {
+        } else if (tx.type === 'Mal Alışı') {
           if (tx.cariId) adjustCariBalance(tx.cariId, tx.amount);
         } else if (tx.type === 'Transfer' && tx.targetAccountId) {
           adjustAccountBalance(tx.accountId, tx.amount);
           adjustAccountBalance(tx.targetAccountId, -tx.amount);
         }
-
         setTransactions(prev => prev.filter(t => t.id !== tx.id));
         if (user && dataStoreUid) deleteTransactionFromCloud(dataStoreUid, tx.id);
       }
@@ -1409,7 +1398,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       amount: req.amount,
       description: `Silme talebi onaylandı ve kalıcı olarak silindi: ${req.targetTitle} (Talep eden: ${req.requestedByName})`,
     });
-
     showToast('Silme talebi onaylandı ve işlem sistemden kaldırıldı.', 'success');
   };
 
@@ -1418,7 +1406,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       showToast('Silme taleplerini yalnızca Yöneticiler (Admin) reddedebilir.', 'error');
       return;
     }
-
     const req = deletionRequests.find(r => r.id === requestId);
     if (!req) return;
 
@@ -1450,7 +1437,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       amount: req.amount,
       description: `Silme talebi yönetici tarafından reddedildi: ${req.targetTitle}${reason ? ` (Gerekçe: ${reason})` : ''}`,
     });
-
     showToast('Silme talebi reddedildi ve işlem aktif tutuldu.', 'info');
   };
 
@@ -1469,13 +1455,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const toggleUpcomingDue = (id: string) => {
     const target = upcomingDues.find(d => d.id === id);
     if (!target) return;
-
     const newCompleted = !target.isCompleted;
     const updated = { ...target, isCompleted: newCompleted };
-
     setUpcomingDues(prev => prev.map(d => (d.id === id ? updated : d)));
     if (user && dataStoreUid) syncUpcomingDueToCloud(dataStoreUid, updated);
-
     // If marked completed, automatically ask to add to transactions
     if (newCompleted) {
       showToast(`'${target.title}' tamamlandı olarak işaretlendi`, 'success');
@@ -1496,12 +1479,10 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const firmName = plan.cariName || plan.title || 'Taksit';
 
     const newDues: UpcomingDue[] = [];
-
     for (let i = 1; i <= count; i++) {
       const dueDate = calculateInstallmentDate(plan.firstDueDate, i - 1);
       const amount = i === count ? +(baseAmount + remainder).toFixed(2) : baseAmount;
       const title = `${firmName} - ${i}/${count} Taksit`;
-
       const dueItem: UpcomingDue = {
         id: `due-${Date.now()}-${i}`,
         title,
@@ -1518,11 +1499,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         totalInstallments: count,
         installmentGroupId: groupId,
       };
-
       newDues.push(dueItem);
       if (user && dataStoreUid) syncUpcomingDueToCloud(dataStoreUid, dueItem);
     }
-
     setUpcomingDues(prev => [...prev, ...newDues]);
     showToast(`${count} taksitli vade planı başarıyla oluşturuldu`, 'success');
   };
@@ -1571,7 +1550,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       showToast('Tüm verileri sıfırlama yetkisi yalnızca Yöneticilere (Admin) aittir.', 'error');
       return;
     }
-
     setAccounts(INITIAL_ACCOUNTS);
     setCaris([]);
     setTransactions([]);
@@ -1622,7 +1600,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         showToast('Geçersiz yedek dosyası formatı!', 'error');
         return false;
       }
-
       if (Array.isArray(data.accounts)) setAccounts(data.accounts);
       if (Array.isArray(data.caris)) setCaris(data.caris);
       if (Array.isArray(data.transactions)) setTransactions(data.transactions);
@@ -1690,7 +1667,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         `Excel'den ${result.newTransactions.length} işlem ve ${result.newCaris.length} yeni cari eklendi!`,
         'success'
       );
-
       return {
         transactionsCount: result.newTransactions.length,
         carisCount: result.newCaris.length,
@@ -1708,7 +1684,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const addStockPurchase = (purchaseData: Omit<StockPurchaseRecord, 'id' | 'createdAt'>): StockPurchaseRecord => {
     const actorUser = userProfile?.username || user?.email || 'Anonim';
     const actorName = userProfile?.displayName || user?.displayName || userProfile?.username || user?.email || 'Personel';
-
     const newPurchase: StockPurchaseRecord = {
       ...purchaseData,
       id: `pur-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -1717,7 +1692,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       createdByName: actorName,
     };
 
-    // 1. Ürün stoklarını ve maliyetlerini güncelle
+    // 1. Ürün stokları ve maliyetlerini güncelle
     setStockItems(prev => {
       let updatedList = [...prev];
       for (const item of newPurchase.items) {
@@ -1772,11 +1747,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     addTransaction({
       date: newPurchase.date,
       dueDate: newPurchase.dueDate,
-      type: 'Mal Alımı',
-      category: 'Mal / Stok Alımı',
+      type: 'Mal Alışı',
+      category: 'Mal / Stok Alışı',
       cariId: newPurchase.supplierId,
       cariName: newPurchase.supplierName,
-      desc: `${newPurchase.supplierName} - Mal Alımı (${newPurchase.items.map(i => i.name).join(', ')})`,
+      desc: `${newPurchase.supplierName} - Mal Alışı (${newPurchase.items.map(i => i.name).join(', ')})`,
       amount: newPurchase.totalAmount,
       accountId: newPurchase.accountId || accounts[0]?.id || 'acc-banka',
       status: 'Tamamlandı',
@@ -1786,13 +1761,13 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // 5. Vade tarihi varsa Vade Takvimine otomatik ekle
     if (newPurchase.dueDate && newPurchase.paymentType !== 'Peşin Kasa/Banka') {
       addUpcomingDue({
-        title: `Mal Alımı Ödemesi - ${newPurchase.supplierName}`,
+        title: `Mal Alışı Ödemesi - ${newPurchase.supplierName}`,
         type: 'Gider',
         amount: newPurchase.totalAmount,
         dueDate: newPurchase.dueDate,
         cariId: newPurchase.supplierId,
         cariName: newPurchase.supplierName,
-        category: 'Mal / Stok Alımı',
+        category: 'Mal / Stok Alışı',
         isCompleted: false,
         recurrence: 'Tek Seferlik',
         accountId: newPurchase.accountId || accounts[0]?.id,
@@ -1800,27 +1775,24 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     setPurchases(prev => [newPurchase, ...prev]);
-
     logAudit({
       action: 'Ekleme',
       entityType: 'Stok',
       entityId: newPurchase.id,
       amount: newPurchase.totalAmount,
-      description: `Mal Alımı kaydedildi: ${newPurchase.supplierName} (₺${newPurchase.totalAmount.toLocaleString('tr-TR')})`,
+      description: `Mal Alışı kaydedildi: ${newPurchase.supplierName} (₺${newPurchase.totalAmount.toLocaleString('tr-TR')})`,
     });
-
-    showToast('Mal alımı başarıyla kaydedildi, stok ve tedarikçi cari borcu güncellendi.', 'success');
+    showToast('Mal alışı başarıyla kaydedildi, stok ve tedarikçi cari borcu güncellendi.', 'success');
     return newPurchase;
   };
 
   const deleteStockPurchase = (id: string) => {
     if (!isAdmin) {
-      showToast('Alım kaydını silme yetkisi yalnızca Yöneticilere (Admin) aittir.', 'error');
+      showToast('Alım kaydı silme yetkisi yalnızca Yöneticilere (Admin) aittir.', 'error');
       return;
     }
     const pur = purchases.find(p => p.id === id);
     if (!pur) return;
-
     if (window.confirm(`"${pur.documentNo}" nolu mal alım kaydını silmek istediğinize emin misiniz?`)) {
       // Revert supplier balance
       if (pur.supplierId) {
@@ -1881,7 +1853,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // ----------------------------------------------------------------------
   const addSaleRecord = (saleData: Omit<SaleRecord, 'id' | 'createdAt'>): SaleRecord => {
     const actorUser = userProfile?.username || user?.email || 'Anonim';
-
     const newSale: SaleRecord = {
       ...saleData,
       id: `sale-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
@@ -1889,7 +1860,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       createdBy: actorUser,
     };
 
-    // 1. Stok adedini düşür
+    // 1. Stok adedini düş
     if (newSale.productId) {
       setStockItems(prev =>
         prev.map(stk => {
@@ -1906,7 +1877,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       );
     }
 
-    // 2. Satış Şekline göre finansal etki
+    // 2. Satış şekline göre finansal etki
     if (newSale.saleType === 'Senetli Satış') {
       if (newSale.customerId) {
         // Müşteri cari borcu artar (alacağımız artar)
@@ -1934,7 +1905,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } else if (newSale.accountId) {
       // Peşin veya Kredi Kartı tahsilatı kasaya / bankaya eklenir
       adjustAccountBalance(newSale.accountId, newSale.totalSaleAmount);
-
       addTransaction({
         date: newSale.date,
         type: 'Gelir',
@@ -1950,7 +1920,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     setSales(prev => [newSale, ...prev]);
-
     logAudit({
       action: 'Ekleme',
       entityType: 'Satış',
@@ -1958,7 +1927,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
       amount: newSale.totalSaleAmount,
       description: `Satış kaydedildi: ${newSale.productName} -> ${newSale.customerName} (${newSale.saleType}, Personel: ${newSale.salesPerson}, Net Kâr: ₺${newSale.netProfit.toLocaleString('tr-TR')})`,
     });
-
     showToast(`Satış kaydedildi. Net Kâr: ₺${newSale.netProfit.toLocaleString('tr-TR')}`, 'success');
     return newSale;
   };
@@ -1970,7 +1938,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const deleteSaleRecord = (id: string) => {
     if (!isAdmin) {
-      showToast('Satış kaydını silme yetkisi yalnızca Yöneticilere (Admin) aittir.', 'error');
+      showToast('Satış kaydı silme yetkisi yalnızca Yöneticilere (Admin) aittir.', 'error');
       return;
     }
     const sale = sales.find(s => s.id === id);
@@ -2233,7 +2201,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         caris,
         upcomingDues,
         categories,
-
         // Role & Authorization state (RBAC)
         userProfile,
         userRole,
@@ -2245,14 +2212,12 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         isRoleSimulated,
         toggleRoleSimulation,
         permissions,
-
         // Staff & Hybrid Authentication
         staffAccounts,
         loginWithUsername,
         createStaffAccount,
         updateStaffAccount,
         removeStaffAccount,
-
         // Silme & İptal Onay Mekanizması & Denetim (Audit)
         deletionRequests,
         auditLogs,
@@ -2261,7 +2226,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         approveDeletionRequest,
         rejectDeletionRequest,
         logAudit,
-
         // Operations
         addTransaction,
         updateTransaction,
@@ -2294,7 +2258,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         clearAllToZero,
         toastMessage,
         showToast,
-
         // ERP Mal Alım & Stok
         stockItems,
         purchases,
@@ -2305,13 +2268,11 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         deleteStockItem,
         importStockItemsBulk,
         importPurchasesBulk,
-
         // ERP Kâr Takip & Satış
         sales,
         addSaleRecord,
         updateSaleRecord,
         deleteSaleRecord,
-
         // 3 Seviyeli Kategori Hiyerarşisi
         productCategories,
         productSubCategories,
@@ -2335,11 +2296,9 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         getVadeRateForMonth,
         addPriceList,
         deletePriceList,
-
         // Kasa/Banka Detay Modal
         selectedAccountForDetail,
         setSelectedAccountForDetail,
-
         // Ciro ve Finansal Analiz Matrisi
         ciroMatrixData,
         updateMatrixCell,
@@ -2349,7 +2308,6 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addMatrixYear,
         isCiroImportModalOpen,
         setIsCiroImportModalOpen,
-
         user,
         isAuthLoading,
         isCloudConnected: !!user,

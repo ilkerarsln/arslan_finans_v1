@@ -15,7 +15,6 @@ export const TransferModal: React.FC<TransferModalProps> = ({
   defaultSourceAccountId,
 }) => {
   const { accounts, executeTransfer } = useFinance();
-
   const [fromAccountId, setFromAccountId] = useState(
     defaultSourceAccountId || accounts[0]?.id || ''
   );
@@ -30,9 +29,6 @@ export const TransferModal: React.FC<TransferModalProps> = ({
 
   if (!isOpen) return null;
 
-  const fromAcc = accounts.find(a => a.id === fromAccountId);
-  const toAcc = accounts.find(a => a.id === toAccountId);
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const num = parseFloat(amount);
@@ -41,7 +37,6 @@ export const TransferModal: React.FC<TransferModalProps> = ({
       alert('Lütfen farklı kaynak ve hedef hesap seçiniz.');
       return;
     }
-
     executeTransfer(fromAccountId, toAccountId, num, desc.trim(), date);
     onClose();
   };
@@ -70,7 +65,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
           <div className="space-y-3">
             <div>
               <label className="block text-xs font-semibold text-rose-600 dark:text-rose-400 mb-1">
-                Kaynak Hesap (Para Çıkacak)
+                Kaynak Hesap (Para Çıkacak) *
               </label>
               <select
                 value={fromAccountId}
@@ -94,7 +89,7 @@ export const TransferModal: React.FC<TransferModalProps> = ({
 
             <div>
               <label className="block text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-1">
-                Hedef Hesap (Para Aktarılacak)
+                Hedef Hesap (Para Aktarılacak) *
               </label>
               <select
                 value={toAccountId}
@@ -127,9 +122,10 @@ export const TransferModal: React.FC<TransferModalProps> = ({
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold font-mono-num outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                Tarih
+                Tarih *
               </label>
               <input
                 type="date"

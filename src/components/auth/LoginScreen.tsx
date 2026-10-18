@@ -18,7 +18,7 @@ import {
 export const LoginScreen: React.FC = () => {
   const { loginWithGoogle, loginWithUsername, isCloudSyncing } = useFinance();
 
-  // Tab state: 'staff' (Kullanıcı Adı & Şifre) or 'google' (Google OAuth)
+  // Tab state: 'staff' (Kullanıcı Adı/Şifre) or 'google' (Google OAuth)
   const [authMode, setAuthMode] = useState<'staff' | 'google'>('staff');
 
   // Staff login state
@@ -31,7 +31,6 @@ export const LoginScreen: React.FC = () => {
   const handleStaffLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage(null);
-
     const cleanUsername = username.trim();
     if (!cleanUsername) {
       setErrorMessage('Lütfen kullanıcı adınızı girin.');
@@ -68,7 +67,7 @@ export const LoginScreen: React.FC = () => {
             Arslan Finans
           </h1>
           <p className="text-slate-400 text-sm">
-            Kurumsal Finans, Nakit Akış ve Yetkilendirme Platformu
+            Kurumsal Finans, Nakit Akışı ve Yetkilendirme Platformu
           </p>
         </div>
 
@@ -221,13 +220,13 @@ export const LoginScreen: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    setUsername('ilkerarslan78@gmail');
+                    setUsername('admin');
                     setPassword('140514');
                   }}
                   className="w-full py-1.5 px-2 bg-slate-900/90 hover:bg-slate-700/80 border border-slate-700 rounded-lg text-[11px] text-slate-300 font-medium flex items-center justify-center gap-1.5 transition"
                 >
                   <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Yönetici Doldur (ilkerarslan78@gmail / 140514)</span>
+                  <span>Yönetici Doldur (admin / 140514)</span>
                 </button>
               </div>
 
@@ -312,7 +311,7 @@ export const LoginScreen: React.FC = () => {
             </div>
             <div className="flex items-center gap-2.5 text-xs text-slate-400">
               <Wallet className="w-4 h-4 text-purple-400 shrink-0" />
-              <span>Kasa, Banka, Cari ve Vade hesaplarınız güvende.</span>
+              <span>Kasa, Banka, Cari ve Vade hesapları güvende.</span>
             </div>
           </div>
         </div>

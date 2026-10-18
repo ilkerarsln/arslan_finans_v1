@@ -137,7 +137,6 @@ export const TransactionsTab: React.FC = () => {
       showToast('Dışa aktarılacak işlem bulunamadı', 'info');
       return;
     }
-
     const headers = ['Tarih', 'Tür', 'Kategori', 'Cari/Firma', 'Açıklama', 'Hesap', 'Tutar (TL)', 'Belge No'];
     const rows = filteredTransactions.map(tx => {
       const acc = accounts.find(a => a.id === tx.accountId)?.name || tx.accountId;
@@ -236,12 +235,12 @@ export const TransactionsTab: React.FC = () => {
               className="px-3.5 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
               title="Birleşik Mal Alım & Stok Ekranına Git"
             >
-              <Boxes className="w-3.5 h-3.5" /> Mal Alımı Yap (Stok)
+              <Boxes className="w-3.5 h-3.5" /> Mal Alışı Yap (Stok)
             </button>
             <button
-              onClick={() => openTransactionModal({ type: 'Mal Alımı' })}
+              onClick={() => openTransactionModal({ type: 'Mal Alışı' })}
               className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
-              title="Tedarikçiden Vadeli Mal Alımı Ekle"
+              title="Tedarikçiden Vadeli Mal Alışı Ekle"
             >
               <ShoppingBag className="w-3.5 h-3.5" /> Hızlı Mal Girişi
             </button>
@@ -258,7 +257,7 @@ export const TransactionsTab: React.FC = () => {
         <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
           {/* Segmented Type Filter */}
           <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
-            {(['All', 'Gelir', 'Gider', 'Mal Alımı', 'Transfer'] as const).map(tab => (
+            {(['All', 'Gelir', 'Gider', 'Mal Alışı', 'Transfer'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => setTypeFilter(tab)}
@@ -360,7 +359,7 @@ export const TransactionsTab: React.FC = () => {
               <Search className="w-6 h-6" />
             </div>
             <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-              Arama kriterlerine uygun işlem bulunamadı.
+              Arama kriterlerine uygun işlem bulunamadı
             </p>
             <p className="text-xs text-slate-400">
               Filtreleri sıfırlayabilir veya yeni bir işlem ekleyebilirsiniz.
@@ -388,7 +387,6 @@ export const TransactionsTab: React.FC = () => {
                   const targetAcc = tx.targetAccountId
                     ? accounts.find(a => a.id === tx.targetAccountId)
                     : null;
-
                   return (
                     <tr
                       key={tx.id}
@@ -423,14 +421,14 @@ export const TransactionsTab: React.FC = () => {
                               ? 'text-emerald-600 dark:text-emerald-400'
                               : tx.type === 'Gider'
                               ? 'text-rose-600 dark:text-rose-400'
-                              : tx.type === 'Mal Alımı'
+                              : tx.type === 'Mal Alışı'
                               ? 'text-amber-600 dark:text-amber-400'
                               : 'text-blue-600 dark:text-blue-400'
                           }`}
                         >
                           {tx.type === 'Gelir' && <ArrowDownRight className="w-3.5 h-3.5" />}
                           {tx.type === 'Gider' && <ArrowUpRight className="w-3.5 h-3.5" />}
-                          {tx.type === 'Mal Alımı' && <ShoppingBag className="w-3.5 h-3.5" />}
+                          {tx.type === 'Mal Alışı' && <ShoppingBag className="w-3.5 h-3.5" />}
                           {tx.type === 'Transfer' && <ArrowRightLeft className="w-3.5 h-3.5" />}
                           {tx.type}
                         </span>
@@ -444,9 +442,9 @@ export const TransactionsTab: React.FC = () => {
                       <td className="py-3 px-4 text-slate-600 dark:text-slate-400 whitespace-nowrap">
                         {tx.type === 'Transfer' ? (
                           <span className="text-[11px]">
-                            {sourceAcc?.name} ➔ {targetAcc?.name}
+                            {sourceAcc?.name} → {targetAcc?.name}
                           </span>
-                        ) : tx.type === 'Mal Alımı' ? (
+                        ) : tx.type === 'Mal Alışı' ? (
                           <span className="text-[11px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/70 border border-amber-200 dark:border-amber-800/60 px-2 py-0.5 rounded-md">
                             Tedarikçi Borcu
                           </span>
@@ -459,7 +457,7 @@ export const TransactionsTab: React.FC = () => {
                           <span className="truncate font-medium text-slate-800 dark:text-slate-200">{tx.desc || '-'}</span>
                           {tx.isPosOffset && (
                             <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 shrink-0">
-                              POS Mahsup ➔ {tx.supplierCariName || 'Tedarikçi'}
+                              POS Mahsup → {tx.supplierCariName || 'Tedarikçi'}
                             </span>
                           )}
                           {tx.pendingDeletion && (
@@ -468,7 +466,7 @@ export const TransactionsTab: React.FC = () => {
                               Silme Onayı Bekliyor
                             </span>
                           )}
-                          {tx.dueDate && tx.type === 'Mal Alımı' && (
+                          {tx.dueDate && tx.type === 'Mal Alışı' && (
                             <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0">
                               Vade: {formatDate(tx.dueDate)}
                             </span>
@@ -494,16 +492,16 @@ export const TransactionsTab: React.FC = () => {
                         className={`py-3 px-4 text-right font-mono-num font-bold whitespace-nowrap ${
                           tx.type === 'Gelir'
                             ? 'text-emerald-600 dark:text-emerald-400'
-                            : tx.type === 'Mal Alımı'
+                            : tx.type === 'Mal Alışı'
                             ? 'text-amber-600 dark:text-amber-400'
                             : tx.type === 'Gider'
                             ? 'text-rose-600 dark:text-rose-400'
                             : 'text-blue-600 dark:text-blue-400'
                         }`}
                       >
-                        {tx.type === 'Gelir' ? '+' : tx.type === 'Gider' ? '-' : tx.type === 'Mal Alımı' ? '-' : ''}
+                        {tx.type === 'Gelir' ? '+' : tx.type === 'Gider' ? '-' : tx.type === 'Mal Alışı' ? '-' : ''}
                         {formatCurrency(tx.amount)}
-                        {tx.type === 'Mal Alımı' && (
+                        {tx.type === 'Mal Alışı' && (
                           <span className="block text-[10px] font-normal text-amber-500">Borç</span>
                         )}
                       </td>

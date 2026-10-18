@@ -28,7 +28,6 @@ export const CurrentsTab: React.FC<CurrentsTabProps> = ({
   onSelectCariDetail,
 }) => {
   const { caris, deleteCari, openTransactionModal } = useFinance();
-
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<'All' | CariType>('All');
 
@@ -80,7 +79,7 @@ export const CurrentsTab: React.FC<CurrentsTabProps> = ({
       type: 'Gider',
       cariId: cari.id,
       cariName: cari.name,
-      category: 'Stok & Mal Alımı',
+      category: 'Stok & Mal Alışı',
       desc: `${cari.name} cari ödemesi`,
       amount: cari.balance < 0 ? Math.abs(cari.balance) : undefined,
     });
@@ -234,7 +233,7 @@ export const CurrentsTab: React.FC<CurrentsTabProps> = ({
                   {cari.name}
                 </h3>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  {cari.city || 'Şehir belirtilmedi'} {cari.taxOffice ? `· ${cari.taxOffice}` : ''}
+                  {cari.city || 'Şehir belirtilmedi'} {cari.taxOffice ? `• ${cari.taxOffice}` : ''}
                 </p>
 
                 {/* Balance display */}
@@ -280,7 +279,6 @@ export const CurrentsTab: React.FC<CurrentsTabProps> = ({
                 >
                   <FileSpreadsheet className="w-3.5 h-3.5" /> Ekstre Gör
                 </button>
-
                 <div className="flex items-center gap-1.5">
                   <button
                     onClick={e => handleQuickCollect(cari, e)}

@@ -1,11 +1,11 @@
-export type TransactionType = 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alımı';
+export type TransactionType = 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alışı';
 
 export type TransactionStatus = 'Tamamlandı' | 'Beklemede' | 'İptal';
 
 export interface Transaction {
   id: string;
   date: string;
-  dueDate?: string; // Mal alımı için ödeme / vade tarihi
+  dueDate?: string; // Mal alışı ödeme / vade tarihi
   type: TransactionType;
   category: string;
   cariId?: string;
@@ -159,7 +159,7 @@ export interface DeletionRequest {
 export interface AuditLogEntry {
   id: string;
   action: 'Ekleme' | 'Güncelleme' | 'Silme Talebi' | 'Silme Onayı' | 'Silme Reddi' | 'Kalıcı Silme';
-  entityType: 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alımı' | 'Cari' | 'Hesap' | 'Personel' | 'Sistem' | 'Satış' | 'Stok';
+  entityType: 'Gelir' | 'Gider' | 'Transfer' | 'Mal Alışı' | 'Cari' | 'Hesap' | 'Personel' | 'Sistem' | 'Satış' | 'Stok';
   entityId: string;
   description: string;
   performedBy: string;
@@ -193,8 +193,8 @@ export interface SaleRecord {
   costPrice: number; // Birim alış maliyeti
   totalCost: number; // quantity * costPrice
   saleType: SaleType;
-  installmentsCount?: number; // Senetli satış taksit sayısı (örn: 6, 12, 18, 24)
-  vadeRateMonthly?: number; // Tanımlardan alınan aylık vade farkı oranı (% örn: 3.5)
+  installmentsCount?: number; // Senetli satış taksit sayısı (örnek: 6, 12, 18, 24)
+  vadeRateMonthly?: number; // Tanımlardan alınan aylık vade farkı oranı (% örnek: 3.5)
   vadeFarkiAmount?: number; // Senetli satış için hesaplanan toplam vade farkı maliyeti
   effectiveCost: number; // Ürün Maliyeti + Vade Farkı Maliyeti
   salePrice: number; // Birim satış fiyatı
@@ -299,7 +299,7 @@ export interface ProductBrand {
 export interface VadeRateEntry {
   id: string;
   monthKey: string; // YYYY-MM
-  rateMonthly: number; // Aylık Vade Farkı Oranı (%) örn: 3.5
+  rateMonthly: number; // Aylık Vade Farkı Oranı (%) Örn: 3.5
   notes?: string;
 }
 
@@ -330,7 +330,7 @@ export type ActiveTab =
 export interface CiroMatrixRow {
   id: string;
   group: 'BEYAZ EŞYA' | 'MOBİLYA';
-  name: string; // Marka / Kategori adı: ALTUS, UĞUR, HOOVER, KEA, TV, BOSCH, MEDİSA, MOBİLYA, YATAK, BAMBİ vs.
+  name: string; // Marka / Kategori adı: ALTUS, UĞUR, HOOVER, İKEA, TV, BOSCH, MEDİSA, MOBİLYA, YATAK, BAMBİ vs.
   profitMargin: number; // Ortalama Kârlılık (%)
   months: { [monthIndex: number]: number }; // 0: Ocak, 1: Şubat, ..., 11: Aralık (tutar)
   isLiveSynced?: boolean;

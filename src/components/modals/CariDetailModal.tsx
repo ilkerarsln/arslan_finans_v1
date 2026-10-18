@@ -83,7 +83,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
       type: 'Gider',
       cariId: cari.id,
       cariName: cari.name,
-      category: 'Stok & Mal Alımı',
+      category: 'Stok & Mal Alışı',
       desc: `${cari.name} ödemesi`,
       amount: cari.balance < 0 ? Math.abs(cari.balance) : undefined,
     });
@@ -99,7 +99,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
               <span className="text-xs uppercase font-bold text-slate-400 tracking-wider">
                 {cari.type}
               </span>
-              <span className="text-slate-300 dark:text-slate-700">·</span>
+              <span className="text-slate-300 dark:text-slate-700">•</span>
               <span className="text-xs text-slate-500">{cari.city || 'Belirtilmedi'}</span>
             </div>
             <h3 className="text-xl font-bold text-slate-900 dark:text-white mt-1">
@@ -116,7 +116,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
             {isAdmin ? (
               <button
                 onClick={() => {
-                  if (window.confirm(`"${cari.name}" cari kartını silmek istediğinize emin misiniz?`)) {
+                  if (window.confirm(`"${cari.name}" cari kartı silmek istediğinize emin misiniz?`)) {
                     deleteCari(cari.id);
                     onClose();
                   }
@@ -131,7 +131,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
               <button
                 onClick={() => {
                   const reason = window.prompt(
-                    `"${cari.name}" cari kartını silmek için Yönetici (Admin) onayına gerekçe iletiniz:`,
+                    `"${cari.name}" cari kartı silmek için Yönetici (Admin) onayına gerekçe iletiniz:`,
                     'Cari kapatıldı / mükerrer kayıt'
                   );
                   if (reason !== null && reason.trim()) {
@@ -177,7 +177,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
                 ? 'Alacağımız Var'
                 : cari.balance < 0
                 ? 'Borcumuz Var'
-                : 'Bakiye Kapalı (0.00)'}
+                : 'Bakiye Kapalı (₺0.00)'}
             </span>
           </div>
 
@@ -220,7 +220,7 @@ export const CariDetailModal: React.FC<CariDetailModalProps> = ({
               }}
               className="w-full py-1.5 px-3 text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg flex items-center justify-center gap-1.5 transition shadow-xs"
             >
-              <Layers className="w-3.5 h-3.5" /> Taksit Planı Başlat
+              <Layers className="w-3.5 h-3.5" /> Taksit Planı
             </button>
           </div>
         </div>

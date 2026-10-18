@@ -25,7 +25,7 @@ import * as XLSX from 'xlsx';
 
 const MONTH_NAMES_SHORT = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
 ];
 
 export const CiroMatrixTab: React.FC = () => {
@@ -156,11 +156,6 @@ export const CiroMatrixTab: React.FC = () => {
   const growthRate = prevYearGrandTotal > 0 ? +((growthDiff / prevYearGrandTotal) * 100).toFixed(1) : 0;
   const monthlyAverage = grandTotals.totalRevenue / 12;
 
-  // Live sales count and sum for selected year
-  const liveSalesForYear = useMemo(() => {
-    return sales.filter(s => s.date.startsWith(String(selectedYear)));
-  }, [sales, selectedYear]);
-
   // Cell editing handlers
   const handleStartEditCell = (rowId: string, monthIndex: number, currentVal: number) => {
     setEditingCell({ rowId, monthIndex });
@@ -175,7 +170,6 @@ export const CiroMatrixTab: React.FC = () => {
   const handleSaveEdit = () => {
     if (!editingCell) return;
     const num = parseFloat(editValue.replace(/\./g, '').replace(',', '.')) || 0;
-
     if (editingCell.isMargin) {
       updateMatrixMargin(selectedYear, editingCell.rowId, num);
     } else if (editingCell.monthIndex !== undefined) {
@@ -287,7 +281,7 @@ export const CiroMatrixTab: React.FC = () => {
               Finansal Raporlar & Analizler
             </h2>
             <p className="text-xs text-slate-300">
-              Excel uyumlu ciro matrisi, nakit akış projeksiyonları ve kategori bazlı finansal analizler.
+              Excel uyumlu ciro matrisi, nakit akışı projeksiyonları ve kategori bazlı finansal analizler.
             </p>
           </div>
         </div>
@@ -314,7 +308,6 @@ export const CiroMatrixTab: React.FC = () => {
           <FileSpreadsheet className="w-4 h-4" />
           <span>Ciro & Finansal Analiz Matrisi (Excel Uyumlu)</span>
         </button>
-
         <button
           onClick={() => setActiveSubTab('flow_trend')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${
@@ -326,7 +319,6 @@ export const CiroMatrixTab: React.FC = () => {
           <TrendingUp className="w-4 h-4" />
           <span>Aylık Nakit Akış Trendi</span>
         </button>
-
         <button
           onClick={() => setActiveSubTab('category_chart')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition ${
@@ -372,7 +364,6 @@ export const CiroMatrixTab: React.FC = () => {
                 <Upload className="w-3.5 h-3.5" />
                 <span>Ciro Excel İçe Aktar</span>
               </button>
-
               <button
                 onClick={handleExportMatrixExcel}
                 className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition shadow-sm active:scale-95"
@@ -380,7 +371,6 @@ export const CiroMatrixTab: React.FC = () => {
                 <Download className="w-3.5 h-3.5" />
                 <span>Excel'e Aktar (.xlsx)</span>
               </button>
-
               <button
                 onClick={resetMatrixData}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-semibold transition active:scale-95 border border-slate-200 dark:border-slate-700"
@@ -410,7 +400,6 @@ export const CiroMatrixTab: React.FC = () => {
                   {year} Yılı
                 </button>
               ))}
-
               <button
                 onClick={handleAddYearPrompt}
                 className="flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-950/80 border border-indigo-200 dark:border-indigo-800 transition"
@@ -489,12 +478,12 @@ export const CiroMatrixTab: React.FC = () => {
               </div>
             </div>
 
-            {/* Kart 2: Önceki Yıl Büyüme Farkı */}
+            {/* Kart 2: Önceki Yıla Göre Büyüme Farkı */}
             <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
               <div className="flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400">
                 <span>{selectedYear - 1} Büyüme Farkı</span>
                 <span className="w-4 h-4 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-[10px] font-bold">
-                  ↗
+                  ↑
                 </span>
               </div>
               <div className="text-xl font-bold font-mono-num text-emerald-600 dark:text-emerald-400 mt-1.5">
@@ -571,10 +560,9 @@ export const CiroMatrixTab: React.FC = () => {
             <div className="flex items-center gap-2">
               <Info className="w-4 h-4 text-sky-400 shrink-0" />
               <span>
-                <strong className="text-white">Excel Doğrudan Düzenleme:</strong> Tablodaki herhangi bir ay hücresine veya <strong className="text-emerald-400">Ortalama Kârlılık %</strong> alanına tıklayıp doğrudan yeni tutarı yazabilirsiniz. Enter veya dışarı tıklama ile anında tüm alt toplamlar ve kârlar hesaplanır.
+                <strong className="text-white">Excel Doğrudan Düzenleme:</strong> Tablodaki herhangi bir ay hücresine veya <strong className="text-emerald-400">Ortalama Kârlılık %</strong> alanına tıklayıp doğrudan yeni tutarı yazabilirsiniz. Enter veya dış tıklama ile anında tüm alt toplamlar ve kârlar hesaplanır.
               </span>
             </div>
-
             <div className="flex items-center gap-3 shrink-0 text-[11px]">
               <span className="flex items-center gap-1.5">
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -609,7 +597,6 @@ export const CiroMatrixTab: React.FC = () => {
                     </th>
                   </tr>
                 </thead>
-
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-mono-num text-slate-700 dark:text-slate-300">
                   {/* BEYAZ EŞYA GRUBU */}
                   {beyazEsyaRows.map(row => {
@@ -866,10 +853,10 @@ export const CiroMatrixTab: React.FC = () => {
         <div className="space-y-4">
           <div className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
             <h3 className="font-bold text-slate-900 dark:text-white text-base mb-1">
-              Aylık Nakit Akış ve Tahsilat Trendi
+              Aylık Nakit Akışı ve Tahsilat Trendi
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-              Geçmiş ve mevcut ayların gelir, gider ve net likit değişim trend grafiği.
+              Geçmiş ve mevcut ayların gelir, gider ve net likit değişim trend grafiği
             </p>
             <MonthlyFlowChart transactions={transactions} upcomingDues={upcomingDues} />
           </div>
@@ -884,7 +871,7 @@ export const CiroMatrixTab: React.FC = () => {
               Gelir ve Gider Kategori Dağılım Grafiği
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-              Şirket harcamaları ve satış gelirlerinin kategorisel dağılımı.
+              Şirket harcamaları ve satış gelirlerinin kategorisel dağılımı
             </p>
             <CategoryBreakdownChart transactions={transactions} />
           </div>

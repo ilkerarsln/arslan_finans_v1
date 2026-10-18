@@ -71,9 +71,8 @@ export const INITIAL_CATEGORIES: CategoryItem[] = [
   { id: 'cat-inc-2', name: 'Senet Tahsilatı', type: 'Gelir', color: '#06b6d4' },
   { id: 'cat-inc-3', name: 'Cari Hesap Tahsilatı', type: 'Gelir', color: '#8b5cf6' },
   { id: 'cat-inc-4', name: 'Servis & Montaj Hizmeti', type: 'Gelir', color: '#64748b' },
-
   // Gider Kategorileri
-  { id: 'cat-exp-1', name: 'Mal / Stok Alımı', type: 'Gider', color: '#3b82f6' },
+  { id: 'cat-exp-1', name: 'Mal / Stok Alışı', type: 'Gider', color: '#3b82f6' },
   { id: 'cat-exp-2', name: 'Kira & Mağaza Gideri', type: 'Gider', color: '#f59e0b' },
   { id: 'cat-exp-3', name: 'Personel & Maaş & Prim', type: 'Gider', color: '#8b5cf6' },
   { id: 'cat-exp-4', name: 'Elektrik / Su / Doğalgaz', type: 'Gider', color: '#06b6d4' },
@@ -103,10 +102,9 @@ export const INITIAL_SUB_CATEGORIES: ProductSubCategory[] = [
   { id: 'sub-masa', categoryId: 'pcat-mobilya', categoryName: 'MOBİLYA', name: 'MASA' },
   { id: 'sub-aksesuar', categoryId: 'pcat-mobilya', categoryName: 'MOBİLYA', name: 'AKSESUAR' },
   { id: 'sub-medisa', categoryId: 'pcat-mobilya', categoryName: 'MOBİLYA', name: 'MEDİSA' },
-
   // BEYAZ EŞYA Alt Kategorileri
   { id: 'sub-altus', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', name: 'ALTUS' },
-  { id: 'sub-kea', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', name: 'KEA' },
+  { id: 'sub-kea', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', name: 'İKEA' },
   { id: 'sub-bosch', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', name: 'BOSCH' },
   { id: 'sub-hoover', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', name: 'HOOVER' },
   { id: 'sub-ugur', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', name: 'UGUR' },
@@ -152,10 +150,10 @@ export const INITIAL_PRODUCT_GROUPS: ProductGroup[] = [
   { id: 'pg-altus-17', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-altus', subCategoryName: 'ALTUS', name: 'ALTUS ÜSTTEN KAPAKLI DERİN DONDURUCU' },
   { id: 'pg-altus-18', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-altus', subCategoryName: 'ALTUS', name: 'ALTUS YOĞUŞMALI KURUTMA MAKİNELERİ' },
 
-  // 3. BEYAZ EŞYA -> KEA
-  { id: 'pg-kea-1', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-kea', subCategoryName: 'KEA', name: 'ALTUS KEA' },
-  { id: 'pg-kea-2', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-kea', subCategoryName: 'KEA', name: 'MUHTELİF KEA' },
-  { id: 'pg-kea-3', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-kea', subCategoryName: 'KEA', name: 'TEFAL KARCHER' },
+  // 3. BEYAZ EŞYA -> İKEA
+  { id: 'pg-kea-1', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-kea', subCategoryName: 'İKEA', name: 'ALTUS İKEA' },
+  { id: 'pg-kea-2', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-kea', subCategoryName: 'İKEA', name: 'MUHTELİF İKEA' },
+  { id: 'pg-kea-3', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-kea', subCategoryName: 'İKEA', name: 'TEFAL KARCHER' },
 
   // 4. BEYAZ EŞYA -> BOSCH
   { id: 'pg-bosch-1', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-bosch', subCategoryName: 'BOSCH', name: 'BOSCH' },
@@ -164,7 +162,7 @@ export const INITIAL_PRODUCT_GROUPS: ProductGroup[] = [
   { id: 'pg-hoover-1', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-hoover', subCategoryName: 'HOOVER', name: 'HOOVER BULAŞIK MAKİNELERİ' },
   { id: 'pg-hoover-2', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-hoover', subCategoryName: 'HOOVER', name: 'HOOVER ÇAMAŞIR MAKİNELERİ' },
   { id: 'pg-hoover-3', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-hoover', subCategoryName: 'HOOVER', name: 'HOOVER KURUTMA MAKİNELERİ' },
-  { id: 'pg-hoover-4', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-hoover', subCategoryName: 'HOOVER', name: 'HOOVER KURUTMALI ÇAMAŞIR MAKİNESİ' },
+  { id: 'pg-hoover-4', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-hoover', subCategoryName: 'HOOVER', name: 'HOOVER KURUTMALI ÇAMAŞIR MAK' },
 
   // 6. BEYAZ EŞYA -> UGUR
   { id: 'pg-ugur-1', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-ugur', subCategoryName: 'UGUR', name: 'UGUR ANKASTRE DAVLUMBAZ' },
@@ -172,20 +170,20 @@ export const INITIAL_PRODUCT_GROUPS: ProductGroup[] = [
   { id: 'pg-ugur-3', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-ugur', subCategoryName: 'UGUR', name: 'UGUR ANKASTRE OCAK' },
   { id: 'pg-ugur-4', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-ugur', subCategoryName: 'UGUR', name: 'UGUR BUZDOLABI' },
   { id: 'pg-ugur-5', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-ugur', subCategoryName: 'UGUR', name: 'UGUR CEKMECELI DONDURUCU' },
-  { id: 'pg-ugur-6', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-ugur', subCategoryName: 'UGUR', name: 'UGUR ÇAMAŞIR MAKİNESİ' },
-  { id: 'pg-ugur-7', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-ugur', subCategoryName: 'UGUR', name: 'UGUR KURUTMA MAKİNESİ' },
+  { id: 'pg-ugur-6', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-ugur', subCategoryName: 'UGUR', name: 'UGUR ÇAMAŞIR MAK' },
+  { id: 'pg-ugur-7', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-ugur', subCategoryName: 'UGUR', name: 'UGUR KURUTMA MAK' },
   { id: 'pg-ugur-8', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-ugur', subCategoryName: 'UGUR', name: 'UGUR NF CEKMECELİ DONDURUCU' },
   { id: 'pg-ugur-9', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-ugur', subCategoryName: 'UGUR', name: 'UGUR SETUSTU OCAK' },
   { id: 'pg-ugur-10', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-ugur', subCategoryName: 'UGUR', name: 'UGUR SU ARITMA' },
   { id: 'pg-ugur-11', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-ugur', subCategoryName: 'UGUR', name: 'UGUR ÜSTTEN KAPAKLI DONDURUCU' },
-  { id: 'pg-ugur-12', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-ugur', subCategoryName: 'UGUR', name: 'UGUR BULASIK MAKİNESİ' },
+  { id: 'pg-ugur-12', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-ugur', subCategoryName: 'UGUR', name: 'UGUR BULASIK MAK' },
 
   // 7. MOBİLYA -> MOBİLYA
   { id: 'pg-mob-1', categoryId: 'pcat-mobilya', categoryName: 'MOBİLYA', subCategoryId: 'sub-mobilya', subCategoryName: 'MOBİLYA', name: 'AKABE' },
   { id: 'pg-mob-2', categoryId: 'pcat-mobilya', categoryName: 'MOBİLYA', subCategoryId: 'sub-mobilya', subCategoryName: 'MOBİLYA', name: 'ANKARA MOBİLYA' },
   { id: 'pg-mob-3', categoryId: 'pcat-mobilya', categoryName: 'MOBİLYA', subCategoryId: 'sub-mobilya', subCategoryName: 'MOBİLYA', name: 'AYTASHOME' },
-  { id: 'pg-mob-4', categoryId: 'pcat-mobilya', categoryName: 'MOBİLYA', subCategoryId: 'sub-mobilya', subCategoryName: 'MOBİLYA', name: 'BENİMODAM' },
-  { id: 'pg-mob-5', categoryId: 'pcat-mobilya', categoryName: 'MOBİLYA', subCategoryId: 'sub-mobilya', subCategoryName: 'MOBİLYA', name: 'HALİ' },
+  { id: 'pg-mob-4', categoryId: 'pcat-mobilya', categoryName: 'MOBİLYA', subCategoryId: 'sub-mobilya', subCategoryName: 'MOBİLYA', name: 'BEN MODAM' },
+  { id: 'pg-mob-5', categoryId: 'pcat-mobilya', categoryName: 'MOBİLYA', subCategoryId: 'sub-mobilya', subCategoryName: 'MOBİLYA', name: 'HALİÇ' },
   { id: 'pg-mob-6', categoryId: 'pcat-mobilya', categoryName: 'MOBİLYA', subCategoryId: 'sub-mobilya', subCategoryName: 'MOBİLYA', name: 'İPEK' },
   { id: 'pg-mob-7', categoryId: 'pcat-mobilya', categoryName: 'MOBİLYA', subCategoryId: 'sub-mobilya', subCategoryName: 'MOBİLYA', name: 'LADİN' },
   { id: 'pg-mob-8', categoryId: 'pcat-mobilya', categoryName: 'MOBİLYA', subCategoryId: 'sub-mobilya', subCategoryName: 'MOBİLYA', name: 'ÖREN MOBİLYA' },
@@ -218,7 +216,7 @@ export const INITIAL_PRODUCT_GROUPS: ProductGroup[] = [
   { id: 'pg-tv-1', categoryId: 'pcat-beyazesya', categoryName: 'BEYAZ EŞYA', subCategoryId: 'sub-tv', subCategoryName: 'TV', name: 'SKYTECH' },
 ];
 
-// Markalar (Kullanıcının talep ettiği ve daha önce yüklenen tam liste)
+// Markalar
 export const INITIAL_BRANDS: ProductBrand[] = [
   { id: 'brand-1', name: 'Bambi', categoryNames: ['Yatak & Baza', 'Mobilya'] },
   { id: 'brand-2', name: 'Altus', categoryNames: ['Beyaz Eşya', 'Televizyon & Elektronik (TV)'] },
@@ -226,13 +224,13 @@ export const INITIAL_BRANDS: ProductBrand[] = [
   { id: 'brand-4', name: 'Hoover', categoryNames: ['Beyaz Eşya'] },
   { id: 'brand-5', name: 'Uğur', categoryNames: ['Beyaz Eşya'] },
   { id: 'brand-6', name: 'Medisa', categoryNames: ['Mobilya', 'Yatak & Baza'] },
-  { id: 'brand-7', name: 'Kea', categoryNames: ['Mobilya', 'Masa & Sandalye', 'Aksesuar & Ev Tekstili'] },
+  { id: 'brand-7', name: 'İkea', categoryNames: ['Mobilya', 'Masa & Sandalye', 'Aksesuar & Ev Tekstili'] },
   { id: 'brand-8', name: 'Arçelik', categoryNames: ['Beyaz Eşya', 'Televizyon & Elektronik (TV)'] },
   { id: 'brand-9', name: 'Beko', categoryNames: ['Beyaz Eşya'] },
   { id: 'brand-10', name: 'Vestel', categoryNames: ['Beyaz Eşya', 'Televizyon & Elektronik (TV)'] },
 ];
 
-// Aylık Vade Farkı Oranları (Tanımlardan yönetilir, senetli satışta taksit sayısına göre otomatik maliyete eklenir)
+// Aylık Vade Farkı Oranları
 export const INITIAL_VADE_RATES: VadeRateEntry[] = [
   { id: 'vr-1', monthKey: '2026-10', rateMonthly: 3.5, notes: 'Ekim 2026 Standart Senet Vade Farkı Oranı' },
   { id: 'vr-2', monthKey: '2026-09', rateMonthly: 3.5, notes: 'Eylül 2026 Vade Farkı Oranı' },
@@ -246,9 +244,8 @@ export const INITIAL_PRICE_LISTS: PriceListEntry[] = [
   { id: 'pl-2', monthKey: '2026-09', title: 'Eylül 2026 Beyaz Eşya Fiyat Listesi', categoryName: 'Beyaz Eşya', itemsCount: 28, notes: 'Bosch & Altus bayi tavsiye fiyatları' },
 ];
 
-// Ortak Cari Hesaplar (Tedarikçiler ve Müşteriler tek ortak tabloda)
+// Ortak Cari Hesaplar
 export const INITIAL_CARIS: Cari[] = [
-  // Tedarikçiler (Borçlu Olduğumuz, Bakiye Negatif)
   {
     id: 'sup-bosch',
     name: 'Bosch Ev Aletleri San. Tic. A.Ş.',
@@ -311,7 +308,7 @@ export const INITIAL_CARIS: Cari[] = [
   },
   {
     id: 'sup-kea',
-    name: 'Kea Mobilya & Masa Tasarım',
+    name: 'İkea Mobilya & Masa Tasarım',
     type: 'Tedarikçi',
     phone: '0352 321 4455',
     email: 'satis@keamobilya.com',
@@ -319,8 +316,6 @@ export const INITIAL_CARIS: Cari[] = [
     balance: -31000,
     notes: 'Yemek masası takımları ve sandalyeler',
   },
-
-  // Müşteriler (Alacaklı Olduğumuz, Bakiye Pozitif)
   {
     id: 'cus-1',
     name: 'Ahmet Yılmaz',
@@ -350,7 +345,7 @@ export const INITIAL_CARIS: Cari[] = [
   },
 ];
 
-// Stok Kartları (3 Seviyeli Hiyerarşik Yapı: Ana Kategori > Alt Kategori > Ürün Grubu)
+// Stok Kartları
 export const INITIAL_STOCK_ITEMS: StockItem[] = [
   {
     id: 'stk-1',
@@ -507,13 +502,13 @@ export const INITIAL_STOCK_ITEMS: StockItem[] = [
   {
     id: 'stk-9',
     code: 'MASA-SANDALYE',
-    name: 'Kea Açılır Masa Sandalye Takımı (Masa + 6 Sandalye)',
+    name: 'İkea Açılır Masa Sandalye Takımı (Masa + 6 Sandalye)',
     category: 'MOBİLYA',
     subCategory: 'MASA',
     productGroup: 'MASA SANDALYE',
-    brand: 'Kea',
+    brand: 'İkea',
     supplierId: 'sup-kea',
-    supplierName: 'Kea Mobilya & Masa Tasarım',
+    supplierName: 'İkea Mobilya & Masa Tasarım',
     quantity: 7,
     unit: 'Takım',
     purchasePrice: 14200,
@@ -526,7 +521,7 @@ export const INITIAL_STOCK_ITEMS: StockItem[] = [
   {
     id: 'stk-10',
     code: 'SKYTECH-55',
-    name: 'Skytech 55 Inç 4K Ultra HD Smart WebOS LED TV',
+    name: 'Skytech 55 İnç 4K Ultra HD Smart WebOS LED TV',
     category: 'BEYAZ EŞYA',
     subCategory: 'TV',
     productGroup: 'SKYTECH',
@@ -544,7 +539,7 @@ export const INITIAL_STOCK_ITEMS: StockItem[] = [
   },
 ];
 
-// Kâr Takip Satış Kayıtları (3 Seviyeli Hiyerarşik Yapı)
+// Satış Kayıtları
 export const INITIAL_SALES: SaleRecord[] = [
   {
     id: 'sale-1',
@@ -566,8 +561,8 @@ export const INITIAL_SALES: SaleRecord[] = [
     saleType: 'Senetli Satış',
     installmentsCount: 12,
     vadeRateMonthly: 3.5,
-    vadeFarkiAmount: 15960, // 38000 * (3.5% * 12) = 15960 TL
-    effectiveCost: 53960, // Maliyet + Vade Farkı
+    vadeFarkiAmount: 15960,
+    effectiveCost: 53960,
     salePrice: 68500,
     totalSaleAmount: 68500,
     netProfit: 14540,
@@ -639,68 +634,9 @@ export const INITIAL_SALES: SaleRecord[] = [
     createdAt: '2026-10-10T11:00:00Z',
     createdBy: 'ilkerarslan78@gmail.com',
   },
-  {
-    id: 'sale-4',
-    date: '2026-09-25',
-    documentNo: 'FAT-2026-0840',
-    customerName: 'Kemal Öztürk',
-    productId: 'stk-9',
-    productName: 'Kea Açılır Masa Sandalye Takımı (Masa + 6 Sandalye)',
-    category: 'MOBİLYA',
-    subCategory: 'MASA',
-    productGroup: 'MASA SANDALYE',
-    brand: 'Kea',
-    supplierId: 'sup-kea',
-    supplierName: 'Kea Mobilya & Masa Tasarım',
-    quantity: 1,
-    costPrice: 14200,
-    totalCost: 14200,
-    saleType: 'Senetli Satış',
-    installmentsCount: 9,
-    vadeRateMonthly: 3.5,
-    vadeFarkiAmount: 4473, // 14200 * (3.5% * 9) = 4473 TL
-    effectiveCost: 18673,
-    salePrice: 24500,
-    totalSaleAmount: 24500,
-    netProfit: 5827,
-    profitMargin: 23.8,
-    salesPerson: 'Muhasebe Sorumlusu',
-    accountId: 'acc-kasa',
-    notes: '9 ay senet imzalandı.',
-    createdAt: '2026-09-25T16:20:00Z',
-    createdBy: 'muhasebe',
-  },
-  {
-    id: 'sale-5',
-    date: '2026-10-05',
-    documentNo: 'FAT-2026-0855',
-    customerName: 'Derya Şahin',
-    productId: 'stk-2',
-    productName: 'Altus 4 Programlı Bulaşık Makinesi AL 444 DX',
-    category: 'BEYAZ EŞYA',
-    subCategory: 'ALTUS',
-    productGroup: 'ALTUS BULAŞIK MAKİNELERİ',
-    brand: 'Altus',
-    supplierId: 'sup-altus',
-    supplierName: 'Altus / Arçelik Pazarlama A.Ş.',
-    quantity: 1,
-    costPrice: 11200,
-    totalCost: 11200,
-    saleType: 'Peşin',
-    effectiveCost: 11200,
-    salePrice: 15900,
-    totalSaleAmount: 15900,
-    netProfit: 4700,
-    profitMargin: 29.6,
-    salesPerson: 'İlker Arslan',
-    accountId: 'acc-kasa',
-    notes: 'Nakit tahsilat',
-    createdAt: '2026-10-05T13:40:00Z',
-    createdBy: 'ilkerarslan78@gmail.com',
-  },
 ];
 
-// Örnek Mal Alımı Faturaları (3 Seviyeli Hiyerarşik Yapı)
+// Mal Alım Faturaları
 export const INITIAL_PURCHASES: StockPurchaseRecord[] = [
   {
     id: 'pur-1',
@@ -765,34 +701,6 @@ export const INITIAL_PURCHASES: StockPurchaseRecord[] = [
     dueDate: '2026-11-28',
     notes: 'Altus bayi sevkiyatı',
     createdAt: '2026-09-28T10:15:00Z',
-    createdBy: 'admin',
-    createdByName: 'İlker Arslan',
-  },
-  {
-    id: 'pur-3',
-    date: '2026-10-04',
-    documentNo: 'İRS-BAMBI-4122',
-    supplierId: 'sup-bambi',
-    supplierName: 'Bambi Yatak & Mobilya A.Ş.',
-    items: [
-      {
-        productId: 'stk-6',
-        name: 'Bambi Magnasand Therapy Çift Kişilik Yatak 160x200',
-        category: 'MOBİLYA',
-        subCategory: 'BAMBİ',
-        productGroup: 'BAMBİ YATAK',
-        brand: 'Bambi',
-        quantity: 5,
-        unitPrice: 13500,
-        totalPrice: 67500,
-        salePrice: 19800,
-      },
-    ],
-    totalAmount: 67500,
-    paymentType: 'Vadeli (Cari Borca Ekle)',
-    dueDate: '2026-11-20',
-    notes: 'Yeni yatak modelleri stok alımı',
-    createdAt: '2026-10-04T13:30:00Z',
     createdBy: 'admin',
     createdByName: 'İlker Arslan',
   },
@@ -872,7 +780,7 @@ export const INITIAL_UPCOMING_DUES: UpcomingDue[] = [
     dueDate: '2026-10-25',
     cariId: 'sup-bosch',
     cariName: 'Bosch Ev Aletleri San. Tic. A.Ş.',
-    category: 'Mal / Stok Alımı',
+    category: 'Mal / Stok Alışı',
     isCompleted: false,
     recurrence: 'Tek Seferlik',
     accountId: 'acc-banka',
@@ -892,13 +800,13 @@ export const INITIAL_UPCOMING_DUES: UpcomingDue[] = [
   },
   {
     id: 'due-3',
-    title: 'Bambi Yatak Vadeli Çek Ödemesi',
+    title: 'Bambi Yatak Vadeli Ödemesi',
     type: 'Gider',
     amount: 46000,
     dueDate: '2026-11-05',
     cariId: 'sup-bambi',
     cariName: 'Bambi Yatak & Mobilya A.Ş.',
-    category: 'Mal / Stok Alımı',
+    category: 'Mal / Stok Alışı',
     isCompleted: false,
     recurrence: 'Tek Seferlik',
     accountId: 'acc-banka',
@@ -934,7 +842,7 @@ export const INITIAL_CIRO_MATRIX_DATA: CiroMatrixYearData[] = [
       {
         id: 'cm-2024-kea',
         group: 'BEYAZ EŞYA',
-        name: 'KEA',
+        name: 'İKEA',
         profitMargin: 40,
         months: { 0: 12000, 1: 17000, 2: 36000, 3: 62000, 4: 18000, 5: 20000, 6: 85000, 7: 65000, 8: 72000, 9: 90000, 10: 80000, 11: 97000 },
       },
@@ -1023,7 +931,7 @@ export const INITIAL_CIRO_MATRIX_DATA: CiroMatrixYearData[] = [
       {
         id: 'cm-2025-kea',
         group: 'BEYAZ EŞYA',
-        name: 'KEA',
+        name: 'İKEA',
         profitMargin: 40,
         months: { 0: 24600, 1: 34650, 2: 72250, 3: 125844, 4: 37298, 5: 41900, 6: 171660, 7: 130000, 8: 145000, 9: 180000, 10: 160000, 11: 195000 },
       },
@@ -1112,7 +1020,7 @@ export const INITIAL_CIRO_MATRIX_DATA: CiroMatrixYearData[] = [
       {
         id: 'cm-2026-kea',
         group: 'BEYAZ EŞYA',
-        name: 'KEA',
+        name: 'İKEA',
         profitMargin: 40,
         months: { 0: 35000, 1: 45000, 2: 95000, 3: 160000, 4: 50000, 5: 60000, 6: 220000, 7: 175000, 8: 190000, 9: 235000, 10: 210000, 11: 255000 },
       },
@@ -1170,9 +1078,8 @@ export const INITIAL_CIRO_MATRIX_DATA: CiroMatrixYearData[] = [
         group: 'MOBİLYA',
         name: 'AKSESUAR',
         profitMargin: 55,
-        months: { 0: 14000, 1: 20000, 2: 28000, 3: 38000, 4: 52000, 5: 62000, 7: 75000, 8: 85000, 9: 95000, 10: 82000, 11: 112000 },
+        months: { 0: 14000, 1: 20000, 2: 28000, 3: 38000, 4: 52000, 5: 62000, 6: 26000, 7: 75000, 8: 85000, 9: 95000, 10: 82000, 11: 112000 },
       },
     ],
   },
 ];
-

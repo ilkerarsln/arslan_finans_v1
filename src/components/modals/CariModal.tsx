@@ -82,7 +82,6 @@ export const CariModal: React.FC<CariModalProps> = ({
         notes: notes.trim() || undefined,
       });
     }
-
     onClose();
   };
 
@@ -123,6 +122,7 @@ export const CariModal: React.FC<CariModalProps> = ({
                 <option value="Diğer">Diğer Ortak / Kurum</option>
               </select>
             </div>
+
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Şehir
@@ -164,6 +164,7 @@ export const CariModal: React.FC<CariModalProps> = ({
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
+
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 E-posta Adresi
@@ -191,6 +192,7 @@ export const CariModal: React.FC<CariModalProps> = ({
                 className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
+
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                 Vergi / TCKN No

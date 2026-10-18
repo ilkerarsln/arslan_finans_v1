@@ -29,7 +29,7 @@ import {
 
 const MONTH_NAMES_TR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
 ];
 
 export const ReportsTab: React.FC = () => {
@@ -78,7 +78,6 @@ export const ReportsTab: React.FC = () => {
     const now = new Date();
     const currentYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
     monthSet.add(currentYm);
-
     return Array.from(monthSet).sort().reverse();
   }, [transactions, upcomingDues]);
 
@@ -127,7 +126,7 @@ export const ReportsTab: React.FC = () => {
   const filteredExpenseTransactions = useMemo(() => {
     return transactions.filter(t => {
       if (t.status === 'İptal') return false;
-      if (t.type !== 'Gider' && t.type !== 'Mal Alımı') return false;
+      if (t.type !== 'Gider' && t.type !== 'Mal Alışı') return false;
       if (expenseYear !== 'ALL' && !t.date.startsWith(expenseYear)) return false;
       if (expenseMonth !== 'ALL') {
         const m = t.date.substring(5, 7);
@@ -150,7 +149,7 @@ export const ReportsTab: React.FC = () => {
       .sort((a, b) => b.total - a.total);
   }, [filteredExpenseTransactions]);
 
-  // Tedarikçi Masraf & Mal Alım Kırılımı (Tıklanabilir detay)
+  // Tedarikçi Masraf & Mal Alımları Kırılımı (Tıklanabilir detay)
   const supplierExpenses = useMemo(() => {
     const map = new Map<string, { count: number; total: number }>();
     filteredExpenseTransactions.forEach(t => {
@@ -175,7 +174,7 @@ export const ReportsTab: React.FC = () => {
     });
   }, [filteredExpenseTransactions, selectedDetailItem]);
 
-  // Mobilya ve Beyaz Eşya Kategorilerine Göre Stok & Kâr Dağılımı Tablosu
+  // Mobilya ve Beyaz Eşya Kategorilerine Göre Stok & Kâr Dağılım Tablosu
   const categoryDistribution = useMemo(() => {
     const totalWarehouseValue = stockItems.reduce((sum, s) => sum + s.totalValue, 0) || 1;
 
@@ -244,7 +243,7 @@ export const ReportsTab: React.FC = () => {
 
   const projected30DayCash = liquidCash + upcomingThisMonthIncome - upcomingThisMonthExpense;
 
-  // 3. Gelecek 3 Ayın Nakit Projeksiyonu Kutuları İçin Hesaplama
+  // 3. Gelecek 3 Ayın Nakit Projeksiyonu Kutuları için Hesaplama
   const upcomingFutureMonths = useMemo(() => {
     const result: { ym: string; label: string; income: number; expense: number; net: number }[] = [];
     const [currY, currM] = selectedYearMonth.split('-').map(Number);
@@ -330,7 +329,7 @@ export const ReportsTab: React.FC = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div>
           <h2 className="text-xl font-bold text-slate-900 dark:text-white">
-            Mali Raporlar & Nakit Akış Analizi
+            Mali Raporlar & Nakit Akışı Analizi
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
             Kar-Zarar (P&L), Likidite Dayanımı (Runway) ve Dönemsel Raporlama
@@ -364,12 +363,14 @@ export const ReportsTab: React.FC = () => {
           >
             <FileSpreadsheet className="w-3.5 h-3.5" /> Excel Dışa Aktar (.xlsx)
           </button>
+
           <button
             onClick={handlePrint}
             className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
           >
             <Printer className="w-3.5 h-3.5" /> Raporu Yazdır
           </button>
+
           <button
             onClick={handleExportJson}
             className="px-3.5 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
@@ -568,7 +569,7 @@ export const ReportsTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Rapor 1: Mobilya ve Beyaz Eşya Kategorilerine Göre Stok & Kâr Dağılımı (Kullanıcı Talebi 6) */}
+      {/* Rapor 1: Mobilya ve Beyaz Eşya Kategorilerine Göre Stok & Kâr Dağılımı */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
         <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
@@ -582,7 +583,6 @@ export const ReportsTab: React.FC = () => {
               Ana ürün kategorilerine göre güncel depo stok değeri, stok payı (%), satış cirosu ve elde edilen brüt kâr analizi
             </p>
           </div>
-
           <button
             onClick={() => setActiveTab('stock')}
             className="text-xs font-semibold text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-1 self-start sm:self-center"
@@ -623,19 +623,15 @@ export const ReportsTab: React.FC = () => {
                       </span>
                     </div>
                   </td>
-
                   <td className="py-3 px-4 text-slate-500 dark:text-slate-400 max-w-[200px] truncate">
                     {cat.subPreview}
                   </td>
-
                   <td className="py-3 px-3 text-center font-mono-num font-semibold text-slate-700 dark:text-slate-300">
                     {cat.itemCount} adet
                   </td>
-
                   <td className="py-3 px-4 text-right font-mono-num font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
                     {formatCurrency(cat.stokDegeri)}
                   </td>
-
                   <td className="py-3 px-4 text-center whitespace-nowrap">
                     <div className="flex items-center justify-center gap-1.5">
                       <span className="font-mono-num font-bold text-slate-700 dark:text-slate-300">
@@ -649,15 +645,12 @@ export const ReportsTab: React.FC = () => {
                       </div>
                     </div>
                   </td>
-
                   <td className="py-3 px-4 text-right font-mono-num font-bold text-slate-900 dark:text-white whitespace-nowrap">
                     {formatCurrency(cat.satisCirosu)}
                   </td>
-
                   <td className="py-3 px-4 text-right font-mono-num font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                     +{formatCurrency(cat.brutKar)}
                   </td>
-
                   <td className="py-3 px-4 text-center whitespace-nowrap">
                     <span
                       className={`font-mono-num font-bold px-2 py-0.5 rounded text-[11px] ${
@@ -677,7 +670,7 @@ export const ReportsTab: React.FC = () => {
             <tfoot className="bg-slate-50 dark:bg-slate-800/90 font-bold border-t-2 border-slate-200 dark:border-slate-700 text-xs">
               <tr>
                 <td className="py-3 px-4 text-slate-900 dark:text-white" colSpan={3}>
-                  GENEL TOPLAM DEPO STOK & SATIŞ DEĞERİ
+                  GENEL TOPLAM DEPO STOK & SATIŞ
                 </td>
                 <td className="py-3 px-4 text-right font-mono-num text-slate-900 dark:text-white">
                   {formatCurrency(totalDistStockValue)}
@@ -700,7 +693,7 @@ export const ReportsTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Rapor 2: Gider & Masraf Takibi ve Tedarikçi Harcamaları (Ay ve Yıl Seçimi + Tıklanabilir Detay) */}
+      {/* Rapor 2: Gider & Masraf Takibi ve Tedarikçi Harcamaları */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-5 space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-3">
           <div>
@@ -711,11 +704,10 @@ export const ReportsTab: React.FC = () => {
               </h3>
             </div>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Tedarikçi veya masraf satırlarının üzerine tıklayarak ilgili döneme ait aylık fatura ve işlem dökümlerini görüntüleyebilirsiniz.
+              Tedarikçi veya masraf satırları üzerine tıklayarak ilgili döneme ait aylık fatura ve işlem dökümlerini görüntüleyebilirsiniz.
             </p>
           </div>
 
-          {/* Ay ve Yıl Seçimi (Kullanıcı Talebi 6) */}
           <div className="flex flex-wrap items-center gap-2 shrink-0">
             <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl text-xs">
               <Calendar className="w-3.5 h-3.5 text-slate-400" />
@@ -740,7 +732,6 @@ export const ReportsTab: React.FC = () => {
                 <option value="12">Aralık</option>
               </select>
             </div>
-
             <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl text-xs">
               <span className="font-medium text-slate-500">Yıl:</span>
               <select
@@ -772,7 +763,7 @@ export const ReportsTab: React.FC = () => {
             <div className="space-y-2">
               {categoryExpenses.length === 0 ? (
                 <div className="p-6 text-center text-xs text-slate-400 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
-                  Seçilen ay ve yılda masraf kaydı bulunamadı.
+                  Seçilen ay ve yılda masraf kaydı bulunamadı
                 </div>
               ) : (
                 categoryExpenses.map(item => (
@@ -790,7 +781,6 @@ export const ReportsTab: React.FC = () => {
                         {item.count} adet işlem kaydı
                       </span>
                     </div>
-
                     <div className="flex items-center gap-2">
                       <span className="font-mono-num font-bold text-xs text-rose-600 dark:text-rose-400">
                         {formatCurrency(item.total)}
@@ -816,7 +806,7 @@ export const ReportsTab: React.FC = () => {
             <div className="space-y-2">
               {supplierExpenses.length === 0 ? (
                 <div className="p-6 text-center text-xs text-slate-400 bg-slate-50 dark:bg-slate-800/40 rounded-xl">
-                  Seçilen ay ve yılda tedarikçi harcaması bulunamadı.
+                  Seçilen ay ve yılda tedarikçi harcaması bulunamadı
                 </div>
               ) : (
                 supplierExpenses.map(item => (
@@ -834,7 +824,6 @@ export const ReportsTab: React.FC = () => {
                         {item.count} adet fatura/mal alımı
                       </span>
                     </div>
-
                     <div className="flex items-center gap-2">
                       <span className="font-mono-num font-bold text-xs text-amber-600 dark:text-amber-400">
                         {formatCurrency(item.total)}
@@ -849,7 +838,7 @@ export const ReportsTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Tıklanan Satır İçin Aylık Detay Modalı (Kullanıcı Talebi 6) */}
+      {/* Tıklanan Satır İçin Aylık Detay Modalı */}
       {selectedDetailItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 max-w-2xl w-full p-6 shadow-2xl space-y-4">
@@ -934,7 +923,7 @@ export const ReportsTab: React.FC = () => {
             Gelecek Dönem Nakit Projeksiyonları (Önümüzdeki 3 Ay)
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Vade takvimindeki kayıtlı çek, senet ve planlı ödemelere göre gelecek aylar
+            Vade takvimindeki kayıtlı çek, senet ve planlı ödemelere göre gelecek ayların net akışı
           </p>
         </div>
 
@@ -999,7 +988,7 @@ export const ReportsTab: React.FC = () => {
                 )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Ofis bilgisayarınız, telefonunuz ve tabletiniz aynı veritabanını kullanır. Yapılan her işlem tüm cihazlarınızda eşzamanlı görünür.
+                Ofis bilgisayarınız, telefonunuz ve tabletiniz aynı veritabanını kullanır. Yapılan her işlem tüm cihazlarınızda eş zamanlıdır.
               </p>
             </div>
           </div>
@@ -1011,7 +1000,7 @@ export const ReportsTab: React.FC = () => {
                   onClick={syncLocalToCloud}
                   disabled={isCloudSyncing}
                   className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-xs disabled:opacity-50"
-                  title="Mevcut tüm yerel verileri bulut veritabanına aktarır"
+                  title="Mevcut tüm yerel verileri bulut veritabanına aktar"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isCloudSyncing ? 'animate-spin' : ''}`} />
                   Tüm Verileri Buluta Eşitle
@@ -1052,10 +1041,10 @@ export const ReportsTab: React.FC = () => {
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs p-5 space-y-4">
         <div>
           <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-            Veri Güvenliği, Yedekleme & İçe/Dışa Aktarma
+            Veri Güvenliği, Yedekleme & Dışa Aktarma
           </h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Tüm işlem ve cari kayıtlarınızı JSON veya Excel (.xlsx / .xls) ile cihazınıza aktarabilir, yedek yükleyebilir veya sıfırlayabilirsiniz.
+            Tüm işlem ve cari kayıtlarını JSON veya Excel (.xlsx / .xls) ile cihazınıza aktarabilir, yedek yükleyebilir veya sıfırlayabilirsiniz.
           </p>
         </div>
 

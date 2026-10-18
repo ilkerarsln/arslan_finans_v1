@@ -39,7 +39,7 @@ export const TransactionModal: React.FC = () => {
   const [type, setType] = useState<TransactionType>('Gelir');
   const [amount, setAmount] = useState<string>('');
   const [date, setDate] = useState<string>('');
-  const [dueDate, setDueDate] = useState<string>(''); // Mal Alımı vade / ödeme tarihi
+  const [dueDate, setDueDate] = useState<string>(''); // Mal Alışı vade / ödeme tarihi
   const [category, setCategory] = useState<string>('');
   const [newCategoryName, setNewCategoryName] = useState<string>('');
   const [isAddingNewCategory, setIsAddingNewCategory] = useState(false);
@@ -50,6 +50,7 @@ export const TransactionModal: React.FC = () => {
   const [desc, setDesc] = useState<string>('');
   const [documentNo, setDocumentNo] = useState<string>('');
   const [editingId, setEditingId] = useState<string | null>(null);
+
   const [isInstallment, setIsInstallment] = useState(false);
   const [installmentsCount, setInstallmentsCount] = useState<number>(6);
   const [firstDueDate, setFirstDueDate] = useState<string>('');
@@ -92,7 +93,7 @@ export const TransactionModal: React.FC = () => {
         setFirstDueDate(targetDate);
         setCategory(
           prefillTransaction?.category ||
-            (prefillTransaction?.type === 'Mal Alımı' ? 'Mal Alımı' : '')
+            (prefillTransaction?.type === 'Mal Alışı' ? 'Mal Alışı' : '')
         );
         setCariName(prefillTransaction?.cariName || '');
         setCariId(prefillTransaction?.cariId || '');
@@ -103,6 +104,7 @@ export const TransactionModal: React.FC = () => {
         setDocumentNo(prefillTransaction?.documentNo || '');
         setIsInstallment(false);
         setInstallmentsCount(6);
+
         const isPos = Boolean(prefillTransaction?.isPosOffset || accounts.find(a => a.id === defaultAcc)?.type === 'POS Cihazı / Hesabı');
         setIsPosOffset(isPos);
         setSupplierCariId(prefillTransaction?.supplierCariId || '');
@@ -116,7 +118,7 @@ export const TransactionModal: React.FC = () => {
 
   const filteredCategories = categories.filter(c => {
     if (type === 'Transfer') return c.type === 'Gider';
-    if (type === 'Mal Alımı') return c.type === 'Gider';
+    if (type === 'Mal Alışı') return c.type === 'Gider';
     return c.type === type;
   });
 
@@ -151,9 +153,9 @@ export const TransactionModal: React.FC = () => {
       }
     }
 
-    // Auto-create or resolve Cari for Mal Alımı if typed
+    // Auto-create or resolve Cari for Mal Alışı if typed
     let finalCariId = cariId;
-    if (type === 'Mal Alımı' && cariName.trim() && !finalCariId) {
+    if (type === 'Mal Alışı' && cariName.trim() && !finalCariId) {
       const existing = caris.find(c => c.name.toLowerCase() === cariName.trim().toLowerCase());
       if (existing) {
         finalCariId = existing.id;
@@ -171,17 +173,18 @@ export const TransactionModal: React.FC = () => {
       type === 'Gelir' &&
       (isPosOffset || Boolean(accounts.find(a => a.id === accountId && (a.type === 'POS Cihazı / Hesabı' || a.name.toLowerCase().includes('pos'))))) &&
       Boolean(supplierCariId);
+
     const matchedSupplier = isEffectivePosOffset ? caris.find(c => c.id === supplierCariId) : null;
 
     const payload = {
       date: date || new Date().toISOString().split('T')[0],
-      dueDate: type === 'Mal Alımı' ? (dueDate || new Date().toISOString().split('T')[0]) : undefined,
+      dueDate: type === 'Mal Alışı' ? (dueDate || new Date().toISOString().split('T')[0]) : undefined,
       type,
       category:
         type === 'Transfer'
           ? 'Virman'
-          : type === 'Mal Alımı'
-          ? category || 'Mal Alımı'
+          : type === 'Mal Alışı'
+          ? category || 'Mal Alışı'
           : category || 'Genel',
       cariId: finalCariId || undefined,
       cariName: cariName.trim() || undefined,
@@ -190,8 +193,8 @@ export const TransactionModal: React.FC = () => {
       isPosOffset: isEffectivePosOffset,
       desc:
         desc.trim() ||
-        (type === 'Mal Alımı'
-          ? 'Mal Alımı / Tedarikçi Borçlandırması'
+        (type === 'Mal Alışı'
+          ? 'Mal Alışı / Tedarikçi Borçlandırması'
           : isEffectivePosOffset && matchedSupplier
           ? `POS Tahsilatı (Mahsup: ${matchedSupplier.name})`
           : ''),
@@ -202,10 +205,9 @@ export const TransactionModal: React.FC = () => {
       documentNo: documentNo.trim() || undefined,
     };
 
-    if (!editingId && isInstallment && type !== 'Transfer' && type !== 'Mal Alımı') {
+    if (!editingId && isInstallment && type !== 'Transfer' && type !== 'Mal Alışı') {
       const count = Math.max(1, Math.floor(installmentsCount || 1));
       const targetFirstDueDate = firstDueDate || date || new Date().toISOString().split('T')[0];
-
       createInstallmentPlan({
         type: type === 'Gelir' ? 'Gelir' : 'Gider',
         totalAmount: numAmount,
@@ -247,26 +249,26 @@ export const TransactionModal: React.FC = () => {
                   ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400'
                   : type === 'Gider'
                   ? 'bg-rose-100 text-rose-600 dark:bg-rose-950/60 dark:text-rose-400'
-                  : type === 'Mal Alımı'
+                  : type === 'Mal Alışı'
                   ? 'bg-amber-100 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400'
                   : 'bg-blue-100 text-blue-600 dark:bg-blue-950/60 dark:text-blue-400'
               }`}
             >
               {type === 'Gelir' && <ArrowDownRight className="w-5 h-5" />}
               {type === 'Gider' && <ArrowUpRight className="w-5 h-5" />}
-              {type === 'Mal Alımı' && <ShoppingBag className="w-5 h-5" />}
+              {type === 'Mal Alışı' && <ShoppingBag className="w-5 h-5" />}
               {type === 'Transfer' && <ArrowRightLeft className="w-5 h-5" />}
             </div>
             <div>
               <h3 className="text-base font-bold text-slate-900 dark:text-white">
                 {editingId
                   ? 'İşlemi Düzenle'
-                  : type === 'Mal Alımı'
-                  ? 'Yeni Mal Alımı (Tedarikçi Borcu)'
+                  : type === 'Mal Alışı'
+                  ? 'Yeni Mal Alışı (Tedarikçi Borcu)'
                   : 'Yeni Finansal İşlem'}
               </h3>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                {type === 'Mal Alımı'
+                {type === 'Mal Alışı'
                   ? 'Kasadan nakit düşmeden vadeli tedarikçi borçlandırması'
                   : 'Kasa, banka ve cari hesap hareket kaydı'}
               </p>
@@ -311,16 +313,16 @@ export const TransactionModal: React.FC = () => {
             <button
               type="button"
               onClick={() => {
-                setType('Mal Alımı');
-                if (!category) setCategory('Mal Alımı');
+                setType('Mal Alışı');
+                if (!category) setCategory('Mal Alışı');
               }}
               className={`py-2 px-2 text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 transition-all ${
-                type === 'Mal Alımı'
+                type === 'Mal Alışı'
                   ? 'bg-amber-600 text-white shadow-sm'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
-              <ShoppingBag className="w-3.5 h-3.5" /> Mal Alımı (Borç)
+              <ShoppingBag className="w-3.5 h-3.5" /> Mal Alışı (Borç)
             </button>
             <button
               type="button"
@@ -338,7 +340,7 @@ export const TransactionModal: React.FC = () => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Amount & Date(s) */}
-          {type === 'Mal Alımı' ? (
+          {type === 'Mal Alışı' ? (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -362,7 +364,7 @@ export const TransactionModal: React.FC = () => {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Alım / Fatura Tarihi *
+                  Alış / Fatura Tarihi *
                 </label>
                 <input
                   type="date"
@@ -440,7 +442,6 @@ export const TransactionModal: React.FC = () => {
                     <Plus className="w-3 h-3" /> Yeni Kategori Ekle
                   </button>
                 </div>
-
                 {isAddingNewCategory ? (
                   <div className="flex gap-2">
                     <input
@@ -466,7 +467,7 @@ export const TransactionModal: React.FC = () => {
                     className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl text-sm outline-none focus:ring-2 focus:ring-emerald-500 dark:focus:ring-emerald-400 text-slate-800 dark:text-slate-200"
                   >
                     <option value="">Kategori Seçin...</option>
-                    {type === 'Mal Alımı' && <option value="Mal Alımı">Mal Alımı (Stok)</option>}
+                    {type === 'Mal Alışı' && <option value="Mal Alışı">Mal Alışı (Stok)</option>}
                     {filteredCategories.map(cat => (
                       <option key={cat.id} value={cat.name}>
                         {cat.name}
@@ -480,17 +481,17 @@ export const TransactionModal: React.FC = () => {
               {/* Cari / Tedarikçi Firma */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  {type === 'Mal Alımı' ? 'Tedarikçi Firma / Satıcı *' : 'Cari / Firma Adı'}
+                  {type === 'Mal Alışı' ? 'Tedarikçi Firma / Satıcı *' : 'Cari / Firma Adı'}
                 </label>
                 <div className="relative">
                   <input
                     type="text"
-                    required={type === 'Mal Alımı'}
+                    required={type === 'Mal Alışı'}
                     list="cari-datalist"
                     value={cariName}
                     onChange={e => handleCariSelect(e.target.value)}
                     placeholder={
-                      type === 'Mal Alımı'
+                      type === 'Mal Alışı'
                         ? 'Mal aldığınız tedarikçi firma adını yazın veya seçin...'
                         : 'Müşteri, Tedarikçi veya Firma adı...'
                     }
@@ -506,8 +507,8 @@ export const TransactionModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Kasadan Düşmeyen Mal Alımı Uyarısı vs Ödeme Hesabı Seçimi */}
-              {type === 'Mal Alımı' ? (
+              {/* Kasadan Düşmeyen Mal Alışı Uyarısı vs Ödeme Hesabı Seçimi */}
+              {type === 'Mal Alışı' ? (
                 <div className="p-3.5 bg-amber-50/80 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 rounded-xl space-y-1.5">
                   <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 font-semibold text-xs">
                     <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
@@ -600,7 +601,7 @@ export const TransactionModal: React.FC = () => {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-slate-800">
               <div>
                 <label className="block text-xs font-semibold text-rose-600 dark:text-rose-400 mb-1">
-                  Kaynak Hesap (Para Çıkacak)
+                  Kaynak Hesap (Para Çıkacak) *
                 </label>
                 <select
                   value={accountId}
@@ -615,10 +616,9 @@ export const TransactionModal: React.FC = () => {
                   ))}
                 </select>
               </div>
-
               <div>
                 <label className="block text-xs font-semibold text-emerald-600 dark:text-emerald-400 mb-1">
-                  Hedef Hesap (Para Girecek)
+                  Hedef Hesap (Para Girecek) *
                 </label>
                 <select
                   value={targetAccountId}
@@ -637,7 +637,7 @@ export const TransactionModal: React.FC = () => {
           )}
 
           {/* Taksitli İşlem Seçeneği (Sadece Gelir ve Gider için) */}
-          {!editingId && type !== 'Transfer' && type !== 'Mal Alımı' && (
+          {!editingId && type !== 'Transfer' && type !== 'Mal Alışı' && (
             <div className="p-4 bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/80 rounded-xl space-y-3.5 transition-all">
               <div className="flex items-center justify-between">
                 <label className="flex items-center gap-2.5 cursor-pointer select-none">
@@ -660,11 +660,10 @@ export const TransactionModal: React.FC = () => {
                       Taksitli İşlem
                     </span>
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200">
-                      Vade Takvimine Otomatik Bölme
+                      Vade Takvimine Otomatik Böl
                     </span>
                   </div>
                 </label>
-
                 {isInstallment && parseFloat(amount) > 0 && installmentsCount > 0 && (
                   <span className="text-xs font-mono-num font-bold text-emerald-700 dark:text-emerald-300">
                     {formatCurrency(parseFloat(amount) / installmentsCount)} / Taksit
@@ -679,7 +678,7 @@ export const TransactionModal: React.FC = () => {
                     <div>
                       <div className="flex items-center justify-between mb-1">
                         <label className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                          Taksit Sayısı *
+                          Taksit Sayısı
                         </label>
                         <span className="text-[11px] font-mono-num font-bold text-slate-600 dark:text-slate-400">
                           {installmentsCount} Taksit
@@ -730,7 +729,7 @@ export const TransactionModal: React.FC = () => {
                           >
                             Bugün
                           </button>
-                          <span className="text-slate-300">·</span>
+                          <span className="text-slate-300">•</span>
                           <button
                             type="button"
                             onClick={() => {
@@ -766,7 +765,6 @@ export const TransactionModal: React.FC = () => {
                           : ''}
                       </span>
                     </div>
-
                     <div className="text-[11px] text-slate-700 dark:text-slate-300 font-mono bg-slate-50 dark:bg-slate-800 p-2 rounded-lg border border-slate-200 dark:border-slate-700 space-y-0.5">
                       <div className="text-emerald-700 dark:text-emerald-400 font-semibold">
                         • {cariName.trim() || desc.trim() || 'Firma Adı'} - 1/{installmentsCount} Taksit{' '}
@@ -803,7 +801,7 @@ export const TransactionModal: React.FC = () => {
                 value={desc}
                 onChange={e => setDesc(e.target.value)}
                 placeholder={
-                  type === 'Mal Alımı'
+                  type === 'Mal Alışı'
                     ? 'Örn: Hammadde alımı, Fatura / İrsaliye detayı...'
                     : 'Örn: Ekim ayı kira bedeli, Fatura ödemesi...'
                 }
@@ -840,7 +838,7 @@ export const TransactionModal: React.FC = () => {
                   ? 'bg-emerald-600 hover:bg-emerald-700'
                   : type === 'Gider'
                   ? 'bg-rose-600 hover:bg-rose-700'
-                  : type === 'Mal Alımı'
+                  : type === 'Mal Alışı'
                   ? 'bg-amber-600 hover:bg-amber-700'
                   : 'bg-blue-600 hover:bg-blue-700'
               }`}
@@ -848,8 +846,8 @@ export const TransactionModal: React.FC = () => {
               <Check className="w-4 h-4" />
               {editingId
                 ? 'Güncelle'
-                : type === 'Mal Alımı'
-                ? 'Mal Alımını & Borcu Kaydet'
+                : type === 'Mal Alışı'
+                ? 'Mal Alışı & Borcu Kaydet'
                 : 'Kaydet'}
             </button>
           </div>

@@ -1,19 +1,16 @@
 export function formatCurrency(amount: number, currency: 'TRY' | 'USD' | 'EUR' = 'TRY'): string {
   const symbol = currency === 'TRY' ? '₺' : currency === 'USD' ? '$' : '€';
-  
   // Format with Turkish locale standard (period for thousands, comma for decimals)
   const formatted = Math.abs(amount).toLocaleString('tr-TR', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-
   return `${amount < 0 ? '-' : ''}${symbol}${formatted}`;
 }
 
 export function formatCompactCurrency(amount: number, currency: 'TRY' | 'USD' | 'EUR' = 'TRY'): string {
   const symbol = currency === 'TRY' ? '₺' : currency === 'USD' ? '$' : '€';
   const abs = Math.abs(amount);
-
   if (abs >= 1_000_000) {
     return `${amount < 0 ? '-' : ''}${symbol}${(abs / 1_000_000).toFixed(1)}M`;
   }
@@ -59,7 +56,6 @@ export function formatDateLong(dateStr: string): string {
 export function getDaysRemaining(dateStr: string): { days: number; text: string; status: 'overdue' | 'today' | 'upcoming' } {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-
   const target = new Date(dateStr);
   target.setHours(0, 0, 0, 0);
 
@@ -126,7 +122,6 @@ export function calculateInstallmentSchedule(
   const count = Math.max(1, Math.floor(installmentsCount));
   const baseAmount = Math.floor((totalAmount / count) * 100) / 100;
   const remainder = Math.round((totalAmount - baseAmount * count) * 100) / 100;
-
   const schedule: InstallmentScheduleItem[] = [];
   const displayName = firmName.trim() || 'Taksit';
 
@@ -142,6 +137,5 @@ export function calculateInstallmentSchedule(
       daysRemaining: getDaysRemaining(dueDate),
     });
   }
-
   return schedule;
 }

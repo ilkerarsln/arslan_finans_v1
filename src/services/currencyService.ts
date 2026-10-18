@@ -46,7 +46,6 @@ export async function fetchLiveExchangeRates(): Promise<{ usd: number; eur: numb
         const eurRate = data.rates.EUR ? Number((data.rates.TRY / data.rates.EUR).toFixed(2)) : Number((usdRate * 1.09).toFixed(2));
         const now = new Date();
         const timeStr = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-
         const result = { usd: usdRate, eur: eurRate, lastUpdated: timeStr };
         try {
           localStorage.setItem(
@@ -73,7 +72,6 @@ export async function fetchLiveExchangeRates(): Promise<{ usd: number; eur: numb
         const eurRate = data.rates.EUR ? Number((data.rates.TRY / data.rates.EUR).toFixed(2)) : Number((usdRate * 1.09).toFixed(2));
         const now = new Date();
         const timeStr = now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-
         const result = { usd: usdRate, eur: eurRate, lastUpdated: timeStr };
         try {
           localStorage.setItem(
@@ -139,12 +137,10 @@ export function useLiveCurrency() {
 
   useEffect(() => {
     refreshRates();
-
     // Auto-refresh every 15 minutes
     const interval = setInterval(() => {
       refreshRates();
     }, 15 * 60 * 1000);
-
     return () => clearInterval(interval);
   }, []);
 

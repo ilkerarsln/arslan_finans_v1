@@ -104,7 +104,7 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
 
   const periodTotalOut = useMemo(() => {
     return filteredAccountTransactions.reduce((sum, tx) => {
-      const isOutgoing = tx.type === 'Gider' || tx.type === 'Mal Alımı' || (tx.type === 'Transfer' && tx.accountId === selectedAccountId);
+      const isOutgoing = tx.type === 'Gider' || tx.type === 'Mal Alışı' || (tx.type === 'Transfer' && tx.accountId === selectedAccountId);
       return isOutgoing ? sum + tx.amount : sum;
     }, 0);
   }, [filteredAccountTransactions, selectedAccountId]);
@@ -128,6 +128,7 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
         !isIncoming ? tx.amount : '',
       ];
     });
+
     const csvContent = '\uFEFF' + [headers.join(';'), ...rows.map(r => r.join(';'))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -235,7 +236,6 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
               {bankAccounts.map(acc => {
                 const isSelected = selectedAccountId === acc.id;
                 const isCash = acc.type === 'Kasa (Nakit)';
-
                 return (
                   <div
                     key={acc.id}
@@ -250,7 +250,6 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
                       className="absolute top-0 left-0 right-0 h-1.5"
                       style={{ backgroundColor: acc.color || '#2563eb' }}
                     />
-
                     <div>
                       {/* Top Type & Actions */}
                       <div className="flex items-center justify-between mb-3">
@@ -398,7 +397,6 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
                 const usedDebt = Math.abs(Math.min(card.balance, 0));
                 const availableLimit = Math.max(limit - usedDebt, 0);
                 const usedPercent = Math.min((usedDebt / limit) * 100, 100);
-
                 const cutOffText = card.cutOffDate
                   ? formatDate(card.cutOffDate)
                   : card.cutOffDay
@@ -419,7 +417,6 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
                       className="absolute top-0 left-0 right-0 h-1.5"
                       style={{ backgroundColor: card.color || '#f59e0b' }}
                     />
-
                     <div>
                       {/* Top Type & Actions */}
                       <div className="flex items-center justify-between mb-3">
@@ -550,7 +547,7 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
                 )}
               </div>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Bu kasa veya banka hesabına ait günlük, haftalık, aylık ve yıllık tüm para giriş-çıkış hareketleri
+                Bu kasa veya banka hesabına ait günlük, haftalık, aylık ve yıllık para giriş-çıkış hareketleri
               </p>
             </div>
 
@@ -563,7 +560,6 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
                   {formatCurrency(selectedAccount.balance, selectedAccount.currency)}
                 </div>
               </div>
-
               <button
                 onClick={handleExportAccountStatementCSV}
                 className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
@@ -572,7 +568,6 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
                 <Download className="w-3.5 h-3.5" />
                 <span>CSV</span>
               </button>
-
               <button
                 onClick={() => onOpenTransfer(selectedAccount.id)}
                 className="px-3.5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-xs active:scale-95"
@@ -580,7 +575,6 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
                 <ArrowRightLeft className="w-3.5 h-3.5" />
                 <span>Virman Yap</span>
               </button>
-
               <button
                 onClick={() => setSelectedAccountId(null)}
                 className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition"
@@ -597,7 +591,6 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
               <Clock className="w-4 h-4 text-emerald-500" />
               <span>Hareket Raporu Periyodu:</span>
             </div>
-
             <div className="flex flex-wrap items-center gap-1">
               <button
                 onClick={() => setMovementPeriod('daily')}
@@ -661,7 +654,6 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
               </div>
               <span className="text-[10px] text-slate-400">Tahsilat & gelen virman</span>
             </div>
-
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
               <span className="text-[11px] font-semibold text-slate-400 block">Dönem Çıkışları (-)</span>
               <div className="text-lg font-bold font-mono-num text-rose-600 dark:text-rose-400 mt-1">
@@ -669,7 +661,6 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
               </div>
               <span className="text-[10px] text-slate-400">Ödeme, gider & giden virman</span>
             </div>
-
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
               <span className="text-[11px] font-semibold text-slate-400 block">Dönem Net Değişimi</span>
               <div
@@ -683,7 +674,6 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
               </div>
               <span className="text-[10px] text-slate-400">Girişler - Çıkışlar farkı</span>
             </div>
-
             <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800">
               <span className="text-[11px] font-semibold text-slate-400 block">Dönem İşlem Sayısı</span>
               <div className="text-lg font-bold font-mono-num text-slate-800 dark:text-slate-100 mt-1">
@@ -716,7 +706,6 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
                     const isIncoming =
                       tx.type === 'Gelir' ||
                       (tx.type === 'Transfer' && tx.targetAccountId === selectedAccount.id);
-
                     return (
                       <tr
                         key={tx.id}
@@ -730,7 +719,7 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
                             className={
                               isIncoming
                                 ? 'text-emerald-600 dark:text-emerald-400'
-                                : tx.type === 'Mal Alımı'
+                                : tx.type === 'Mal Alışı'
                                 ? 'text-amber-600 dark:text-amber-400'
                                 : 'text-rose-600 dark:text-rose-400'
                             }
@@ -744,7 +733,7 @@ export const AccountsTab: React.FC<AccountsTabProps> = ({
                         </td>
                         <td className="py-2.5 px-3 text-slate-600 dark:text-slate-300">{tx.category}</td>
                         <td className="py-2.5 px-3 text-slate-800 dark:text-slate-200">
-                          {tx.cariName ? <span className="font-semibold text-slate-900 dark:text-white">{tx.cariName} · </span> : ''}
+                          {tx.cariName ? <span className="font-semibold text-slate-900 dark:text-white">{tx.cariName} — </span> : ''}
                           <span>{tx.desc}</span>
                         </td>
                         <td className="py-2.5 px-3 text-right font-mono-num font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">

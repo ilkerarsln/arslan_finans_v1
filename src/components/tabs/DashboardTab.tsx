@@ -30,7 +30,7 @@ import {
 
 const MONTH_NAMES_TR = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
 ];
 
 export const DashboardTab: React.FC<{
@@ -154,7 +154,7 @@ export const DashboardTab: React.FC<{
           .reduce((sum, t) => sum + t.amount, 0);
 
         const mExpense = transactions
-          .filter(t => t.date.startsWith(ym) && (t.type === 'Gider' || t.type === 'Mal Alımı') && t.status !== 'İptal')
+          .filter(t => t.date.startsWith(ym) && (t.type === 'Gider' || t.type === 'Mal Alışı') && t.status !== 'İptal')
           .reduce((sum, t) => sum + t.amount, 0);
 
         const mCiro = sales
@@ -194,7 +194,7 @@ export const DashboardTab: React.FC<{
           .reduce((sum, t) => sum + t.amount, 0);
 
         const wExpense = transactions
-          .filter(t => t.date >= startStr && t.date <= endStr && (t.type === 'Gider' || t.type === 'Mal Alımı') && t.status !== 'İptal')
+          .filter(t => t.date >= startStr && t.date <= endStr && (t.type === 'Gider' || t.type === 'Mal Alışı') && t.status !== 'İptal')
           .reduce((sum, t) => sum + t.amount, 0);
 
         const wCiro = sales
@@ -228,13 +228,17 @@ export const DashboardTab: React.FC<{
         const bIncome = transactions
           .filter(t => t.date >= b.start && t.date <= b.end && t.type === 'Gelir' && t.status !== 'İptal')
           .reduce((sum, t) => sum + t.amount, 0);
+
         const bExpense = transactions
-          .filter(t => t.date >= b.start && t.date <= b.end && (t.type === 'Gider' || t.type === 'Mal Alımı') && t.status !== 'İptal')
+          .filter(t => t.date >= b.start && t.date <= b.end && (t.type === 'Gider' || t.type === 'Mal Alışı') && t.status !== 'İptal')
           .reduce((sum, t) => sum + t.amount, 0);
+
         const bCiro = sales
           .filter(s => s.date >= b.start && s.date <= b.end)
           .reduce((sum, s) => sum + s.totalSaleAmount, 0) || bIncome;
+
         const net = bIncome - bExpense;
+
         return {
           key: b.key,
           label: b.label,
@@ -252,16 +256,21 @@ export const DashboardTab: React.FC<{
       return years.map(yr => {
         const yrStr = String(yr);
         const isCurrent = yr === currentYear;
+
         const yIncome = transactions
           .filter(t => t.date.startsWith(yrStr) && t.type === 'Gelir' && t.status !== 'İptal')
           .reduce((sum, t) => sum + t.amount, 0);
+
         const yExpense = transactions
-          .filter(t => t.date.startsWith(yrStr) && (t.type === 'Gider' || t.type === 'Mal Alımı') && t.status !== 'İptal')
+          .filter(t => t.date.startsWith(yrStr) && (t.type === 'Gider' || t.type === 'Mal Alışı') && t.status !== 'İptal')
           .reduce((sum, t) => sum + t.amount, 0);
+
         const yCiro = sales
           .filter(s => s.date.startsWith(yrStr))
           .reduce((sum, s) => sum + s.totalSaleAmount, 0) || yIncome;
+
         const net = yIncome - yExpense;
+
         return {
           key: yrStr,
           label: isCurrent ? `${yr} Yılı (Güncel)` : `${yr} Yılı`,
@@ -303,7 +312,7 @@ export const DashboardTab: React.FC<{
         <div className="relative z-10">
           <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-emerald-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>Finansal Durum Raporu · {selectedMonthLabel}</span>
+            <span>Finansal Durum Raporu • {selectedMonthLabel}</span>
             {availableMonths.length > 1 && (
               <div className="flex items-center gap-1.5 ml-1 bg-slate-800/90 border border-slate-700/80 rounded-lg px-2 py-0.5">
                 <Calendar className="w-3 h-3 text-emerald-400" />
@@ -351,11 +360,11 @@ export const DashboardTab: React.FC<{
             <ArrowUpRight className="w-3.5 h-3.5" /> Gider Ekle
           </button>
           <button
-            onClick={() => openTransactionModal({ type: 'Mal Alımı' })}
+            onClick={() => openTransactionModal({ type: 'Mal Alışı' })}
             className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
-            title="Tedarikçiden Vadeli Mal Alımı (Kasadan düşmeden borçlandırır)"
+            title="Tedarikçiden Vadeli Mal Alışı (Kasadan düşmeden borçlandırır)"
           >
-            <ShoppingBag className="w-3.5 h-3.5" /> Mal Alımı Ekle
+            <ShoppingBag className="w-3.5 h-3.5" /> Mal Alışı Ekle
           </button>
           <button
             onClick={() => openInstallmentModal()}
@@ -513,7 +522,7 @@ export const DashboardTab: React.FC<{
             onClick={() => setActiveTab('currents')}
             className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 underline"
           >
-            Carileri İncele
+            Carileri İncele →
           </button>
         </div>
 
@@ -535,7 +544,7 @@ export const DashboardTab: React.FC<{
             onClick={() => setActiveTab('currents')}
             className="text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 underline"
           >
-            Borçları İncele
+            Borçları İncele →
           </button>
         </div>
       </div>
@@ -645,19 +654,15 @@ export const DashboardTab: React.FC<{
                       )}
                     </div>
                   </td>
-
                   <td className="py-3 px-4 text-right font-mono-num font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                     +{formatCurrency(row.income)}
                   </td>
-
                   <td className="py-3 px-4 text-right font-mono-num font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap">
                     -{formatCurrency(row.expense)}
                   </td>
-
                   <td className="py-3 px-4 text-right font-mono-num font-bold text-slate-900 dark:text-white whitespace-nowrap">
                     {formatCurrency(row.ciro)}
                   </td>
-
                   <td
                     className={`py-3 px-4 text-right font-mono-num font-bold whitespace-nowrap ${
                       row.netProfit >= 0
@@ -667,7 +672,6 @@ export const DashboardTab: React.FC<{
                   >
                     {row.netProfit > 0 ? '+' : ''}{formatCurrency(row.netProfit)}
                   </td>
-
                   <td className="py-3 px-4 text-center whitespace-nowrap">
                     <span
                       className={`font-mono-num font-bold px-2 py-0.5 rounded text-[11px] ${
@@ -681,7 +685,6 @@ export const DashboardTab: React.FC<{
                       %{row.margin.toFixed(1)}
                     </span>
                   </td>
-
                   <td className="py-3 px-4 text-center whitespace-nowrap">
                     {row.netProfit >= 0 ? (
                       <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/70 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-full">
@@ -707,6 +710,7 @@ export const DashboardTab: React.FC<{
         <div className="lg:col-span-7 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <MonthlyFlowChart transactions={transactions} upcomingDues={upcomingDues} />
         </div>
+
         <div className="lg:col-span-5 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
           <CategoryBreakdownChart transactions={currentMonthTxs} type="Gider" />
         </div>
@@ -760,14 +764,14 @@ export const DashboardTab: React.FC<{
                             ? 'text-emerald-600 dark:text-emerald-400'
                             : tx.type === 'Gider'
                             ? 'text-rose-600 dark:text-rose-400'
-                            : tx.type === 'Mal Alımı'
+                            : tx.type === 'Mal Alışı'
                             ? 'text-amber-600 dark:text-amber-400'
                             : 'text-blue-600 dark:text-blue-400'
                         }`}
                       >
                         {tx.type === 'Gelir' && <ArrowDownRight className="w-3 h-3" />}
                         {tx.type === 'Gider' && <ArrowUpRight className="w-3 h-3" />}
-                        {tx.type === 'Mal Alımı' && <ShoppingBag className="w-3 h-3" />}
+                        {tx.type === 'Mal Alışı' && <ShoppingBag className="w-3 h-3" />}
                         {tx.type === 'Transfer' && <ArrowRightLeft className="w-3 h-3" />}
                         {tx.type}
                       </span>
@@ -782,14 +786,14 @@ export const DashboardTab: React.FC<{
                       className={`py-3 px-4 text-right font-mono-num font-bold ${
                         tx.type === 'Gelir'
                           ? 'text-emerald-600 dark:text-emerald-400'
-                          : tx.type === 'Mal Alımı'
+                          : tx.type === 'Mal Alışı'
                           ? 'text-amber-600 dark:text-amber-400'
                           : tx.type === 'Gider'
                           ? 'text-rose-600 dark:text-rose-400'
                           : 'text-blue-600 dark:text-blue-400'
                       }`}
                     >
-                      {tx.type === 'Gelir' ? '+' : tx.type === 'Gider' ? '-' : tx.type === 'Mal Alımı' ? '-' : ''}
+                      {tx.type === 'Gelir' ? '+' : tx.type === 'Gider' ? '-' : tx.type === 'Mal Alışı' ? '-' : ''}
                       {formatCurrency(tx.amount)}
                     </td>
                   </tr>
@@ -848,7 +852,7 @@ export const DashboardTab: React.FC<{
                         </div>
                         <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5 ml-4">
                           <span>{formatDate(due.dueDate)}</span>
-                          <span>·</span>
+                          <span>•</span>
                           <span
                             className={`font-medium ${
                               remaining.status === 'overdue'

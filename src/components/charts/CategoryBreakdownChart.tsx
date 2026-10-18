@@ -52,7 +52,6 @@ export const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({
   const radius = (size - strokeWidth) / 2;
   const center = size / 2;
   const circumference = 2 * Math.PI * radius;
-
   let accumulatedPercent = 0;
 
   return (
@@ -63,7 +62,7 @@ export const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({
             {type === 'Gider' ? 'Gider Kategorileri' : 'Gelir Kategorileri'} Dağılımı
           </h4>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Harcama kalemlerine göre oransal bütçe yükü
+            Harcama kalemlerine göre oransal bölünme
           </p>
         </div>
         <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
@@ -93,7 +92,6 @@ export const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({
                 const strokeDasharray = `${(cat.percentage / 100) * circumference} ${circumference}`;
                 const strokeDashoffset = -((accumulatedPercent / 100) * circumference);
                 accumulatedPercent += cat.percentage;
-
                 const isSelected = selectedCategory === cat.name;
 
                 return (

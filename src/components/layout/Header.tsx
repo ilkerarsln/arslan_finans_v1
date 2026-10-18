@@ -11,11 +11,11 @@ interface HeaderProps {
 const TAB_TITLES: Record<ActiveTab, { title: string; subtitle: string }> = {
   'ciro-matrix': {
     title: 'Ciro ve Finansal Analiz Matrisi',
-    subtitle: '12 aylık marka/kategori ciro analizi, aktif ortalama, 2025 büyümesi ve brüt kârlar',
+    subtitle: '12 aylık marka/kategori ciro analizi, kümülatif ortalama, 2025 büyümesi ve brüt kârlar',
   },
   dashboard: {
-    title: 'Genel Finansal Özet & Kârlılık',
-    subtitle: 'Nakit akışı, dönemlik kâr-zarar tablosu ve şirket mali durumu',
+    title: 'Genel Finansal Özet & Kontrol',
+    subtitle: 'Nakit akışı, dönemsel kâr-zarar tablosu ve şirket mali durumu',
   },
   profit: {
     title: 'Kâr Takip (Satışlar & Kârlılık)',
@@ -31,7 +31,7 @@ const TAB_TITLES: Record<ActiveTab, { title: string; subtitle: string }> = {
   },
   accounts: {
     title: 'Banka Hesapları & Kasalar',
-    subtitle: 'Kasa, banka ve POS hesapları, dönemlik hareket ekstreleri ve transferler',
+    subtitle: 'Kasa, banka ve POS hesapları, dönemsel hareket ekstreleri ve transferler',
   },
   currents: {
     title: 'Cari Hesap Yönetimi',
@@ -72,6 +72,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
     isRoleSimulated,
     toggleRoleSimulation,
     isCloudSyncing,
+    syncLocalToCloud,
     loginWithGoogle,
     logout,
     setIsCiroImportModalOpen,
@@ -91,13 +92,11 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
       ) {
         return;
       }
-
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
         openTransactionModal();
       }
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [openTransactionModal]);
@@ -111,7 +110,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         <button
           onClick={onToggleSidebar}
           className="md:hidden text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700"
-          aria-label="Menüyü Aç"
+          aria-label="Menüyü aç"
         >
           <Menu className="w-5 h-5" />
         </button>
@@ -140,15 +139,21 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         {/* Cloud Sync Status / Button */}
         {user ? (
           <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl px-2.5 py-1 text-xs text-emerald-800 dark:text-emerald-300">
-            <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={syncLocalToCloud}
+              disabled={isCloudSyncing}
+              title="Bulut Senkronizasyonunu Şimdi Başlat (Ofis & Telefon Eşitle)"
+              className="flex items-center gap-1.5 hover:opacity-80 transition cursor-pointer"
+            >
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
               </span>
               <Smartphone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 hidden sm:inline" />
               <span className="font-semibold hidden sm:inline">Ofis & Telefon Eşit</span>
-              {isCloudSyncing && <RefreshCw className="w-3 h-3 animate-spin text-emerald-600" />}
-            </div>
+              <RefreshCw className={`w-3 h-3 text-emerald-600 dark:text-emerald-400 ${isCloudSyncing ? 'animate-spin' : ''}`} />
+            </button>
 
             <div className="h-3 w-px bg-emerald-200 dark:bg-emerald-800 hidden sm:block" />
 
@@ -242,7 +247,7 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
             <span className="text-slate-400 font-bold">USD:</span>
             <span className="font-semibold text-slate-900 dark:text-white">₺{usd.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
-          <span className="text-slate-300 dark:text-slate-700">·</span>
+          <span className="text-slate-300 dark:text-slate-700">|</span>
           <div className="flex items-center gap-1">
             <span className="text-slate-400 font-bold">EUR:</span>
             <span className="font-semibold text-slate-900 dark:text-white">₺{eur.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -290,4 +295,3 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
     </header>
   );
 };
-

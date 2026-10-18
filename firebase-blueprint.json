@@ -9,7 +9,7 @@
         "userId": { "type": "string" },
         "date": { "type": "string" },
         "dueDate": { "type": "string" },
-        "type": { "type": "string", "enum": ["Gelir", "Gider", "Transfer", "Mal Alımı"] },
+        "type": { "type": "string", "enum": ["Gelir", "Gider", "Transfer", "Mal Alışı"] },
         "category": { "type": "string" },
         "cariId": { "type": "string" },
         "cariName": { "type": "string" },

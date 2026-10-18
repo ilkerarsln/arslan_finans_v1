@@ -7,14 +7,13 @@ import {
   Download,
   CheckCircle2,
   AlertCircle,
-  FileText,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { CiroMatrixRow } from '../../types/finance';
 
 const MONTH_NAMES = [
   'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
 ];
 
 export const CiroImportModal: React.FC = () => {
@@ -49,7 +48,6 @@ export const CiroImportModal: React.FC = () => {
         'Ort. Kârlılık (%)',
         ...MONTH_NAMES,
       ];
-
       const sampleData = [
         ['BEYAZ EŞYA', 'ALTUS', 20, 157500, 189300, 150250, 466940, 384809, 221600, 411690, 345000, 410000, 480000, 390000, 512000],
         ['BEYAZ EŞYA', 'UĞUR', 15, 160250, 147800, 274250, 368450, 664100, 211120, 124800, 180000, 210000, 240000, 195000, 280000],
@@ -58,7 +56,6 @@ export const CiroImportModal: React.FC = () => {
         ['MOBİLYA', 'MOBİLYA', 60, 34100, 299570, 336700, 510095, 46957, 98085, 200790, 240000, 270000, 300000, 260000, 350000],
         ['MOBİLYA', 'BAMBİ', 45, 0, 23500, 0, 0, 0, 81680, 100000, 120000, 135000, 150000, 130000, 170000],
       ];
-
       const ws = XLSX.utils.aoa_to_sheet([headers, ...sampleData]);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Ciro_Sablon');
@@ -74,7 +71,6 @@ export const CiroImportModal: React.FC = () => {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setFileName(file.name);
     setParseError('');
 
@@ -93,16 +89,13 @@ export const CiroImportModal: React.FC = () => {
         }
 
         const rows: CiroMatrixRow[] = [];
-
         // Skip header row
         for (let r = 1; r < rawJson.length; r++) {
           const row = rawJson[r];
           if (!row || row.length === 0) continue;
-
           const groupRaw = String(row[0] || '').trim().toUpperCase();
           const name = String(row[1] || '').trim().toUpperCase();
           if (!name) continue;
-
           // Ignore subtotal rows if present in Excel
           if (name.includes('TOPLAM')) continue;
 
@@ -141,7 +134,6 @@ export const CiroImportModal: React.FC = () => {
         setParseError(`Dosya okunurken hata oluştu: ${err.message || 'Geçersiz format'}`);
       }
     };
-
     reader.readAsBinaryString(file);
   };
 
@@ -169,7 +161,6 @@ export const CiroImportModal: React.FC = () => {
               </p>
             </div>
           </div>
-
           <button
             onClick={handleClose}
             className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 p-1 rounded-lg"
@@ -250,7 +241,6 @@ export const CiroImportModal: React.FC = () => {
                   {selectedYear} yılına uygulanacak
                 </span>
               </div>
-
               <div className="max-h-48 overflow-y-auto border border-slate-200 dark:border-slate-800 rounded-xl divide-y divide-slate-100 dark:divide-slate-800 text-xs">
                 {parsedRows.map((r, i) => {
                   const total = Object.values(r.months).reduce((s, v) => s + v, 0);

@@ -49,6 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     stockItems,
     sales,
     isCloudSyncing,
+    syncLocalToCloud,
     setIsCiroImportModalOpen,
   } = useFinance();
 
@@ -126,7 +127,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
   // Quick total balance & current month net calculation for sidebar
   const totalBalance = accounts.reduce((acc, curr) => acc + curr.balance, 0);
-
   const now = new Date();
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const currentMonthNet = transactions
@@ -259,7 +259,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             );
           })}
 
-          {/* VERİ & CİRO SİHİRBAZI */}
+          {/* VERİ & CİRO SİHRBAZI */}
           <div className="pt-3 pb-1 border-t border-slate-900 mt-2">
             <div className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
               VERİ & CİRO SİHİRBAZI
@@ -279,7 +279,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
         {/* Sidebar Footer */}
         <div className="p-3 border-t border-slate-800/80 text-xs text-slate-500 flex flex-col gap-2">
-          {/* OFİS - MOBİL Bulut Entegrasyon / Senkronizasyon Göstergesi (Kullanıcı profilinin hemen üstünde) */}
+          {/* OFİS - MOBİL Bulut Entegrasyon / Senkronizasyon Göstergesi */}
           <div className="bg-gradient-to-r from-emerald-950/70 via-slate-900 to-slate-900 border border-emerald-500/30 rounded-xl p-2.5 shadow-inner">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-1.5">
@@ -291,12 +291,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                   OFİS - MOBİL
                 </span>
               </div>
-              <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.5 rounded flex items-center gap-1">
-                {isCloudSyncing && <RefreshCw className="w-2.5 h-2.5 animate-spin text-emerald-400" />}
-                <span>SENKRON</span>
-              </span>
+              <button
+                type="button"
+                onClick={syncLocalToCloud}
+                disabled={isCloudSyncing}
+                title="Bulut Senkronizasyonunu Yenile / Eşitle (Ofis PC & Cep Telefonu)"
+                className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/15 hover:bg-emerald-500/25 active:scale-95 border border-emerald-500/30 px-1.5 py-0.5 rounded flex items-center gap-1 transition cursor-pointer disabled:opacity-60"
+              >
+                <RefreshCw className={`w-2.5 h-2.5 text-emerald-400 ${isCloudSyncing ? 'animate-spin' : ''}`} />
+                <span>{isCloudSyncing ? 'EŞİTLENİYOR...' : 'SENKRON'}</span>
+              </button>
             </div>
-
             <div className="flex items-center justify-between text-[10px] text-slate-300">
               <span className="flex items-center gap-1">
                 <Monitor className="w-3 h-3 text-emerald-400" />
@@ -308,7 +313,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 <span>Cep Telefonu</span>
               </span>
             </div>
-
             <div className="text-[9px] text-slate-400 mt-1.5 flex items-center justify-between pt-1 border-t border-slate-800/80">
               <span>Bulut Entegrasyonu:</span>
               <span className="text-emerald-300 font-medium font-mono">Aktif • 7/24</span>
