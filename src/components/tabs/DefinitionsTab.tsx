@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useFinance } from '../../context/FinanceContext';
 import {
   SlidersHorizontal,
@@ -13,38 +13,49 @@ import {
   Edit2,
   Check,
   X,
-  Upload,
-  Eye,
   Search,
-  ChevronRight,
+  Calendar,
+  AlertCircle,
+  TrendingUp,
+  Download,
+  Info,
   ChevronDown,
-  RotateCcw,
+  ChevronRight,
   Boxes,
-  Save,
+  RotateCcw,
+  Sparkles,
 } from 'lucide-react';
-import { PriceListDetailModal } from '../modals/PriceListDetailModal';
-import { PriceListEntry, PriceListItem, PriceListType, CategoryHierarchyItem } from '../../types/finance';
 import { formatCurrency } from '../../utils/formatters';
 import {
-  getUniqueAnaKategoriler,
-  getUniqueAltKategoriler,
-  getUniqueUrunGruplari,
-  POPULAR_BRANDS,
-} from '../../data/initialCategories';
-import * as XLSX from 'xlsx';
+  ProductCategory,
+  ProductSubCategory,
+  ProductGroup,
+  ProductBrand,
+  VadeRateEntry,
+  PriceListEntry,
+  Cari,
+} from '../../types/finance';
 
 export const DefinitionsTab: React.FC = () => {
   const {
-    categoryHierarchy,
-    addCategoryHierarchyItem,
-    updateCategoryHierarchyItem,
-    deleteCategoryHierarchyItem,
-    resetCategoryHierarchy,
-    stockItems,
+    productCategories,
+    productSubCategories,
+    productGroups,
     productBrands,
     vadeRates,
     priceLists,
     caris,
+    stockItems,
+    addProductCategory,
+    updateProductCategory,
+    deleteProductCategory,
+    addProductSubCategory,
+    updateProductSubCategory,
+    deleteProductSubCategory,
+    addProductGroup,
+    updateProductGroup,
+    deleteProductGroup,
+    resetHierarchyAndStock,
     addProductBrand,
     deleteProductBrand,
     setVadeRate,
@@ -53,58 +64,71 @@ export const DefinitionsTab: React.FC = () => {
     addCari,
     isAdmin,
     setActiveTab,
-    openDataImporter,
-    showToast,
   } = useFinance();
 
+  // Active section tab
   const [activeSection, setActiveSection] = useState<
-    'hierarchy' | 'pricelists' | 'brands' | 'suppliers' | 'vaderates'
-  >('hierarchy');
+    'tree' | 'categories' | 'subcategories' | 'productgroups' | 'brands' | 'suppliers' | 'vaderates' | 'pricelists'
+  >('tree');
 
-  // Hierarchy Management State
-  const [hierarchySearch, setHierarchySearch] = useState('');
-  const [hierarchyAnaFilter, setHierarchyAnaFilter] = useState('ALL');
-  const [hierarchyAltFilter, setHierarchyAltFilter] = useState('ALL');
-  const [expandedAna, setExpandedAna] = useState<Record<string, boolean>>({
-    'MOBİLYA': true,
-    'BEYAZ EŞYA': true,
+  const [searchTerm, setSearchTerm] = useState('');
+
+  // 1. Ana Kategori State
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatColor, setNewCatColor] = useState('#0ea5e9');
+  const [editingCatId, setEditingCatId] = useState<string | null>(null);
+  const [editingCatName, setEditingCatName] = useState('');
+
+  // 2. Alt Kategori State
+  const [newSubCatName, setNewSubCatName] = useState('');
+  const [selectedParentCatId, setSelectedParentCatId] = useState(
+    productCategories[0]?.id || 'pcat-mobilya'
+  );
+  const [filterParentCat, setFilterParentCat] = useState<string>('ALL');
+  const [editingSubId, setEditingSubId] = useState<string | null>(null);
+  const [editingSubName, setEditingSubName] = useState('');
+
+  // 3. Ürün Grubu State
+  const [selectedGroupParentCatId, setSelectedGroupParentCatId] = useState<string>(
+    productCategories[0]?.id || 'pcat-mobilya'
+  );
+  const [selectedGroupSubCatId, setSelectedGroupSubCatId] = useState<string>('');
+  const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupCode, setNewGroupCode] = useState('');
+  const [filterGroupCat, setFilterGroupCat] = useState<string>('ALL');
+  const [filterGroupSub, setFilterGroupSub] = useState<string>('ALL');
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [editingGroupName, setEditingGroupName] = useState('');
+
+  // Tree View Expand/Collapse State
+  const [expandedCats, setExpandedCats] = useState<Record<string, boolean>>({
+    'pcat-mobilya': true,
+    'pcat-beyazesya': true,
   });
-  const [expandedAlt, setExpandedAlt] = useState<Record<string, boolean>>({});
+  const [expandedSubs, setExpandedSubs] = useState<Record<string, boolean>>({
+    'sub-bambi': true,
+    'sub-altus': true,
+  });
 
-  // Add Hierarchy Item Form State
-  const [isAddingHierarchy, setIsAddingHierarchy] = useState(false);
-  const [newAnaKategori, setNewAnaKategori] = useState('MOBİLYA');
-  const [newAltKategori, setNewAltKategori] = useState('');
-  const [newUrunGrubu, setNewUrunGrubu] = useState('');
-
-  // Editing Hierarchy Item State
-  const [editingHierarchyId, setEditingHierarchyId] = useState<string | null>(null);
-  const [editAnaKategori, setEditAnaKategori] = useState('');
-  const [editAltKategori, setEditAltKategori] = useState('');
-  const [editUrunGrubu, setEditUrunGrubu] = useState('');
-
-  // Brand Form State
+  // 4. Marka State
   const [newBrandName, setNewBrandName] = useState('');
   const [selectedBrandCategories, setSelectedBrandCategories] = useState<string[]>(['BEYAZ EŞYA']);
 
+  // 5. Vade Farkı State
   const now = new Date();
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const [vadeMonth, setVadeMonth] = useState(currentMonthKey);
   const [vadeRateVal, setVadeRateVal] = useState<number>(3.5);
   const [vadeNotes, setVadeNotes] = useState('');
 
-  // Fiyat Listesi Form State
+  // 6. Fiyat Listesi State
   const [priceListMonth, setPriceListMonth] = useState(currentMonthKey);
   const [priceListTitle, setPriceListTitle] = useState('');
-  const [priceListType, setPriceListType] = useState<PriceListType>('Toptan');
-  const [priceListSupplierId, setPriceListSupplierId] = useState('');
   const [priceListCategory, setPriceListCategory] = useState('Tüm Kategoriler');
+  const [priceListItemsCount, setPriceListItemsCount] = useState<number>(45);
   const [priceListNotes, setPriceListNotes] = useState('');
-  const [priceListFilterType, setPriceListFilterType] = useState<'ALL' | 'Toptan' | 'Perakende'>('ALL');
-  const [selectedPriceListForDetail, setSelectedPriceListForDetail] = useState<PriceListEntry | null>(null);
-  const excelPriceListInputRef = useRef<HTMLInputElement>(null);
 
-  // Tedarikçi Modal
+  // 7. Tedarikçi Ekleme Modal / State
   const [isSupplierModalOpen, setIsSupplierModalOpen] = useState(false);
   const [supplierName, setSupplierName] = useState('');
   const [supplierPhone, setSupplierPhone] = useState('');
@@ -112,108 +136,157 @@ export const DefinitionsTab: React.FC = () => {
   const [supplierCity, setSupplierCity] = useState('');
   const [supplierNotes, setSupplierNotes] = useState('');
 
+  // Filtered Suppliers from unified Cari
   const suppliers = useMemo(() => {
     return caris.filter(c => c.type === 'Tedarikçi');
   }, [caris]);
 
-  const uniqueAnaList = useMemo(() => {
-    return getUniqueAnaKategoriler(categoryHierarchy);
-  }, [categoryHierarchy]);
-
-  const uniqueAltList = useMemo(() => {
-    return getUniqueAltKategoriler(
-      categoryHierarchy,
-      hierarchyAnaFilter !== 'ALL' ? hierarchyAnaFilter : undefined
+  // Subcategories filtered for Add Group Form
+  const subCategoriesForGroupForm = useMemo(() => {
+    const parent = productCategories.find(c => c.id === selectedGroupParentCatId);
+    if (!parent) return [];
+    return productSubCategories.filter(
+      s => s.categoryId === parent.id || s.categoryName === parent.name
     );
-  }, [categoryHierarchy, hierarchyAnaFilter]);
+  }, [productCategories, productSubCategories, selectedGroupParentCatId]);
 
-  // Filtered Hierarchy Data for Table
-  const filteredHierarchy = useMemo(() => {
-    return categoryHierarchy.filter(item => {
-      if (hierarchyAnaFilter !== 'ALL' && item.anaKategori.toUpperCase() !== hierarchyAnaFilter.toUpperCase()) {
-        return false;
+  // Keep selectedGroupSubCatId in sync when parent changes
+  React.useEffect(() => {
+    if (subCategoriesForGroupForm.length > 0) {
+      if (!subCategoriesForGroupForm.some(s => s.id === selectedGroupSubCatId)) {
+        setSelectedGroupSubCatId(subCategoriesForGroupForm[0].id);
       }
-      if (hierarchyAltFilter !== 'ALL' && item.altKategori.toUpperCase() !== hierarchyAltFilter.toUpperCase()) {
-        return false;
-      }
-      if (hierarchySearch.trim()) {
-        const q = hierarchySearch.toLowerCase();
-        const mA = item.anaKategori.toLowerCase().includes(q);
-        const mAlt = item.altKategori.toLowerCase().includes(q);
-        const mG = item.urunGrubu.toLowerCase().includes(q);
-        if (!mA && !mAlt && !mG) return false;
+    } else {
+      setSelectedGroupSubCatId('');
+    }
+  }, [subCategoriesForGroupForm, selectedGroupSubCatId]);
+
+  // Subcategories for group filter dropdown
+  const subCategoriesForFilter = useMemo(() => {
+    if (filterGroupCat === 'ALL') return productSubCategories;
+    return productSubCategories.filter(s => s.categoryName === filterGroupCat);
+  }, [productSubCategories, filterGroupCat]);
+
+  // Filtered Product Groups for Table
+  const filteredProductGroups = useMemo(() => {
+    return productGroups.filter(g => {
+      if (filterGroupCat !== 'ALL' && g.categoryName !== filterGroupCat) return false;
+      if (filterGroupSub !== 'ALL' && g.subCategoryName !== filterGroupSub) return false;
+      if (searchTerm.trim()) {
+        const q = searchTerm.toLowerCase();
+        const matchesName = g.name.toLowerCase().includes(q);
+        const matchesSub = g.subCategoryName.toLowerCase().includes(q);
+        const matchesCat = g.categoryName.toLowerCase().includes(q);
+        if (!matchesName && !matchesSub && !matchesCat) return false;
       }
       return true;
     });
-  }, [categoryHierarchy, hierarchyAnaFilter, hierarchyAltFilter, hierarchySearch]);
+  }, [productGroups, filterGroupCat, filterGroupSub, searchTerm]);
 
-  // Tree Structured Grouping
-  const hierarchyTree = useMemo(() => {
-    const tree: Record<string, Record<string, CategoryHierarchyItem[]>> = {};
-    categoryHierarchy.forEach(item => {
-      const ana = item.anaKategori?.trim().toUpperCase() || 'DİĞER';
-      const alt = item.altKategori?.trim().toUpperCase() || 'GENEL';
-      if (!tree[ana]) tree[ana] = {};
-      if (!tree[ana][alt]) tree[ana][alt] = [];
-      tree[ana][alt].push(item);
-    });
-    return tree;
-  }, [categoryHierarchy]);
-
-  const toggleAnaExpand = (ana: string) => {
-    setExpandedAna(prev => ({ ...prev, [ana]: !prev[ana] }));
-  };
-
-  const toggleAltExpand = (key: string) => {
-    setExpandedAlt(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const handleAddHierarchyItem = (e: React.FormEvent) => {
+  // Handle Add Main Category
+  const handleAddCategory = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newAnaKategori.trim() || !newAltKategori.trim() || !newUrunGrubu.trim()) {
-      showToast('Ana Kategori, Alt Kategori ve Ürün Grubu zorunludur.', 'error');
+    if (!newCatName.trim()) return;
+    addProductCategory({
+      name: newCatName.trim().toUpperCase(),
+      type: newCatName.trim().toUpperCase(),
+      color: newCatColor,
+    });
+    setNewCatName('');
+  };
+
+  // Handle Edit Category
+  const handleSaveEditCategory = (cat: ProductCategory) => {
+    if (!editingCatName.trim()) return;
+    updateProductCategory({
+      ...cat,
+      name: editingCatName.trim().toUpperCase(),
+      type: editingCatName.trim().toUpperCase(),
+    });
+    setEditingCatId(null);
+  };
+
+  // Handle Add Subcategory
+  const handleAddSubCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSubCatName.trim()) return;
+    const parent = productCategories.find(c => c.id === selectedParentCatId);
+    if (!parent) return;
+
+    addProductSubCategory({
+      categoryId: parent.id,
+      categoryName: parent.name,
+      name: newSubCatName.trim().toUpperCase(),
+    });
+    setNewSubCatName('');
+  };
+
+  // Handle Edit Subcategory
+  const handleSaveEditSubCategory = (sub: ProductSubCategory) => {
+    if (!editingSubName.trim()) return;
+    updateProductSubCategory({
+      ...sub,
+      name: editingSubName.trim().toUpperCase(),
+    });
+    setEditingSubId(null);
+  };
+
+  // Handle Add Product Group
+  const handleAddProductGroup = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newGroupName.trim()) return;
+    const parent = productCategories.find(c => c.id === selectedGroupParentCatId);
+    const sub = subCategoriesForGroupForm.find(s => s.id === selectedGroupSubCatId);
+    if (!parent || !sub) {
+      alert('Lütfen hem Ana Kategori hem de Alt Kategori seçin.');
       return;
     }
-    addCategoryHierarchyItem({
-      anaKategori: newAnaKategori.trim().toUpperCase(),
-      altKategori: newAltKategori.trim().toUpperCase(),
-      urunGrubu: newUrunGrubu.trim().toUpperCase(),
+
+    addProductGroup({
+      categoryId: parent.id,
+      categoryName: parent.name,
+      subCategoryId: sub.id,
+      subCategoryName: sub.name,
+      name: newGroupName.trim().toUpperCase(),
+      code: newGroupCode.trim() || undefined,
     });
-    setNewUrunGrubu('');
-    setIsAddingHierarchy(false);
+    setNewGroupName('');
+    setNewGroupCode('');
   };
 
-  const handleStartEditHierarchy = (item: CategoryHierarchyItem) => {
-    setEditingHierarchyId(item.id);
-    setEditAnaKategori(item.anaKategori);
-    setEditAltKategori(item.altKategori);
-    setEditUrunGrubu(item.urunGrubu);
+  // Handle Edit Product Group
+  const handleSaveEditProductGroup = (group: ProductGroup) => {
+    if (!editingGroupName.trim()) return;
+    updateProductGroup({
+      ...group,
+      name: editingGroupName.trim().toUpperCase(),
+    });
+    setEditingGroupId(null);
   };
 
-  const handleSaveEditHierarchy = (id: string) => {
-    if (!editAnaKategori.trim() || !editAltKategori.trim() || !editUrunGrubu.trim()) {
-      showToast('Tüm seviyeler dolu olmalıdır.', 'error');
-      return;
+  // Quick prompt to reset 3-level standard hierarchy
+  const handleConfirmReset = () => {
+    if (
+      window.confirm(
+        'DİKKAT: Tanımlı 3 seviyeli zorunlu hiyerarşik yapı (MOBİLYA & BEYAZ EŞYA altındaki 12 alt kategori ve 76 ürün grubu) ile örnek stok kartları baştan sıfırlanıp temiz yüklenecektir. Onaylıyor musunuz?'
+      )
+    ) {
+      resetHierarchyAndStock();
     }
-    updateCategoryHierarchyItem({
-      id,
-      anaKategori: editAnaKategori.trim().toUpperCase(),
-      altKategori: editAltKategori.trim().toUpperCase(),
-      urunGrubu: editUrunGrubu.trim().toUpperCase(),
-    });
-    setEditingHierarchyId(null);
   };
 
+  // Handle Add Brand
   const handleAddBrand = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBrandName.trim()) return;
     addProductBrand({
-      name: newBrandName.trim().toUpperCase(),
+      name: newBrandName.trim(),
       categoryNames: selectedBrandCategories,
     });
     setNewBrandName('');
   };
 
+  // Handle Set Vade Rate
   const handleSaveVadeRate = (e: React.FormEvent) => {
     e.preventDefault();
     if (!vadeMonth) return;
@@ -221,95 +294,22 @@ export const DefinitionsTab: React.FC = () => {
     setVadeNotes('');
   };
 
+  // Handle Add Price List
   const handleAddPriceList = (e: React.FormEvent) => {
     e.preventDefault();
     if (!priceListTitle.trim()) return;
-    const sup = suppliers.find(s => s.id === priceListSupplierId);
     addPriceList({
       monthKey: priceListMonth,
       title: priceListTitle.trim(),
-      listType: priceListType,
-      supplierId: priceListSupplierId || undefined,
-      supplierName: sup ? sup.name : undefined,
       categoryName: priceListCategory,
-      itemsCount: 0,
-      items: [],
+      itemsCount: Number(priceListItemsCount) || 0,
       notes: priceListNotes.trim() || undefined,
     });
     setPriceListTitle('');
     setPriceListNotes('');
   };
 
-  const handleUploadNewPriceListExcel = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = evt => {
-      try {
-        const data = evt.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(sheet) as any[];
-        if (!rows || rows.length === 0) {
-          alert('Excel dosyasında okunabilecek kayıt bulunamadı.');
-          return;
-        }
-        const items: PriceListItem[] = [];
-        rows.forEach((r, idx) => {
-          const rawCode = r['stokKodu'] || r['stok_kodu'] || r['Stok Kodu'] || r['kod'] || r['code'];
-          const rawName = r['urunAdi'] || r['urun_adi'] || r['Ürün Adı'] || r['Urun Adi'] || r['name'] || rawCode;
-          const rawPrice = Number(
-            r['toptanFiyat'] ||
-            r['perakendeFiyat'] ||
-            r['fiyat'] ||
-            r['Fiyat'] ||
-            r['Alış Fiyatı'] ||
-            r['Satış Fiyatı'] ||
-            0
-          );
-          if (rawCode || rawName) {
-            items.push({
-              id: `pli-imp-${Date.now()}-${idx}`,
-              stokKodu: String(rawCode || '').trim(),
-              code: String(rawCode || '').trim(),
-              urunAdi: String(rawName).trim(),
-              name: String(rawName).trim(),
-              anaKategori: r['Ana Kategori'] || 'MOBİLYA',
-              altKategori: r['Alt Kategori'] || 'BAMBİ',
-              urunGrubu: r['Ürün Grubu'] || 'BAMBİ YATAK',
-              brand: r['Marka'] ? String(r['Marka']).trim() : 'GENEL',
-              toptanFiyat: rawPrice,
-              perakendeFiyat: rawPrice,
-              costPrice: rawPrice,
-              salePrice: rawPrice,
-              notes: r['Notlar'] ? String(r['Notlar']).trim() : undefined,
-            });
-          }
-        });
-        const fileNameWithoutExt = file.name.replace(/\.[^/.]+$/, '');
-        const newEntry: PriceListEntry = {
-          id: `pl-${Date.now()}`,
-          monthKey: currentMonthKey,
-          title: fileNameWithoutExt || `${currentMonthKey} Excel Fiyat Listesi`,
-          listType: priceListType,
-          supplierId: priceListSupplierId || undefined,
-          supplierName: suppliers.find(s => s.id === priceListSupplierId)?.name,
-          categoryName: 'Tüm Kategoriler',
-          itemsCount: items.length,
-          items,
-          notes: `Excel'den içe aktarım (${items.length} kalem)`,
-        };
-        addPriceList(newEntry);
-        setSelectedPriceListForDetail(newEntry);
-      } catch (err: any) {
-        alert('Excel okuma hatası: ' + err.message);
-      } finally {
-        if (excelPriceListInputRef.current) excelPriceListInputRef.current.value = '';
-      }
-    };
-    reader.readAsBinaryString(file);
-  };
-
+  // Handle Add Supplier
   const handleAddSupplier = (e: React.FormEvent) => {
     e.preventDefault();
     if (!supplierName.trim()) return;
@@ -319,829 +319,1083 @@ export const DefinitionsTab: React.FC = () => {
       phone: supplierPhone.trim() || undefined,
       email: supplierEmail.trim() || undefined,
       city: supplierCity.trim() || undefined,
-      notes: supplierNotes.trim() || undefined,
       balance: 0,
+      notes: supplierNotes.trim() || undefined,
     });
-    setIsSupplierModalOpen(false);
     setSupplierName('');
     setSupplierPhone('');
     setSupplierEmail('');
     setSupplierCity('');
     setSupplierNotes('');
+    setIsSupplierModalOpen(false);
   };
 
-  const filteredPriceLists = useMemo(() => {
-    return priceLists.filter(p => {
-      if (priceListFilterType !== 'ALL' && p.listType !== priceListFilterType) return false;
-      return true;
-    });
-  }, [priceLists, priceListFilterType]);
+  const toggleCatExpand = (catId: string) => {
+    setExpandedCats(prev => ({ ...prev, [catId]: !prev[catId] }));
+  };
+
+  const toggleSubExpand = (subId: string) => {
+    setExpandedSubs(prev => ({ ...prev, [subId]: !prev[subId] }));
+  };
 
   return (
     <div className="space-y-6">
-      {/* Top Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/70 backdrop-blur-md p-5 rounded-2xl border border-slate-800 shadow-sm text-white">
+      {/* Header & Sub-Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div>
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="p-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-400">
+          <div className="flex items-center gap-2">
+            <span className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
               <SlidersHorizontal className="w-5 h-5" />
             </span>
-            <h2 className="text-xl font-bold tracking-tight text-white">Tanımlamalar & 3 Seviyeli Kategori Yönetimi</h2>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+              ERP Sistem Tanımlamaları & 3 Seviyeli Kategori Hiyerarşisi
+            </h2>
           </div>
-          <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
-            Sistem ekrandan yönetilebilen tam 3 seviyeli hiyerarşik yapıya (<span className="text-emerald-400 font-semibold font-mono">Ana Kategori</span> → <span className="text-sky-400 font-semibold font-mono">Alt Kategori</span> → <span className="text-indigo-400 font-semibold font-mono">Ürün Grubu</span>) sahiptir. Stok kartları, fiyat listeleri ve mal alımları bu hiyerarşiyle entegredir.
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            Zorunlu 3 seviyeli yapı:{' '}
+            <span className="font-semibold text-emerald-600 dark:text-emerald-400">Ana Kategori</span> &gt;{' '}
+            <span className="font-semibold text-sky-600 dark:text-sky-400">Alt Kategori</span> &gt;{' '}
+            <span className="font-semibold text-purple-600 dark:text-purple-400">Ürün Grubu</span>. Tüm stok ve satışlar bu hiyerarşiyle yönetilir.
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+
+        <div className="flex flex-wrap items-center gap-2">
+          {isAdmin && (
+            <button
+              onClick={handleConfirmReset}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-50 hover:bg-amber-100 dark:bg-amber-950/40 dark:hover:bg-amber-900/40 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800/80 text-xs font-semibold transition shadow-xs active:scale-95"
+              title="Tüm kategorileri ve stokları standart 3 seviyeli yapıyla sıfırdan yükle"
+            >
+              <RotateCcw className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+              <span>Standart Hiyerarşiyi Sıfırla</span>
+            </button>
+          )}
+
           <button
-            onClick={() => openDataImporter('stok')}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600/90 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-xs border border-indigo-500/30 active:scale-95"
+            onClick={() => setActiveTab('profit')}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition shadow-xs"
           >
-            <FileSpreadsheet className="w-4 h-4 text-indigo-200" />
-            <span>Yalın Mal Alımı Yap</span>
+            <TrendingUp className="w-4 h-4 text-emerald-400" />
+            <span>Kâr Takip Sekmesi</span>
           </button>
         </div>
       </div>
 
       {/* Navigation Sub-Tabs */}
-      <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-900/70 backdrop-blur-md rounded-2xl border border-slate-800 text-xs font-semibold">
+      <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700/80 text-xs font-semibold">
         <button
-          onClick={() => setActiveSection('hierarchy')}
+          onClick={() => setActiveSection('tree')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
-            activeSection === 'hierarchy'
-              ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-xs font-bold'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent'
+            activeSection === 'tree'
+              ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
-          <FolderTree className="w-4 h-4 text-emerald-400" />
-          <span>3 Seviyeli Kategori Hiyerarşisi ({categoryHierarchy.length})</span>
+          <FolderTree className="w-4 h-4 text-emerald-500" />
+          <span>🌳 Ağaç Görünümü (Tree View)</span>
         </button>
+
         <button
-          onClick={() => setActiveSection('pricelists')}
+          onClick={() => setActiveSection('categories')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
-            activeSection === 'pricelists'
-              ? 'bg-indigo-500/15 text-indigo-300 border border-indigo-500/30 shadow-xs font-bold'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent'
+            activeSection === 'categories'
+              ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
-          <FileSpreadsheet className="w-4 h-4 text-indigo-400" />
-          <span>Fiyat Listeleri ({priceLists.length})</span>
+          <Layers className="w-4 h-4 text-emerald-500" />
+          <span>1. Seviye: Ana Kategori ({productCategories.length})</span>
         </button>
+
+        <button
+          onClick={() => setActiveSection('subcategories')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
+            activeSection === 'subcategories'
+              ? 'bg-white dark:bg-slate-700 text-sky-700 dark:text-sky-300 shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <FolderTree className="w-4 h-4 text-sky-500" />
+          <span>2. Seviye: Alt Kategori ({productSubCategories.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSection('productgroups')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
+            activeSection === 'productgroups'
+              ? 'bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <Boxes className="w-4 h-4 text-purple-500" />
+          <span>3. Seviye: Ürün Grubu ({productGroups.length})</span>
+        </button>
+
         <button
           onClick={() => setActiveSection('brands')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
             activeSection === 'brands'
-              ? 'bg-purple-500/15 text-purple-300 border border-purple-500/30 shadow-xs font-bold'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent'
+              ? 'bg-white dark:bg-slate-700 text-violet-700 dark:text-violet-300 shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
-          <Tag className="w-4 h-4 text-purple-400" />
+          <Tag className="w-4 h-4 text-violet-500" />
           <span>Markalar ({productBrands.length})</span>
         </button>
+
         <button
           onClick={() => setActiveSection('suppliers')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
             activeSection === 'suppliers'
-              ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-xs font-bold'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent'
+              ? 'bg-white dark:bg-slate-700 text-amber-700 dark:text-amber-300 shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
-          <Building className="w-4 h-4 text-amber-400" />
+          <Building className="w-4 h-4 text-amber-500" />
           <span>Ortak Tedarikçiler ({suppliers.length})</span>
         </button>
+
         <button
           onClick={() => setActiveSection('vaderates')}
           className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
             activeSection === 'vaderates'
-              ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30 shadow-xs font-bold'
-              : 'text-slate-400 hover:text-white hover:bg-slate-800/60 border border-transparent'
+              ? 'bg-white dark:bg-slate-700 text-rose-700 dark:text-rose-300 shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
-          <Percent className="w-4 h-4 text-rose-400" />
-          <span>Aylık Vade Oranları ({vadeRates.length})</span>
+          <Percent className="w-4 h-4 text-rose-500" />
+          <span>Vade Oranları ({vadeRates.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSection('pricelists')}
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
+            activeSection === 'pricelists'
+              ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <FileSpreadsheet className="w-4 h-4 text-indigo-500" />
+          <span>Fiyat Listeleri ({priceLists.length})</span>
         </button>
       </div>
 
-      {/* SECTION 1: 3 SEVİYELİ KATEGORİ HİYERARŞİSİ (AĞAÇ & TABLO) */}
-      {activeSection === 'hierarchy' && (
+      {/* SECTION 0: TREE VIEW (Bağlantılı Ağaç Görünümü & Kademeli Yönetim) */}
+      {activeSection === 'tree' && (
         <div className="space-y-4">
-          {/* Top Control Bar for Hierarchy */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-800 shadow-sm">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-slate-200">
-                Kayıtlı Grup Sayısı: <strong className="text-emerald-400 font-mono">{categoryHierarchy.length}</strong>
+          {/* Info Banner */}
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-sky-500/10 to-purple-500/10 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5">
+              <span className="p-2 rounded-xl bg-emerald-500 text-white shadow-xs">
+                <Sparkles className="w-4 h-4" />
               </span>
-              <span className="text-slate-700">|</span>
-              <span className="text-xs text-slate-400">
-                {uniqueAnaList.length} Ana Kategori · {getUniqueAltKategoriler(categoryHierarchy).length} Alt Kategori
-              </span>
+              <div>
+                <span className="font-bold text-slate-900 dark:text-white">
+                  3 Seviyeli Canlı Hiyerarşi Haritası
+                </span>
+                <p className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5">
+                  Her Ana Kategori altındaki Alt Kategorileri ve bunlara bağlı Ürün Gruplarını açılır dallar halinde inceleyin, düzenleyin veya yeni dallar ekleyin.
+                </p>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => setIsAddingHierarchy(!isAddingHierarchy)}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-xs transition"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>{isAddingHierarchy ? 'Formu Kapat' : 'Yeni Grup / Kategori Ekle'}</span>
-              </button>
-              {isAdmin && (
-                <button
-                  onClick={() => {
-                    if (window.confirm('Tüm hiyerarşiyi başlangıçtaki 13 tam gruba sıfırlamak istiyor musunuz?')) {
-                      resetCategoryHierarchy();
-                    }
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded-xl text-xs font-medium transition"
-                  title="Varsayılan 13 Hiyerarşi Grubuna Sıfırla"
-                >
-                  <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Varsayılana Sıfırla</span>
-                </button>
-              )}
+
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="px-2.5 py-1 rounded-lg bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold text-[11px]">
+                {productCategories.length} Ana Kategori
+              </span>
+              <span className="px-2.5 py-1 rounded-lg bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300 font-bold text-[11px]">
+                {productSubCategories.length} Alt Kategori
+              </span>
+              <span className="px-2.5 py-1 rounded-lg bg-purple-100 dark:bg-purple-950 text-purple-700 dark:text-purple-300 font-bold text-[11px]">
+                {productGroups.length} Ürün Grubu
+              </span>
             </div>
           </div>
 
-          {/* Add Hierarchy Form Collapsible */}
-          {isAddingHierarchy && (
-            <form
-              onSubmit={handleAddHierarchyItem}
-              className="p-5 bg-slate-900/90 border border-emerald-500/30 rounded-2xl space-y-4 animate-in fade-in duration-200 shadow-xl"
-            >
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold text-emerald-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <Plus className="w-4 h-4 text-emerald-400" />
-                  <span>Yeni 3 Seviyeli Hiyerarşi Grubu Oluştur</span>
-                </h4>
-                <button
-                  type="button"
-                  onClick={() => setIsAddingHierarchy(false)}
-                  className="text-slate-400 hover:text-white"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+          {/* Tree Cards */}
+          <div className="space-y-4">
+            {productCategories.map(cat => {
+              const subs = productSubCategories.filter(
+                s => s.categoryId === cat.id || s.categoryName === cat.name
+              );
+              const isCatExpanded = expandedCats[cat.id] ?? true;
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-300 mb-1">
-                    1. Ana Kategori *
-                  </label>
-                  <select
-                    value={newAnaKategori}
-                    onChange={e => setNewAnaKategori(e.target.value)}
-                    className="w-full bg-slate-950/80 border border-slate-700/80 text-white rounded-xl px-3 py-2 text-xs font-semibold focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
+              return (
+                <div
+                  key={cat.id}
+                  className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden"
+                >
+                  {/* Category Header */}
+                  <div
+                    onClick={() => toggleCatExpand(cat.id)}
+                    className="p-4 bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between cursor-pointer hover:bg-slate-100/60 dark:hover:bg-slate-800 transition"
                   >
-                    <option value="MOBİLYA">MOBİLYA</option>
-                    <option value="BEYAZ EŞYA">BEYAZ EŞYA</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-300 mb-1">
-                    2. Alt Kategori *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    list="new-alt-options"
-                    value={newAltKategori}
-                    onChange={e => setNewAltKategori(e.target.value.toUpperCase())}
-                    placeholder="Örn: BAMBİ, ALTUS, MEDİSA..."
-                    className="w-full bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 rounded-xl px-3 py-2 text-xs font-semibold focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
-                  />
-                  <datalist id="new-alt-options">
-                    {getUniqueAltKategoriler(categoryHierarchy, newAnaKategori).map(alt => (
-                      <option key={alt} value={alt} />
-                    ))}
-                  </datalist>
-                </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-300 mb-1">
-                    3. Ürün Grubu *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={newUrunGrubu}
-                    onChange={e => setNewUrunGrubu(e.target.value.toUpperCase())}
-                    placeholder="Örn: BAMBİ YATAK, ALTUS FIRINLAR..."
-                    className="w-full bg-slate-950/80 border border-slate-700/80 text-white placeholder-slate-500 rounded-xl px-3 py-2 text-xs font-semibold focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsAddingHierarchy(false)}
-                  className="px-3.5 py-1.5 text-xs text-slate-400 hover:text-white bg-slate-800 hover:bg-slate-700 rounded-xl transition"
-                >
-                  Vazgeç
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition shadow-xs"
-                >
-                  Hiyerarşiye Kaydet
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* 2-Column Layout: Left: Tree Accordion, Right: Data Grid Table */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-            {/* SOL: KADEMELİ AĞAÇ (TREE VIEW) */}
-            <div className="lg:col-span-5 bg-slate-900/60 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                <div className="flex items-center gap-2">
-                  <FolderTree className="w-4 h-4 text-emerald-400" />
-                  <h3 className="font-bold text-sm text-white">
-                    Hiyerarşik Ağaç Görünümü
-                  </h3>
-                </div>
-                <span className="text-[11px] text-slate-400">
-                  Tıklayarak filtreleyin
-                </span>
-              </div>
-
-              <div className="space-y-3 max-h-[640px] overflow-y-auto pr-1">
-                {Object.entries(hierarchyTree).map(([anaName, altGroup]) => {
-                  const isAnaExpanded = expandedAna[anaName] ?? true;
-                  const totalItemsInAna = Object.values(altGroup).reduce((s, g) => s + g.length, 0);
-
-                  return (
-                    <div
-                      key={anaName}
-                      className="border border-slate-800 rounded-xl overflow-hidden bg-slate-950/40"
-                    >
-                      {/* Ana Kategori Başlığı */}
-                      <button
-                        type="button"
-                        onClick={() => toggleAnaExpand(anaName)}
-                        className="w-full px-3.5 py-2.5 flex items-center justify-between text-left hover:bg-slate-800/60 transition"
-                      >
-                        <div className="flex items-center gap-2">
-                          {isAnaExpanded ? (
-                            <ChevronDown className="w-4 h-4 text-emerald-400" />
-                          ) : (
-                            <ChevronRight className="w-4 h-4 text-slate-400" />
-                          )}
-                          <Layers className="w-3.5 h-3.5 text-emerald-400" />
-                          <span className="font-bold text-xs text-white">
-                            {anaName}
-                          </span>
-                        </div>
-                        <span className="font-mono text-[10px] text-slate-300 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
-                          {totalItemsInAna} grup
-                        </span>
+                    <div className="flex items-center gap-3">
+                      <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                        {isCatExpanded ? (
+                          <ChevronDown className="w-5 h-5 text-emerald-600" />
+                        ) : (
+                          <ChevronRight className="w-5 h-5" />
+                        )}
                       </button>
-
-                      {/* Alt Kategoriler Listesi */}
-                      {isAnaExpanded && (
-                        <div className="pl-6 pr-3 py-2 space-y-2 border-t border-slate-800/80">
-                          {Object.entries(altGroup).map(([altName, groupItems]) => {
-                            const altKey = `${anaName}__${altName}`;
-                            const isAltExpanded = expandedAlt[altKey] ?? false;
-
-                            return (
-                              <div
-                                key={altKey}
-                                className="border-l-2 border-slate-750 pl-3 py-1 space-y-1"
-                              >
-                                <button
-                                  type="button"
-                                  onClick={() => toggleAltExpand(altKey)}
-                                  className="w-full flex items-center justify-between text-left group"
-                                >
-                                  <div className="flex items-center gap-1.5">
-                                    {isAltExpanded ? (
-                                      <ChevronDown className="w-3.5 h-3.5 text-sky-400" />
-                                    ) : (
-                                      <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-sky-400" />
-                                    )}
-                                    <span className="text-xs font-semibold text-slate-200 group-hover:text-sky-400 transition-colors">
-                                      {altName}
-                                    </span>
-                                  </div>
-                                  <span className="text-[10px] font-mono text-slate-400">
-                                    {groupItems.length}
-                                  </span>
-                                </button>
-
-                                {/* Ürün Grupları */}
-                                {isAltExpanded && (
-                                  <div className="pl-5 pt-1 space-y-1">
-                                    {groupItems.map(g => (
-                                      <div
-                                        key={g.id}
-                                        onClick={() => {
-                                          setHierarchySearch(g.urunGrubu);
-                                        }}
-                                        className="flex items-center justify-between text-[11px] text-slate-400 hover:text-emerald-300 cursor-pointer py-1 group/item"
-                                      >
-                                        <span className="truncate max-w-[200px]">
-                                          · {g.urunGrubu}
-                                        </span>
-                                        {isAdmin && (
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              deleteCategoryHierarchyItem(g.id);
-                                            }}
-                                            className="opacity-0 group-hover/item:opacity-100 text-slate-500 hover:text-rose-400 transition"
-                                            title="Sil"
-                                          >
-                                            <Trash2 className="w-3 h-3" />
-                                          </button>
-                                        )}
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
+                      <span
+                        className="w-4 h-4 rounded-full shrink-0 shadow-xs"
+                        style={{ backgroundColor: cat.color || '#0ea5e9' }}
+                      />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300">
+                            1. SEVİYE ANA KATEGORİ
+                          </span>
+                          <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                            {cat.name}
+                          </h3>
                         </div>
+                        <span className="text-xs text-slate-400">
+                          {subs.length} Alt Kategori ·{' '}
+                          {productGroups.filter(g => g.categoryName === cat.name).length} Ürün Grubu
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                      <button
+                        onClick={() => {
+                          setSelectedParentCatId(cat.id);
+                          setActiveSection('subcategories');
+                        }}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition active:scale-95"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Alt Kategori Ekle</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Subcategories Branches */}
+                  {isCatExpanded && (
+                    <div className="p-4 space-y-3 bg-white dark:bg-slate-900">
+                      {subs.length === 0 ? (
+                        <p className="text-xs text-slate-400 italic p-3">
+                          Bu ana kategoriye henüz alt kategori eklenmedi.
+                        </p>
+                      ) : (
+                        subs.map(sub => {
+                          const groups = productGroups.filter(
+                            g => g.subCategoryId === sub.id || g.subCategoryName === sub.name
+                          );
+                          const isSubExpanded = expandedSubs[sub.id] ?? false;
+
+                          return (
+                            <div
+                              key={sub.id}
+                              className="rounded-xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/40 dark:bg-slate-800/30 overflow-hidden ml-2 sm:ml-6"
+                            >
+                              {/* Subcategory Row */}
+                              <div
+                                onClick={() => toggleSubExpand(sub.id)}
+                                className="p-3 flex items-center justify-between cursor-pointer hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition border-b border-slate-100 dark:border-slate-800/60"
+                              >
+                                <div className="flex items-center gap-2.5">
+                                  <button className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                                    {isSubExpanded ? (
+                                      <ChevronDown className="w-4 h-4 text-sky-600" />
+                                    ) : (
+                                      <ChevronRight className="w-4 h-4" />
+                                    )}
+                                  </button>
+                                  <span className="text-[10px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300">
+                                    2. SEVİYE ALT
+                                  </span>
+                                  <span className="font-bold text-xs text-slate-800 dark:text-slate-100">
+                                    {sub.name}
+                                  </span>
+                                  <span className="text-[11px] text-slate-400 font-medium">
+                                    ({groups.length} Ürün Grubu)
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                  <button
+                                    onClick={() => {
+                                      setSelectedGroupParentCatId(cat.id);
+                                      setSelectedGroupSubCatId(sub.id);
+                                      setActiveSection('productgroups');
+                                    }}
+                                    className="flex items-center gap-1 px-2 py-1 rounded bg-sky-50 dark:bg-sky-950/50 hover:bg-sky-100 text-sky-700 dark:text-sky-300 text-[11px] font-semibold transition"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                    <span>Grup Ekle</span>
+                                  </button>
+
+                                  {isAdmin && (
+                                    <button
+                                      onClick={() => {
+                                        if (
+                                          window.confirm(
+                                            `'${sub.name}' alt kategorisini ve altındaki tüm ürün gruplarını silmek istediğinize emin misiniz?`
+                                          )
+                                        ) {
+                                          deleteProductSubCategory(sub.id);
+                                        }
+                                      }}
+                                      className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
+                                      title="Alt Kategoriyi Sil"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Groups Pills List (3. Seviye) */}
+                              {isSubExpanded && (
+                                <div className="p-3 bg-white dark:bg-slate-900/60">
+                                  {groups.length === 0 ? (
+                                    <p className="text-[11px] text-slate-400 italic">
+                                      Bu alt kategoriye henüz ürün grubu atanmadı.
+                                    </p>
+                                  ) : (
+                                    <div className="flex flex-wrap gap-2">
+                                      {groups.map(group => {
+                                        const stockCount = stockItems.filter(
+                                          s => s.productGroup === group.name
+                                        ).length;
+
+                                        return (
+                                          <div
+                                            key={group.id}
+                                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/50 border border-purple-200 dark:border-purple-800/60 text-xs text-purple-900 dark:text-purple-200"
+                                          >
+                                            <span className="font-semibold">{group.name}</span>
+                                            {stockCount > 0 && (
+                                              <span className="px-1.5 py-0.2 rounded bg-purple-200 dark:bg-purple-800 text-[10px] font-bold text-purple-800 dark:text-purple-200">
+                                                {stockCount} stok
+                                              </span>
+                                            )}
+                                            {isAdmin && (
+                                              <button
+                                                onClick={() => {
+                                                  if (
+                                                    window.confirm(
+                                                      `'${group.name}' ürün grubunu silmek istediğinize emin misiniz?`
+                                                    )
+                                                  ) {
+                                                    deleteProductGroup(group.id);
+                                                  }
+                                                }}
+                                                className="text-purple-400 hover:text-rose-600 ml-1 transition"
+                                                title="Sil"
+                                              >
+                                                <X className="w-3 h-3" />
+                                              </button>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* SAĞ: ARAMA FİLTRELİ HİYERARŞİ TABLOSU & CRUD */}
-            <div className="lg:col-span-7 bg-slate-900/60 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="relative flex-1">
-                  <Search className="w-3.5 h-3.5 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <input
-                    type="text"
-                    value={hierarchySearch}
-                    onChange={e => setHierarchySearch(e.target.value)}
-                    placeholder="Ana, alt kategori veya ürün grubu ara..."
-                    className="w-full pl-8 pr-8 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-emerald-500 text-white placeholder-slate-500"
-                  />
-                  {hierarchySearch && (
-                    <button
-                      onClick={() => setHierarchySearch('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
                   )}
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <select
-                    value={hierarchyAnaFilter}
-                    onChange={e => {
-                      setHierarchyAnaFilter(e.target.value);
-                      setHierarchyAltFilter('ALL');
-                    }}
-                    className="px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs font-semibold text-slate-200 outline-none focus:border-emerald-500"
-                  >
-                    <option value="ALL">Tüm Ana</option>
-                    {uniqueAnaList.map(a => (
-                      <option key={a} value={a}>
-                        {a}
-                      </option>
-                    ))}
-                  </select>
-
-                  <select
-                    value={hierarchyAltFilter}
-                    onChange={e => setHierarchyAltFilter(e.target.value)}
-                    className="px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs font-semibold text-slate-200 outline-none focus:border-emerald-500"
-                  >
-                    <option value="ALL">Tüm Alt</option>
-                    {uniqueAltList.map(alt => (
-                      <option key={alt} value={alt}>
-                        {alt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Data Table */}
-              <div className="overflow-x-auto border border-slate-800 rounded-xl max-h-[560px] overflow-y-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-950/90 text-slate-400 border-b border-slate-800 sticky top-0 z-10 backdrop-blur-xs font-semibold uppercase text-[10px]">
-                    <tr>
-                      <th className="py-2.5 px-3">Ana Kategori</th>
-                      <th className="py-2.5 px-3">Alt Kategori</th>
-                      <th className="py-2.5 px-3">Ürün Grubu</th>
-                      <th className="py-2.5 px-3 text-center">Stok Kaydı</th>
-                      <th className="py-2.5 px-3 text-right w-24">İşlem</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/60">
-                    {filteredHierarchy.length === 0 ? (
-                      <tr>
-                        <td colSpan={5} className="py-8 text-center text-slate-400">
-                          Arama ve filtrelere uygun hiyerarşi kaydı bulunamadı.
-                        </td>
-                      </tr>
-                    ) : (
-                      filteredHierarchy.map(item => {
-                        const isEditing = editingHierarchyId === item.id;
-                        const matchingStockCount = stockItems.filter(
-                          s => s.urunGrubu && s.urunGrubu.toUpperCase() === item.urunGrubu.toUpperCase()
-                        ).length;
-
-                        return (
-                          <tr
-                            key={item.id}
-                            className="hover:bg-slate-800/40 transition group"
-                          >
-                            {/* Ana Kategori */}
-                            <td className="py-2.5 px-3 whitespace-nowrap">
-                              {isEditing ? (
-                                <select
-                                  value={editAnaKategori}
-                                  onChange={e => setEditAnaKategori(e.target.value)}
-                                  className="px-2 py-1 bg-slate-950 border border-slate-700 rounded text-xs font-semibold text-white outline-none focus:border-emerald-500"
-                                >
-                                  <option value="MOBİLYA">MOBİLYA</option>
-                                  <option value="BEYAZ EŞYA">BEYAZ EŞYA</option>
-                                </select>
-                              ) : (
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                                  item.anaKategori === 'MOBİLYA'
-                                    ? 'bg-emerald-950/80 text-emerald-400 border-emerald-800/60'
-                                    : 'bg-sky-950/80 text-sky-400 border-sky-800/60'
-                                }`}>
-                                  {item.anaKategori}
-                                </span>
-                              )}
-                            </td>
-
-                            {/* Alt Kategori */}
-                            <td className="py-2.5 px-3 font-semibold text-slate-200 whitespace-nowrap">
-                              {isEditing ? (
-                                <input
-                                  type="text"
-                                  value={editAltKategori}
-                                  onChange={e => setEditAltKategori(e.target.value.toUpperCase())}
-                                  className="px-2 py-1 bg-slate-950 border border-slate-700 rounded text-xs font-semibold text-white outline-none focus:border-emerald-500 w-28"
-                                />
-                              ) : (
-                                <span>{item.altKategori}</span>
-                              )}
-                            </td>
-
-                            {/* Ürün Grubu */}
-                            <td className="py-2.5 px-3 font-medium text-white">
-                              {isEditing ? (
-                                <input
-                                  type="text"
-                                  value={editUrunGrubu}
-                                  onChange={e => setEditUrunGrubu(e.target.value.toUpperCase())}
-                                  className="px-2 py-1 bg-slate-950 border border-emerald-500 rounded text-xs font-medium text-white outline-none w-full"
-                                />
-                              ) : (
-                                <span>{item.urunGrubu}</span>
-                              )}
-                            </td>
-
-                            {/* Stoktaki Kayıt Adedi */}
-                            <td className="py-2.5 px-3 text-center font-mono">
-                              {matchingStockCount > 0 ? (
-                                <span className="font-bold text-emerald-400 bg-emerald-950/80 border border-emerald-800/50 px-2 py-0.5 rounded text-[11px]">
-                                  {matchingStockCount} ürün
-                                </span>
-                              ) : (
-                                <span className="text-slate-500 text-[10px]">-</span>
-                              )}
-                            </td>
-
-                            {/* İşlemler */}
-                            <td className="py-2.5 px-3 text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                {isEditing ? (
-                                  <button
-                                    onClick={() => handleSaveEditHierarchy(item.id)}
-                                    className="p-1 rounded bg-emerald-600 text-white hover:bg-emerald-500 transition"
-                                    title="Kaydet"
-                                  >
-                                    <Check className="w-3.5 h-3.5" />
-                                  </button>
-                                ) : (
-                                  <button
-                                    onClick={() => handleStartEditHierarchy(item)}
-                                    className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition"
-                                    title="Düzenle"
-                                  >
-                                    <Edit2 className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                                {isAdmin && (
-                                  <button
-                                    onClick={() => deleteCategoryHierarchyItem(item.id)}
-                                    className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition"
-                                    title="Hiyerarşiden Sil"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* SECTION 2: FİYAT LİSTELERİ */}
-      {activeSection === 'pricelists' && (
+      {/* SECTION 1: Ana Kategoriler */}
+      {activeSection === 'categories' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-4 bg-slate-900/60 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
-            <h3 className="font-bold text-white text-sm flex items-center gap-2">
-              <Plus className="w-4 h-4 text-indigo-400" />
-              Yeni Fiyat Listesi Oluştur
+          {/* Add Category Form */}
+          <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+              <Plus className="w-4 h-4 text-emerald-600" />
+              1. Seviye: Yeni Ana Kategori Ekle
             </h3>
-            <p className="text-xs text-slate-400">
-              Listenin türü (Toptan veya Perakende) ve varsa bağlı olduğu tedarikçi firmayı belirleyiniz.
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              En üst düzey sektör kategorisi (Örn: MOBİLYA, BEYAZ EŞYA).
             </p>
-            <form onSubmit={handleAddPriceList} className="space-y-3 pt-2">
+
+            <form onSubmit={handleAddCategory} className="space-y-3 pt-2">
               <div>
-                <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                  Fiyat Listesi Türü
-                </label>
-                <div className="grid grid-cols-2 gap-2 p-1 bg-slate-950 rounded-xl border border-slate-800">
-                  <button
-                    type="button"
-                    onClick={() => setPriceListType('Toptan')}
-                    className={`py-2 px-2 text-xs font-bold rounded-lg transition ${
-                      priceListType === 'Toptan'
-                        ? 'bg-amber-600 text-white shadow-xs'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Toptan Fiyat Listesi
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPriceListType('Perakende')}
-                    className={`py-2 px-2 text-xs font-bold rounded-lg transition ${
-                      priceListType === 'Perakende'
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Perakende Fiyat Listesi
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Uygulama Dönemi (YYYY-MM) *
-                </label>
-                <input
-                  type="month"
-                  required
-                  value={priceListMonth}
-                  onChange={e => setPriceListMonth(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-indigo-500 text-white font-semibold"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Liste Başlığı *
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Ana Kategori Adı
                 </label>
                 <input
                   type="text"
                   required
-                  value={priceListTitle}
-                  onChange={e => setPriceListTitle(e.target.value)}
-                  placeholder="Ör: Ekim 2026 Bosch Toptan Fiyat Listesi"
-                  className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-indigo-500 text-white"
+                  value={newCatName}
+                  onChange={e => setNewCatName(e.target.value)}
+                  placeholder="Örn: MOBİLYA, BEYAZ EŞYA..."
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-100 font-semibold"
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Tedarikçi / Firma (Opsiyonel)
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Tema Rengi
                 </label>
-                <select
-                  value={priceListSupplierId}
-                  onChange={e => setPriceListSupplierId(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-indigo-500 text-white"
-                >
-                  <option value="">Firma Bağımsız / Genel</option>
-                  {suppliers.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={newCatColor}
+                    onChange={e => setNewCatColor(e.target.value)}
+                    className="w-9 h-9 p-0.5 rounded-lg border border-slate-300 cursor-pointer"
+                  />
+                  <span className="text-xs font-mono text-slate-500">{newCatColor}</span>
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Kategori Kapsamı
-                </label>
-                <select
-                  value={priceListCategory}
-                  onChange={e => setPriceListCategory(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-indigo-500 text-white"
-                >
-                  <option value="Tüm Kategoriler">Tüm Kategoriler</option>
-                  <option value="MOBİLYA">MOBİLYA</option>
-                  <option value="BEYAZ EŞYA">BEYAZ EŞYA</option>
-                </select>
-              </div>
+
               <button
                 type="submit"
-                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition active:scale-95 shadow-sm"
+                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition active:scale-95 shadow-sm"
               >
-                Fiyat Listesi Ekle
+                Ana Kategori Kaydet
               </button>
             </form>
           </div>
 
-          <div className="lg:col-span-8 bg-slate-900/60 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h3 className="font-bold text-white text-sm">
-                  Kayıtlı Fiyat Listeleri ({filteredPriceLists.length})
-                </h3>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 p-1 bg-slate-950 rounded-xl border border-slate-800 text-xs font-semibold">
-                  <button
-                    onClick={() => setPriceListFilterType('ALL')}
-                    className={`px-2.5 py-1 rounded-lg transition ${
-                      priceListFilterType === 'ALL'
-                        ? 'bg-slate-800 text-white shadow-xs'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Tümü
-                  </button>
-                  <button
-                    onClick={() => setPriceListFilterType('Toptan')}
-                    className={`px-2.5 py-1 rounded-lg transition ${
-                      priceListFilterType === 'Toptan'
-                        ? 'bg-amber-600 text-white shadow-xs'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Toptan
-                  </button>
-                  <button
-                    onClick={() => setPriceListFilterType('Perakende')}
-                    className={`px-2.5 py-1 rounded-lg transition ${
-                      priceListFilterType === 'Perakende'
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    Perakende
-                  </button>
-                </div>
-                <input
-                  type="file"
-                  ref={excelPriceListInputRef}
-                  onChange={handleUploadNewPriceListExcel}
-                  accept=".xlsx, .xls, .csv"
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => excelPriceListInputRef.current?.click()}
-                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
-                >
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Excel'den Liste Ekle</span>
-                </button>
-              </div>
+          {/* List Categories */}
+          <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                Tanımlı 1. Seviye Ana Kategoriler ({productCategories.length})
+              </h3>
+              <span className="text-xs text-slate-400">
+                Tüm alt kategorilerin ve ürün gruplarının ana çatısı
+              </span>
             </div>
 
-            <div className="space-y-3">
-              {filteredPriceLists.length === 0 ? (
-                <div className="p-8 text-center text-slate-500 text-xs">
-                  Bu filtrede fiyat listesi bulunamadı.
-                </div>
-              ) : (
-                filteredPriceLists.map(pl => {
-                  const isToptan = pl.listType === 'Toptan';
-                  return (
-                    <div
-                      key={pl.id}
-                      className="p-4 rounded-xl border border-slate-800 bg-slate-950/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-750 transition"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span
-                            className={`font-mono text-xs font-bold px-2.5 py-0.5 rounded-full border ${
-                              isToptan
-                                ? 'bg-amber-950/80 text-amber-300 border-amber-800/80'
-                                : 'bg-emerald-950/80 text-emerald-300 border-emerald-800/80'
-                            }`}
-                          >
-                            {pl.listType} Fiyat Listesi
-                          </span>
-                          <span className="font-mono text-xs font-semibold text-slate-400">
-                            {pl.monthKey}
-                          </span>
-                          <h4 className="font-bold text-sm text-white">
-                            {pl.title}
-                          </h4>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-400 flex-wrap">
-                          {pl.supplierName && (
-                            <>
-                              <span>Firma: <strong className="text-slate-200">{pl.supplierName}</strong></span>
-                              <span>·</span>
-                            </>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {productCategories.map(cat => {
+                const subCount = productSubCategories.filter(
+                  s => s.categoryId === cat.id || s.categoryName === cat.name
+                ).length;
+                const groupCount = productGroups.filter(
+                  g => g.categoryId === cat.id || g.categoryName === cat.name
+                ).length;
+                const isEditing = editingCatId === cat.id;
+
+                return (
+                  <div
+                    key={cat.id}
+                    className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex flex-col justify-between gap-3"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-3">
+                        <span
+                          className="w-4 h-4 rounded-full shrink-0 shadow-xs mt-0.5"
+                          style={{ backgroundColor: cat.color || '#0ea5e9' }}
+                        />
+                        <div>
+                          {isEditing ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={editingCatName}
+                                onChange={e => setEditingCatName(e.target.value)}
+                                className="px-2 py-1 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded text-xs font-bold text-slate-900 dark:text-white outline-none"
+                              />
+                              <button
+                                onClick={() => handleSaveEditCategory(cat)}
+                                className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setEditingCatId(null)}
+                                className="p-1 text-slate-400 hover:bg-slate-100 rounded"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <h4 className="font-bold text-sm text-slate-900 dark:text-white">
+                              {cat.name}
+                            </h4>
                           )}
-                          <span>Kategori: <strong>{pl.categoryName || 'Tüm Kategoriler'}</strong></span>
-                          <span>·</span>
-                          <span>{pl.items?.length || pl.itemsCount} ürün kalemi</span>
+                          <span className="text-xs text-slate-400">
+                            {subCount} Alt Kategori · {groupCount} Ürün Grubu
+                          </span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 self-end sm:self-center">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedPriceListForDetail(pl)}
-                          className="px-3 py-1.5 bg-indigo-950/70 hover:bg-indigo-900/80 text-indigo-300 border border-indigo-800/80 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                          <span>Kalemleri İncele</span>
-                        </button>
-                        {isAdmin && (
+
+                      {isAdmin && !isEditing && (
+                        <div className="flex items-center gap-1">
                           <button
-                            onClick={() => deletePriceList(pl.id)}
-                            className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition"
-                            title="Listeyi Kaldır"
+                            onClick={() => {
+                              setEditingCatId(cat.id);
+                              setEditingCatName(cat.name);
+                            }}
+                            className="p-1 text-slate-400 hover:text-sky-600 rounded transition"
+                            title="Düzenle"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Edit2 className="w-3.5 h-3.5" />
                           </button>
-                        )}
-                      </div>
+                          <button
+                            onClick={() => {
+                              if (
+                                window.confirm(
+                                  `'${cat.name}' ana kategorisini ve bağlı tüm alt kategorileri silmek istediğinize emin misiniz?`
+                                )
+                              ) {
+                                deleteProductCategory(cat.id);
+                              }
+                            }}
+                            className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
+                            title="Kategoriyi Sil"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  );
-                })
-              )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       )}
 
-      {/* SECTION 3: MARKALAR */}
+      {/* SECTION 2: Alt Kategoriler (2. Seviye) */}
+      {activeSection === 'subcategories' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Add Subcategory Form */}
+          <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+              <Plus className="w-4 h-4 text-sky-600" />
+              2. Seviye: Yeni Alt Kategori Ekle
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Ana kategoriye bağlı alt çeşitleri tanımlayın (Örn: BAMBİ, ALTUS, BOSCH, HOOVER, UGUR, MEDİSA, MASA...).
+            </p>
+
+            <form onSubmit={handleAddSubCategory} className="space-y-3 pt-2">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  1. Seviye: Bağlı Olduğu Ana Kategori
+                </label>
+                <select
+                  value={selectedParentCatId}
+                  onChange={e => setSelectedParentCatId(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-sky-500 text-slate-800 dark:text-slate-100 font-semibold"
+                >
+                  {productCategories.map(cat => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Alt Kategori Adı
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newSubCatName}
+                  onChange={e => setNewSubCatName(e.target.value)}
+                  placeholder="Örn: BAMBİ, ALTUS, BOSCH..."
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-sky-500 text-slate-800 dark:text-slate-100 font-semibold"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-semibold transition active:scale-95 shadow-sm"
+              >
+                Alt Kategori Kaydet
+              </button>
+            </form>
+          </div>
+
+          {/* List Subcategories */}
+          <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                Tanımlı 2. Seviye Alt Kategoriler ({productSubCategories.length})
+              </h3>
+
+              {/* Filter by parent category */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400">Ana Kategori Filtresi:</span>
+                <select
+                  value={filterParentCat}
+                  onChange={e => setFilterParentCat(e.target.value)}
+                  className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none"
+                >
+                  <option value="ALL">Tüm Ana Kategoriler</option>
+                  {productCategories.map(c => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                  <tr>
+                    <th className="py-2.5 px-3 font-semibold">1. Seviye (Ana Kategori)</th>
+                    <th className="py-2.5 px-3 font-semibold">2. Seviye (Alt Kategori)</th>
+                    <th className="py-2.5 px-3 font-semibold text-center">Bağlı Ürün Grubu</th>
+                    <th className="py-2.5 px-3 font-semibold text-center">İşlem</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {productSubCategories
+                    .filter(s => filterParentCat === 'ALL' || s.categoryName === filterParentCat)
+                    .map(sub => {
+                      const groupCount = productGroups.filter(
+                        g => g.subCategoryId === sub.id || g.subCategoryName === sub.name
+                      ).length;
+                      const isEditing = editingSubId === sub.id;
+
+                      return (
+                        <tr
+                          key={sub.id}
+                          className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition"
+                        >
+                          <td className="py-2.5 px-3">
+                            <span className="font-semibold text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 px-2 py-0.5 rounded text-[11px]">
+                              {sub.categoryName}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 font-medium text-slate-900 dark:text-slate-100">
+                            {isEditing ? (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  value={editingSubName}
+                                  onChange={e => setEditingSubName(e.target.value)}
+                                  className="px-2 py-1 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded text-xs font-bold text-slate-900 dark:text-white outline-none"
+                                />
+                                <button
+                                  onClick={() => handleSaveEditSubCategory(sub)}
+                                  className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
+                                >
+                                  <Check className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => setEditingSubId(null)}
+                                  className="p-1 text-slate-400 hover:bg-slate-100 rounded"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="font-bold">{sub.name}</span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span className="px-2 py-0.5 rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-bold text-[11px]">
+                              {groupCount} grup
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            {isAdmin && !isEditing && (
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => {
+                                    setEditingSubId(sub.id);
+                                    setEditingSubName(sub.name);
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-sky-600 rounded transition"
+                                  title="Düzenle"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (
+                                      window.confirm(
+                                        `'${sub.name}' alt kategorisini ve bağlı tüm ürün gruplarını silmek istediğinize emin misiniz?`
+                                      )
+                                    ) {
+                                      deleteProductSubCategory(sub.id);
+                                    }
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
+                                  title="Sil"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 3: Ürün Grupları (3. Seviye - Kademeli Yönetim) */}
+      {activeSection === 'productgroups' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Add Product Group Form */}
+          <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+              <Plus className="w-4 h-4 text-purple-600" />
+              3. Seviye: Yeni Ürün Grubu Ekle
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Alt kategoriye bağlı en detaylı ürün grubunu tanımlayın (Örn: BAMBİ YATAK, ALTUS FIRINLAR, UGUR CEKMECELI DONDURUCU...).
+            </p>
+
+            <form onSubmit={handleAddProductGroup} className="space-y-3 pt-2">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  1. Seviye (Ana Kategori)
+                </label>
+                <select
+                  value={selectedGroupParentCatId}
+                  onChange={e => setSelectedGroupParentCatId(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-100 font-semibold"
+                >
+                  {productCategories.map(cat => (
+                    <option key={cat.id} value={cat.id}>
+                      {cat.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  2. Seviye (Alt Kategori - Otomatik Filtreli)
+                </label>
+                <select
+                  value={selectedGroupSubCatId}
+                  onChange={e => setSelectedGroupSubCatId(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-100 font-semibold"
+                >
+                  {subCategoriesForGroupForm.map(sub => (
+                    <option key={sub.id} value={sub.id}>
+                      {sub.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  3. Seviye (Ürün Grubu Adı)
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newGroupName}
+                  onChange={e => setNewGroupName(e.target.value)}
+                  placeholder="Örn: BAMBİ YATAK, ALTUS BUZDOLAPLARI..."
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-100 font-semibold"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Grup Kodu (Opsiyonel)
+                </label>
+                <input
+                  type="text"
+                  value={newGroupCode}
+                  onChange={e => setNewGroupCode(e.target.value)}
+                  placeholder="Örn: PG-ALTUS-01"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-100"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold transition active:scale-95 shadow-sm"
+              >
+                Ürün Grubu Kaydet
+              </button>
+            </form>
+          </div>
+
+          {/* List Product Groups with Cascading Filters */}
+          <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                  Tanımlı 3. Seviye Ürün Grupları ({filteredProductGroups.length} / {productGroups.length})
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Kademeli filtreleme ile listeyi daraltabilirsiniz.
+                </p>
+              </div>
+
+              {/* Cascading Filter Bar */}
+              <div className="flex flex-wrap items-center gap-2">
+                <select
+                  value={filterGroupCat}
+                  onChange={e => {
+                    setFilterGroupCat(e.target.value);
+                    setFilterGroupSub('ALL');
+                  }}
+                  className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none"
+                >
+                  <option value="ALL">Tüm Ana Kat.</option>
+                  {productCategories.map(c => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+
+                <select
+                  value={filterGroupSub}
+                  onChange={e => setFilterGroupSub(e.target.value)}
+                  className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-800 dark:text-slate-200 outline-none"
+                >
+                  <option value="ALL">Tüm Alt Kat.</option>
+                  {subCategoriesForFilter.map(s => (
+                    <option key={s.id} value={s.name}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    placeholder="Grup ara..."
+                    className="pl-8 pr-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none w-32 focus:w-44 transition-all"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto max-h-[550px] overflow-y-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-10 backdrop-blur-xs">
+                  <tr>
+                    <th className="py-2.5 px-3 font-semibold">1. Seviye (Ana Kategori)</th>
+                    <th className="py-2.5 px-3 font-semibold">2. Seviye (Alt Kategori)</th>
+                    <th className="py-2.5 px-3 font-semibold">3. Seviye (Ürün Grubu)</th>
+                    <th className="py-2.5 px-3 font-semibold text-center">Stok</th>
+                    <th className="py-2.5 px-3 font-semibold text-center">İşlem</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {filteredProductGroups.map(group => {
+                    const isEditing = editingGroupId === group.id;
+                    const stockCount = stockItems.filter(
+                      s => s.productGroup === group.name
+                    ).length;
+
+                    return (
+                      <tr
+                        key={group.id}
+                        className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition"
+                      >
+                        <td className="py-2.5 px-3">
+                          <span className="font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded text-[11px]">
+                            {group.categoryName}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3">
+                          <span className="font-semibold text-sky-700 dark:text-sky-400 bg-sky-50 dark:bg-sky-950/60 px-2 py-0.5 rounded text-[11px]">
+                            {group.subCategoryName}
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-3 font-medium text-slate-900 dark:text-slate-100">
+                          {isEditing ? (
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={editingGroupName}
+                                onChange={e => setEditingGroupName(e.target.value)}
+                                className="px-2 py-1 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded text-xs font-bold text-slate-900 dark:text-white outline-none"
+                              />
+                              <button
+                                onClick={() => handleSaveEditProductGroup(group)}
+                                className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => setEditingGroupId(null)}
+                                className="p-1 text-slate-400 hover:bg-slate-100 rounded"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ) : (
+                            <span className="font-bold text-slate-900 dark:text-white">
+                              {group.name}
+                            </span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          {stockCount > 0 ? (
+                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 font-bold text-[11px]">
+                              {stockCount} adet
+                            </span>
+                          ) : (
+                            <span className="text-slate-300 text-[11px]">-</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 px-3 text-center">
+                          {isAdmin && !isEditing && (
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => {
+                                  setEditingGroupId(group.id);
+                                  setEditingGroupName(group.name);
+                                }}
+                                className="p-1 text-slate-400 hover:text-purple-600 rounded transition"
+                                title="Düzenle"
+                              >
+                                <Edit2 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (
+                                    window.confirm(
+                                      `'${group.name}' ürün grubunu silmek istediğinize emin misiniz?`
+                                    )
+                                  ) {
+                                    deleteProductGroup(group.id);
+                                  }
+                                }}
+                                className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
+                                title="Sil"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 4: Markalar */}
       {activeSection === 'brands' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-4 bg-slate-900/60 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
-            <h3 className="font-bold text-white text-sm flex items-center gap-2">
-              <Plus className="w-4 h-4 text-purple-400" />
+          {/* Add Brand Form */}
+          <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+              <Plus className="w-4 h-4 text-purple-600" />
               Yeni Marka Ekle
             </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Ürünlerin ve stokların bağlı olduğu üretici marka kartlarını tanımlayın.
+            </p>
+
             <form onSubmit={handleAddBrand} className="space-y-3 pt-2">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Marka Adı
                 </label>
                 <input
                   type="text"
                   required
                   value={newBrandName}
-                  onChange={e => setNewBrandName(e.target.value.toUpperCase())}
-                  placeholder="Ör: BOSCH, BAMBI, ALTUS..."
-                  className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-purple-500 text-white placeholder-slate-500"
+                  onChange={e => setNewBrandName(e.target.value)}
+                  placeholder="Örn: Bosch, Altus, Bambi..."
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-500 text-slate-800 dark:text-slate-100 font-semibold"
                 />
               </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  İlişkili Ana Kategoriler
+                </label>
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {productCategories.map(cat => {
+                    const isSelected = selectedBrandCategories.includes(cat.name);
+                    return (
+                      <button
+                        type="button"
+                        key={cat.id}
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedBrandCategories(prev => prev.filter(c => c !== cat.name));
+                          } else {
+                            setSelectedBrandCategories(prev => [...prev, cat.name]);
+                          }
+                        }}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-medium border transition ${
+                          isSelected
+                            ? 'bg-purple-600 text-white border-purple-600'
+                            : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                        }`}
+                      >
+                        {cat.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <button
                 type="submit"
                 className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-semibold transition active:scale-95 shadow-sm"
               >
-                Markayı Kaydet
+                Marka Kaydet
               </button>
             </form>
           </div>
 
-          <div className="lg:col-span-8 bg-slate-900/60 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
-            <h3 className="font-bold text-white text-sm">
+          {/* List Brands */}
+          <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm">
               Tanımlı Markalar ({productBrands.length})
             </h3>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {productBrands.map(b => (
+              {productBrands.map(brand => (
                 <div
-                  key={b.id}
-                  className="p-3 rounded-xl border border-slate-800 bg-slate-950/50 flex items-center justify-between"
+                  key={brand.id}
+                  className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between"
                 >
-                  <h4 className="font-bold text-xs text-white flex items-center gap-2">
-                    <Tag className="w-3.5 h-3.5 text-purple-400" />
-                    {b.name}
-                  </h4>
+                  <div>
+                    <h4 className="font-bold text-xs text-slate-900 dark:text-white">
+                      {brand.name}
+                    </h4>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {brand.categoryNames?.map(cn => (
+                        <span
+                          key={cn}
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-medium"
+                        >
+                          {cn}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
                   {isAdmin && (
                     <button
-                      onClick={() => deleteProductBrand(b.id)}
-                      className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition"
+                      onClick={() => deleteProductBrand(brand.id)}
+                      className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
                       title="Markayı Sil"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -1154,136 +1408,175 @@ export const DefinitionsTab: React.FC = () => {
         </div>
       )}
 
-      {/* SECTION 4: TEDARİKÇİLER */}
+      {/* SECTION 5: Ortak Tedarikçiler (Cari ile Entegre) */}
       {activeSection === 'suppliers' && (
-        <div className="bg-slate-900/60 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
             <div>
-              <h3 className="font-bold text-white text-sm flex items-center gap-2">
-                <Building className="w-4 h-4 text-amber-400" />
-                Ortak Tedarikçi Carileri ({suppliers.length})
+              <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                Ortak Tedarikçi Listesi ({suppliers.length})
               </h3>
-              <p className="text-xs text-slate-400">
-                Finans, Mal Alımı ve Fiyat Listeleri bu ortak tedarikçi tablosunu kullanır.
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Mal alımları ve stok kayıtlarında ortak kullanılan tedarikçi carileri.
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setIsSupplierModalOpen(true)}
-                className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Yeni Tedarikçi Ekle</span>
-              </button>
-              <button
-                onClick={() => setActiveTab('currents')}
-                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition"
-              >
-                Cari Kartlara Git →
-              </button>
-            </div>
+
+            <button
+              onClick={() => setIsSupplierModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold transition active:scale-95 shadow-sm"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Yeni Tedarikçi Ekle</span>
+            </button>
           </div>
 
-          <div className="overflow-x-auto border border-slate-800 rounded-xl">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/90 text-slate-400 border-b border-slate-800 uppercase text-[10px] font-semibold">
-                <tr>
-                  <th className="py-2.5 px-3">Tedarikçi Firma</th>
-                  <th className="py-2.5 px-3">Şehir</th>
-                  <th className="py-2.5 px-3">Telefon</th>
-                  <th className="py-2.5 px-3">E-posta</th>
-                  <th className="py-2.5 px-3 text-right">Güncel Cari Borcumuz</th>
-                  <th className="py-2.5 px-3">Notlar</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60">
-                {suppliers.map(sup => (
-                  <tr key={sup.id} className="hover:bg-slate-800/40 transition">
-                    <td className="py-3 px-3 font-bold text-white">{sup.name}</td>
-                    <td className="py-3 px-3 text-slate-300">{sup.city || '-'}</td>
-                    <td className="py-3 px-3 font-mono text-[11px] text-slate-400">{sup.phone || '-'}</td>
-                    <td className="py-3 px-3 text-slate-400">{sup.email || '-'}</td>
-                    <td className="py-3 px-3 text-right font-mono font-bold text-rose-400">
-                      {formatCurrency(Math.abs(sup.balance))} (Borç)
-                    </td>
-                    <td className="py-3 px-3 text-slate-400 max-w-[200px] truncate">{sup.notes || '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {suppliers.map(sup => (
+              <div
+                key={sup.id}
+                className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-2.5"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400">
+                      <Building className="w-4 h-4" />
+                    </span>
+                    <h4 className="font-bold text-xs text-slate-900 dark:text-white">
+                      {sup.name}
+                    </h4>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300">
+                    Tedarikçi
+                  </span>
+                </div>
+
+                <div className="text-xs space-y-1 text-slate-500 dark:text-slate-400 pt-1">
+                  {sup.phone && <div>Tel: <span className="text-slate-800 dark:text-slate-200 font-medium">{sup.phone}</span></div>}
+                  {sup.email && <div>E-posta: <span className="text-slate-800 dark:text-slate-200 font-medium">{sup.email}</span></div>}
+                  {sup.city && <div>Şehir: <span className="text-slate-800 dark:text-slate-200 font-medium">{sup.city}</span></div>}
+                </div>
+
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                  <span className="text-slate-400">Güncel Bakiye:</span>
+                  <span
+                    className={`font-bold font-mono-num ${
+                      sup.balance < 0 ? 'text-rose-600' : 'text-emerald-600'
+                    }`}
+                  >
+                    {formatCurrency(sup.balance)}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      {/* SECTION 5: VADE ORANLARI */}
+      {/* SECTION 6: Vade Oranları */}
       {activeSection === 'vaderates' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-4 bg-slate-900/60 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
-            <h3 className="font-bold text-white text-sm flex items-center gap-2">
-              <Percent className="w-4 h-4 text-rose-400" />
-              Aylık Vade Farkı Oranı Belirle
+          {/* Add Vade Rate Form */}
+          <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+              <Plus className="w-4 h-4 text-rose-600" />
+              Aylık Senet Vade Oranı Belirle
             </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Kâr Takip modülünde senetli satışlarda taksit sayısıyla çarpılarak maliyete eklenecek aylık faiz/vade farkı oranını (%) belirleyin.
+            </p>
+
             <form onSubmit={handleSaveVadeRate} className="space-y-3 pt-2">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Uygulanacak Ay (YYYY-MM)
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Dönem (Ay / Yıl)
                 </label>
                 <input
                   type="month"
                   required
                   value={vadeMonth}
                   onChange={e => setVadeMonth(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-rose-500 text-white"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 dark:text-slate-100"
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Aylık Vade Farkı Oranı (%)
                 </label>
                 <div className="relative">
                   <input
                     type="number"
-                    step="0.1"
+                    step="0.01"
                     min="0"
-                    max="50"
+                    max="30"
                     required
                     value={vadeRateVal}
-                    onChange={e => setVadeRateVal(Number(e.target.value))}
-                    className="w-full pl-3 pr-8 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-rose-500 text-white font-mono font-bold"
+                    onChange={e => setVadeRateVal(parseFloat(e.target.value) || 0)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 dark:text-slate-100 font-mono-num font-bold"
                   />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">%</span>
+                  <Percent className="w-4 h-4 text-slate-400 absolute right-3 top-2.5" />
                 </div>
+                <span className="text-[11px] text-slate-400 mt-1 block">
+                  Örn: 12 ay senette aylık %3.5 vade farkı maliyete toplam %42 ekler.
+                </span>
               </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Not / Açıklama
+                </label>
+                <input
+                  type="text"
+                  value={vadeNotes}
+                  onChange={e => setVadeNotes(e.target.value)}
+                  placeholder="Standart bayi senet vade oranı"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 dark:text-slate-100"
+                />
+              </div>
+
               <button
                 type="submit"
                 className="w-full py-2.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold transition active:scale-95 shadow-sm"
               >
-                Oranı Sisteme Kaydet
+                Vade Oranını Kaydet
               </button>
             </form>
           </div>
 
-          <div className="lg:col-span-8 bg-slate-900/60 p-5 rounded-2xl border border-slate-800 shadow-sm space-y-4">
-            <h3 className="font-bold text-white text-sm">
-              Kayıtlı Aylık Vade Farkı Oranları ({vadeRates.length})
+          {/* List Vade Rates */}
+          <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+              Kayıtlı Dönemsel Vade Oranları ({vadeRates.length})
             </h3>
-            <div className="overflow-x-auto border border-slate-800 rounded-xl">
+
+            <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
-                <thead className="bg-slate-950/90 text-slate-400 border-b border-slate-800 uppercase text-[10px] font-semibold">
+                <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-semibold">
                   <tr>
-                    <th className="py-2.5 px-3">Dönem (Ay)</th>
-                    <th className="py-2.5 px-3 text-right">Aylık Oran (%)</th>
-                    <th className="py-2.5 px-3 text-right">12 Ay Senet Yükü</th>
-                    <th className="py-2.5 px-3">Notlar</th>
+                    <th className="py-2.5 px-3">Dönem</th>
+                    <th className="py-2.5 px-3">Aylık Oran</th>
+                    <th className="py-2.5 px-3">12 Aylık Toplam Fark</th>
+                    <th className="py-2.5 px-3">Açıklama</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-800/60">
-                  {vadeRates.map(vr => (
-                    <tr key={vr.id} className="hover:bg-slate-800/40 transition">
-                      <td className="py-3 px-3 font-bold font-mono text-white">{vr.monthKey}</td>
-                      <td className="py-3 px-3 text-right font-mono font-bold text-rose-400 text-sm">%{vr.rateMonthly}</td>
-                      <td className="py-3 px-3 text-right font-mono font-medium text-slate-300">%{(12 * vr.rateMonthly).toFixed(1)}</td>
-                      <td className="py-3 px-3 text-slate-400">{vr.notes || '-'}</td>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {vadeRates.map(v => (
+                    <tr
+                      key={v.id}
+                      className="hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition"
+                    >
+                      <td className="py-2.5 px-3 font-bold text-slate-900 dark:text-white">
+                        {v.monthKey}
+                      </td>
+                      <td className="py-2.5 px-3 font-mono-num font-bold text-rose-600 dark:text-rose-400">
+                        %{v.rateMonthly.toFixed(2)}
+                      </td>
+                      <td className="py-2.5 px-3 font-mono-num text-slate-600 dark:text-slate-300">
+                        %{(v.rateMonthly * 12).toFixed(1)}
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-400">
+                        {v.notes || '-'}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -1293,69 +1586,243 @@ export const DefinitionsTab: React.FC = () => {
         </div>
       )}
 
-      {/* Supplier Modal */}
+      {/* SECTION 7: Fiyat Listeleri */}
+      {activeSection === 'pricelists' && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Add Price List Form */}
+          <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+              <Plus className="w-4 h-4 text-indigo-600" />
+              Aylık Fiyat Listesi Kaydı
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Her aya ait perakende ve bayi tavsiye fiyat listesi kayıtlarını saklayın.
+            </p>
+
+            <form onSubmit={handleAddPriceList} className="space-y-3 pt-2">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Dönem (Ay / Yıl)
+                </label>
+                <input
+                  type="month"
+                  required
+                  value={priceListMonth}
+                  onChange={e => setPriceListMonth(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Liste Başlığı
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={priceListTitle}
+                  onChange={e => setPriceListTitle(e.target.value)}
+                  placeholder="Örn: Ekim 2026 Beyaz Eşya Fiyat Listesi"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Kategori Kapsamı
+                </label>
+                <select
+                  value={priceListCategory}
+                  onChange={e => setPriceListCategory(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
+                >
+                  <option value="Tüm Kategoriler">Tüm Kategoriler</option>
+                  {productCategories.map(c => (
+                    <option key={c.id} value={c.name}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  İçerilen Kalem Sayısı
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={priceListItemsCount}
+                  onChange={e => setPriceListItemsCount(parseInt(e.target.value) || 0)}
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100 font-mono-num"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Not / Açıklama
+                </label>
+                <input
+                  type="text"
+                  value={priceListNotes}
+                  onChange={e => setPriceListNotes(e.target.value)}
+                  placeholder="Bayi tavsiye satış fiyatları"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
+                />
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition active:scale-95 shadow-sm"
+              >
+                Fiyat Listesini Kaydet
+              </button>
+            </form>
+          </div>
+
+          {/* List Price Lists */}
+          <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+              Tanımlı Aylık Fiyat Listeleri ({priceLists.length})
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {priceLists.map(pl => (
+                <div
+                  key={pl.id}
+                  className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-2 flex flex-col justify-between"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300">
+                        {pl.monthKey}
+                      </span>
+                      <h4 className="font-bold text-xs text-slate-900 dark:text-white mt-1.5">
+                        {pl.title}
+                      </h4>
+                      <p className="text-xs text-slate-400">
+                        {pl.categoryName} · {pl.itemsCount} ürün kalemi
+                      </p>
+                      {pl.notes && (
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                          {pl.notes}
+                        </p>
+                      )}
+                    </div>
+
+                    {isAdmin && (
+                      <button
+                        onClick={() => deletePriceList(pl.id)}
+                        className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
+                        title="Sil"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Tedarikçi Ekle */}
       {isSupplierModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-slate-900 rounded-2xl border border-slate-800 max-w-md w-full p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="font-bold text-white text-base flex items-center gap-2">
-                <Building className="w-5 h-5 text-amber-400" />
-                Yeni Tedarikçi Firma Ekle
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md p-6 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Building className="w-4 h-4 text-amber-500" />
+                Yeni Ortak Tedarikçi Ekle
               </h3>
               <button
                 onClick={() => setIsSupplierModalOpen(false)}
-                className="p-1 text-slate-400 hover:text-white rounded-lg"
+                className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
+
             <form onSubmit={handleAddSupplier} className="space-y-3">
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
-                  Tedarikçi Firma Adı *
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Tedarikçi Firma Ünvanı / Adı *
                 </label>
                 <input
                   type="text"
                   required
                   value={supplierName}
                   onChange={e => setSupplierName(e.target.value)}
-                  placeholder="Ör: Bosch Ev Aletleri A.Ş."
-                  className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-amber-500 text-white placeholder-slate-500"
+                  placeholder="Örn: Bosch Ev Aletleri A.Ş."
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500 text-slate-800 dark:text-slate-100 font-semibold"
                 />
               </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Telefon</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Telefon
+                  </label>
                   <input
                     type="text"
                     value={supplierPhone}
                     onChange={e => setSupplierPhone(e.target.value)}
-                    placeholder="0212..."
-                    className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-amber-500 text-white placeholder-slate-500"
+                    placeholder="0216 444 0000"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500 text-slate-800 dark:text-slate-100"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Şehir</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Şehir
+                  </label>
                   <input
                     type="text"
                     value={supplierCity}
                     onChange={e => setSupplierCity(e.target.value)}
                     placeholder="İstanbul"
-                    className="w-full px-3 py-2 bg-slate-950/80 border border-slate-800 rounded-xl text-xs outline-none focus:border-amber-500 text-white placeholder-slate-500"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500 text-slate-800 dark:text-slate-100"
                   />
                 </div>
               </div>
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  E-posta
+                </label>
+                <input
+                  type="email"
+                  value={supplierEmail}
+                  onChange={e => setSupplierEmail(e.target.value)}
+                  placeholder="siparis@firma.com"
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500 text-slate-800 dark:text-slate-100"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                  Notlar
+                </label>
+                <textarea
+                  rows={2}
+                  value={supplierNotes}
+                  onChange={e => setSupplierNotes(e.target.value)}
+                  placeholder="Açık hesap 60 gün vade vb."
+                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-500 text-slate-800 dark:text-slate-100"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsSupplierModalOpen(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition"
+                  className="px-3 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
                 >
                   Vazgeç
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold transition active:scale-95 shadow-sm"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-amber-600 hover:bg-amber-500 text-white transition active:scale-95 shadow-sm"
                 >
                   Tedarikçiyi Kaydet
                 </button>
@@ -1364,13 +1831,6 @@ export const DefinitionsTab: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Price List Detail Modal */}
-      <PriceListDetailModal
-        isOpen={Boolean(selectedPriceListForDetail)}
-        onClose={() => setSelectedPriceListForDetail(null)}
-        priceList={selectedPriceListForDetail}
-      />
     </div>
   );
 };

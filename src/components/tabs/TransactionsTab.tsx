@@ -1,343 +1,575 @@
 import React, { useState, useMemo } from 'react';
 import { useFinance } from '../../context/FinanceContext';
+import { Transaction, TransactionType } from '../../types/finance';
+import { formatCurrency, formatDate } from '../../utils/formatters';
 import {
-  ArrowDownRight,
-  ArrowUpRight,
-  ArrowRightLeft,
-  Plus,
   Search,
   Filter,
   Download,
-  Calendar,
-  Layers,
+  Plus,
+  ArrowDownRight,
+  ArrowUpRight,
+  ArrowRightLeft,
   Trash2,
+  Edit2,
+  Copy,
+  ChevronDown,
   FileSpreadsheet,
-  AlertCircle,
+  Layers,
+  ShoppingBag,
+  Boxes,
+  AlertTriangle,
   Clock,
-  CheckCircle2,
+  UserCheck,
+  Shield,
 } from 'lucide-react';
-import { formatCurrency, formatDate } from '../../utils/formatters';
-import { TransactionType } from '../../types/finance';
-import { TransferModal } from '../modals/TransferModal';
 
 export const TransactionsTab: React.FC = () => {
   const {
     transactions,
     accounts,
-    caris,
+    deleteTransaction,
+    requestDeleteTransaction,
     openTransactionModal,
     openInstallmentModal,
-    deleteTransaction,
     exportDataToExcel,
+    showToast,
     isAdmin,
-    requestDeleteTransaction,
+    setActiveTab,
   } = useFinance();
 
-  const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [typeFilter, setTypeFilter] = useState<string>('ALL');
-  const [accountFilter, setAccountFilter] = useState<string>('ALL');
-  const [selectedMonth, setSelectedMonth] = useState<string>('ALL');
+  const [typeFilter, setTypeFilter] = useState<'All' | TransactionType>('All');
+  const [accountFilter, setAccountFilter] = useState<string>('All');
+  const [periodFilter, setPeriodFilter] = useState<string>('all'); // 'this-month', 'last-month', 'last-90', 'all'
+  const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'amount-desc' | 'amount-asc'>('date-desc');
 
-  const availableMonths = useMemo(() => {
-    const set = new Set<string>();
-    transactions.forEach(t => {
-      if (t.date && t.date.length >= 7) set.add(t.date.slice(0, 7));
-    });
-    return Array.from(set).sort().reverse();
-  }, [transactions]);
-
+  // Filter logic
   const filteredTransactions = useMemo(() => {
-    return transactions.filter(t => {
-      const matchSearch =
-        (t.desc && t.desc.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (t.cariName && t.cariName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (t.category && t.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (t.documentNo && t.documentNo.toLowerCase().includes(searchTerm.toLowerCase()));
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
 
-      const matchType = typeFilter === 'ALL' || t.type === typeFilter;
-      const matchAccount = accountFilter === 'ALL' || t.accountId === accountFilter || t.targetAccountId === accountFilter;
-      const matchMonth = selectedMonth === 'ALL' || (t.date && t.date.startsWith(selectedMonth));
+    return transactions.filter(tx => {
+      // Search term
+      if (searchTerm.trim()) {
+        const query = searchTerm.toLowerCase();
+        const matchesDesc = tx.desc.toLowerCase().includes(query);
+        const matchesCari = tx.cariName?.toLowerCase().includes(query);
+        const matchesCat = tx.category.toLowerCase().includes(query);
+        const matchesDoc = tx.documentNo?.toLowerCase().includes(query);
+        if (!matchesDesc && !matchesCari && !matchesCat && !matchesDoc) {
+          return false;
+        }
+      }
 
-      return matchSearch && matchType && matchAccount && matchMonth;
-    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [transactions, searchTerm, typeFilter, accountFilter, selectedMonth]);
+      // Type filter
+      if (typeFilter !== 'All' && tx.type !== typeFilter) {
+        return false;
+      }
 
-  const summary = useMemo(() => {
-    let gelir = 0;
-    let gider = 0;
-    let malAlimi = 0;
+      // Account filter
+      if (accountFilter !== 'All') {
+        if (tx.accountId !== accountFilter && tx.targetAccountId !== accountFilter) {
+          return false;
+        }
+      }
 
-    filteredTransactions.forEach(t => {
-      if (t.type === 'Gelir') gelir += t.amount;
-      else if (t.type === 'Gider') gider += t.amount;
-      else if (t.type === 'Mal Alımı') malAlimi += t.amount;
+      // Period filter
+      if (periodFilter !== 'all') {
+        const txDate = new Date(tx.date);
+        if (periodFilter === 'this-month') {
+          if (
+            txDate.getFullYear() !== currentYear ||
+            txDate.getMonth() !== currentMonth
+          ) {
+            return false;
+          }
+        } else if (periodFilter === 'last-month') {
+          const lastMonthDate = new Date(currentYear, currentMonth - 1, 1);
+          if (
+            txDate.getFullYear() !== lastMonthDate.getFullYear() ||
+            txDate.getMonth() !== lastMonthDate.getMonth()
+          ) {
+            return false;
+          }
+        } else if (periodFilter === 'last-90') {
+          const ninetyDaysAgo = new Date();
+          ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+          if (txDate < ninetyDaysAgo) {
+            return false;
+          }
+        }
+      }
+
+      return true;
+    }).sort((a, b) => {
+      if (sortBy === 'date-desc') {
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+      }
+      if (sortBy === 'date-asc') {
+        return new Date(a.date).getTime() - new Date(b.date).getTime();
+      }
+      if (sortBy === 'amount-desc') {
+        return b.amount - a.amount;
+      }
+      if (sortBy === 'amount-asc') {
+        return a.amount - b.amount;
+      }
+      return 0;
+    });
+  }, [transactions, searchTerm, typeFilter, accountFilter, periodFilter, sortBy]);
+
+  // Aggregate stats for filtered result
+  const filteredIncome = filteredTransactions
+    .filter(t => t.type === 'Gelir')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const filteredExpense = filteredTransactions
+    .filter(t => t.type === 'Gider')
+    .reduce((sum, t) => sum + t.amount, 0);
+
+  const filteredNet = filteredIncome - filteredExpense;
+
+  // Export CSV
+  const handleExportCSV = () => {
+    if (filteredTransactions.length === 0) {
+      showToast('Dışa aktarılacak işlem bulunamadı', 'info');
+      return;
+    }
+
+    const headers = ['Tarih', 'Tür', 'Kategori', 'Cari/Firma', 'Açıklama', 'Hesap', 'Tutar (TL)', 'Belge No'];
+    const rows = filteredTransactions.map(tx => {
+      const acc = accounts.find(a => a.id === tx.accountId)?.name || tx.accountId;
+      return [
+        tx.date,
+        tx.type,
+        `"${tx.category}"`,
+        `"${tx.cariName || '-'}"`,
+        `"${tx.desc || '-'}"`,
+        `"${acc}"`,
+        tx.amount,
+        `"${tx.documentNo || '-'}"`,
+      ].join(';');
     });
 
-    return { gelir, gider, malAlimi, net: gelir - gider - malAlimi };
-  }, [filteredTransactions]);
+    const csvContent = '\uFEFF' + [headers.join(';'), ...rows].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `arslan_finans_islemler_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    showToast('CSV dosyası başarıyla indirildi', 'success');
+  };
 
-  const handleDelete = (id: string, desc: string, amount: number) => {
-    if (isAdmin) {
-      if (window.confirm(`"${desc}" tutarındaki işlemi silmek istediğinize emin misiniz?`)) {
-        deleteTransaction(id);
-      }
-    } else {
-      const reason = window.prompt(`Silme onayı için gerekçe yazınız:`, 'Hatalı işlem kaydı');
-      if (reason) {
-        requestDeleteTransaction(id, reason);
-      }
+  const handleDuplicate = (tx: Transaction) => {
+    openTransactionModal({
+      ...tx,
+      id: undefined,
+      date: new Date().toISOString().split('T')[0],
+      desc: `${tx.desc} (Kopya)`,
+    });
+  };
+
+  const handleDelete = (id: string) => {
+    if (!isAdmin) {
+      showToast('İşlem doğrudan silme yetkisi yalnızca Yöneticilere (Admin) aittir. Silme talebi oluşturabilirsiniz.', 'info');
+      return;
+    }
+    if (window.confirm('Bu finansal işlemi silmek istediğinize emin misiniz? Bakiye otomatik güncellenecektir.')) {
+      deleteTransaction(id);
+    }
+  };
+
+  const handleRequestDelete = (tx: Transaction) => {
+    const reason = window.prompt(
+      `"${tx.type} - ${tx.desc || tx.category} (₺${tx.amount.toLocaleString('tr-TR')})" işlemini iptal etme / silme gerekçenizi yazın:\n\n(Bu talep Yönetici (Admin) onayına sunulacaktır ve onaylanana kadar işlem aktif kalacaktır)`,
+      'Hatalı tutar girildi / İşlem iptal talebi'
+    );
+    if (reason !== null && reason.trim()) {
+      requestDeleteTransaction(tx.id, reason.trim());
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
-        <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <ArrowRightLeft className="w-6 h-6 text-indigo-400" />
-            Gelir / Gider & Kasa Hareketleri
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Nakit, banka, kredi kartı ve POS işlemlerini filtreleyin, ekleyin ve raporlayın.
-          </p>
+    <div className="space-y-5">
+      {/* Top Filter and Controls Bar */}
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+          {/* Search box */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Firma, açıklama, kategori veya belge no ara..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800 dark:text-slate-200"
+            />
+          </div>
+
+          {/* Quick Buttons */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={exportDataToExcel}
+              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
+              title="Tüm verileri Excel olarak indir (.xlsx)"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5" /> Excel (.xlsx)
+            </button>
+            <button
+              onClick={handleExportCSV}
+              className="px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition"
+              title="CSV olarak indir"
+            >
+              <Download className="w-3.5 h-3.5" /> CSV
+            </button>
+            <button
+              onClick={() => openInstallmentModal()}
+              className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
+            >
+              <Layers className="w-3.5 h-3.5" /> Taksitlendir
+            </button>
+            <button
+              onClick={() => setActiveTab('stock')}
+              className="px-3.5 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
+              title="Birleşik Mal Alım & Stok Ekranına Git"
+            >
+              <Boxes className="w-3.5 h-3.5" /> Mal Alımı Yap (Stok)
+            </button>
+            <button
+              onClick={() => openTransactionModal({ type: 'Mal Alımı' })}
+              className="px-3.5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
+              title="Tedarikçiden Vadeli Mal Alımı Ekle"
+            >
+              <ShoppingBag className="w-3.5 h-3.5" /> Hızlı Mal Girişi
+            </button>
+            <button
+              onClick={() => openTransactionModal()}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow-sm active:scale-95"
+            >
+              <Plus className="w-3.5 h-3.5" /> Yeni İşlem Ekle
+            </button>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            onClick={() => openTransactionModal({ type: 'Gelir' })}
-            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-emerald-900/20 transition-all"
-          >
-            <Plus className="w-4 h-4" /> Gelir Ekle
-          </button>
-          <button
-            onClick={() => openTransactionModal({ type: 'Gider' })}
-            className="flex items-center gap-1.5 px-3 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-rose-900/20 transition-all"
-          >
-            <Plus className="w-4 h-4" /> Gider Ekle
-          </button>
-          <button
-            onClick={() => setIsTransferModalOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-sky-900/20 transition-all"
-          >
-            <ArrowRightLeft className="w-4 h-4" /> Virman / Transfer
-          </button>
-          <button
-            onClick={() => openInstallmentModal()}
-            className="flex items-center gap-1.5 px-3 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-amber-900/20 transition-all"
-          >
-            <Clock className="w-4 h-4" /> Taksitli İşlem
-          </button>
-          <button
-            onClick={exportDataToExcel}
-            className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold transition-all"
-          >
-            <Download className="w-4 h-4" /> Excel
-          </button>
+        {/* Filter Badges & Selects */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs">
+          {/* Segmented Type Filter */}
+          <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl">
+            {(['All', 'Gelir', 'Gider', 'Mal Alımı', 'Transfer'] as const).map(tab => (
+              <button
+                key={tab}
+                onClick={() => setTypeFilter(tab)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition ${
+                  typeFilter === tab
+                    ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                {tab === 'All' ? 'Tümü' : tab}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Account filter */}
+            <select
+              value={accountFilter}
+              onChange={e => setAccountFilter(e.target.value)}
+              className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-500 text-slate-700 dark:text-slate-300"
+            >
+              <option value="All">Tüm Hesaplar</option>
+              {accounts.map(a => (
+                <option key={a.id} value={a.id}>
+                  {a.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Period filter */}
+            <select
+              value={periodFilter}
+              onChange={e => setPeriodFilter(e.target.value)}
+              className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-500 text-slate-700 dark:text-slate-300"
+            >
+              <option value="all">Tüm Zamanlar</option>
+              <option value="this-month">Bu Ay (Ekim)</option>
+              <option value="last-month">Geçen Ay (Eylül)</option>
+              <option value="last-90">Son 90 Gün</option>
+            </select>
+
+            {/* Sorting */}
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value as any)}
+              className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs outline-none focus:ring-2 focus:ring-emerald-500 text-slate-700 dark:text-slate-300"
+            >
+              <option value="date-desc">En Yeni Tarih</option>
+              <option value="date-asc">En Eski Tarih</option>
+              <option value="amount-desc">En Yüksek Tutar</option>
+              <option value="amount-asc">En Düşük Tutar</option>
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800/80">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Filtrelenen Gelir</span>
-            <ArrowDownRight className="w-4 h-4 text-emerald-400" />
-          </div>
-          <div className="text-xl font-bold text-emerald-400 mt-2">
-            {formatCurrency(summary.gelir)}
-          </div>
+      {/* Filtered Aggregates Bar */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-3.5 bg-slate-100/80 dark:bg-slate-800/50 rounded-xl border border-slate-200/60 dark:border-slate-800 text-xs">
+        <div className="flex items-center justify-between px-2">
+          <span className="text-slate-500 dark:text-slate-400">Seçili Filtre Geliri:</span>
+          <span className="font-bold font-mono-num text-emerald-600 dark:text-emerald-400 text-sm">
+            +{formatCurrency(filteredIncome)}
+          </span>
         </div>
-
-        <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800/80">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Filtrelenen Gider</span>
-            <ArrowUpRight className="w-4 h-4 text-rose-400" />
-          </div>
-          <div className="text-xl font-bold text-rose-400 mt-2">
-            {formatCurrency(summary.gider)}
-          </div>
+        <div className="flex items-center justify-between px-2 border-t sm:border-t-0 sm:border-l border-slate-200 dark:border-slate-700 pt-2 sm:pt-0">
+          <span className="text-slate-500 dark:text-slate-400">Seçili Filtre Gideri:</span>
+          <span className="font-bold font-mono-num text-rose-600 dark:text-rose-400 text-sm">
+            -{formatCurrency(filteredExpense)}
+          </span>
         </div>
-
-        <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800/80">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Mal Alımı Harcamaları</span>
-            <Layers className="w-4 h-4 text-amber-400" />
-          </div>
-          <div className="text-xl font-bold text-amber-400 mt-2">
-            {formatCurrency(summary.malAlimi)}
-          </div>
+        <div className="flex items-center justify-between px-2 border-t sm:border-t-0 sm:border-l border-slate-200 dark:border-slate-700 pt-2 sm:pt-0">
+          <span className="text-slate-500 dark:text-slate-400">Filtre Net Akışı:</span>
+          <span
+            className={`font-bold font-mono-num text-sm ${
+              filteredNet >= 0
+                ? 'text-slate-900 dark:text-white'
+                : 'text-rose-600 dark:text-rose-400'
+            }`}
+          >
+            {formatCurrency(filteredNet)}
+          </span>
         </div>
-
-        <div className="bg-slate-900/40 p-4 rounded-xl border border-slate-800/80">
-          <div className="flex items-center justify-between text-slate-400 text-xs">
-            <span>Net Kasa Akışı</span>
-            <span className={`text-xs font-bold ${summary.net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-              {summary.net >= 0 ? 'Pozitif' : 'Açık'}
-            </span>
-          </div>
-          <div className={`text-xl font-bold mt-2 ${summary.net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-            {formatCurrency(summary.net)}
-          </div>
-        </div>
-      </div>
-
-      {/* Filters Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-slate-900/30 p-3 rounded-xl border border-slate-800/60">
-        <div className="relative">
-          <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-500" />
-          <input
-            type="text"
-            placeholder="Açıklama, cari, evrak no..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full bg-slate-950/70 border border-slate-800 pl-9 pr-3 py-1.5 rounded-lg text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-          />
-        </div>
-
-        <select
-          value={typeFilter}
-          onChange={e => setTypeFilter(e.target.value)}
-          className="bg-slate-950/70 border border-slate-800 px-3 py-1.5 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-        >
-          <option value="ALL">Tüm Türler</option>
-          <option value="Gelir">Gelir (+)</option>
-          <option value="Gider">Gider (-)</option>
-          <option value="Transfer">Transfer / Virman</option>
-          <option value="Mal Alımı">Mal Alımı (-)</option>
-        </select>
-
-        <select
-          value={accountFilter}
-          onChange={e => setAccountFilter(e.target.value)}
-          className="bg-slate-950/70 border border-slate-800 px-3 py-1.5 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-        >
-          <option value="ALL">Tüm Hesaplar & Kasalar</option>
-          {accounts.map(acc => (
-            <option key={acc.id} value={acc.id}>
-              {acc.name} ({acc.bankName || acc.type})
-            </option>
-          ))}
-        </select>
-
-        <select
-          value={selectedMonth}
-          onChange={e => setSelectedMonth(e.target.value)}
-          className="bg-slate-950/70 border border-slate-800 px-3 py-1.5 rounded-lg text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-        >
-          <option value="ALL">Tüm Dönemler</option>
-          {availableMonths.map(m => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select>
       </div>
 
       {/* Transactions Table */}
-      <div className="bg-slate-900/40 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-950/80 text-slate-400 font-semibold border-b border-slate-800">
-              <tr>
-                <th className="p-3.5">Tarih</th>
-                <th className="p-3.5">Tür</th>
-                <th className="p-3.5">Açıklama / Evrak</th>
-                <th className="p-3.5">İlgili Cari / Müşteri</th>
-                <th className="p-3.5">Hesap / Kasa</th>
-                <th className="p-3.5">Kategori</th>
-                <th className="p-3.5 text-right">Tutar</th>
-                <th className="p-3.5 text-center">İşlem</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60">
-              {filteredTransactions.length === 0 ? (
+      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+          <h3 className="font-bold text-slate-800 dark:text-white text-sm">
+            Tüm Gelir ve Gider Hareketleri ({filteredTransactions.length})
+          </h3>
+          <span className="text-xs text-slate-400">
+            Toplam {transactions.length} işlem kaydı
+          </span>
+        </div>
+
+        {filteredTransactions.length === 0 ? (
+          <div className="p-12 text-center space-y-3">
+            <div className="w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
+              <Search className="w-6 h-6" />
+            </div>
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+              Arama kriterlerine uygun işlem bulunamadı.
+            </p>
+            <p className="text-xs text-slate-400">
+              Filtreleri sıfırlayabilir veya yeni bir işlem ekleyebilirsiniz.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 dark:bg-slate-800/70 text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-semibold">
                 <tr>
-                  <td colSpan={8} className="text-center py-10 text-slate-500">
-                    Kayıtlı işlem bulunamadı veya arama kriterine uymuyor.
-                  </td>
+                  <th className="py-3 px-4">Tarih</th>
+                  {isAdmin && <th className="py-3 px-4">Ekleyen Personel</th>}
+                  <th className="py-3 px-4">Tür</th>
+                  <th className="py-3 px-4">Kategori</th>
+                  <th className="py-3 px-4">Cari / Firma</th>
+                  <th className="py-3 px-4">Hesap / Kasa</th>
+                  <th className="py-3 px-4">Açıklama & Detay</th>
+                  <th className="py-3 px-4 text-right">Tutar</th>
+                  <th className="py-3 px-4 text-center">İşlemler</th>
                 </tr>
-              ) : (
-                filteredTransactions.map(t => {
-                  const acc = accounts.find(a => a.id === t.accountId);
-                  const targetAcc = t.targetAccountId ? accounts.find(a => a.id === t.targetAccountId) : null;
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {filteredTransactions.map(tx => {
+                  const sourceAcc = accounts.find(a => a.id === tx.accountId);
+                  const targetAcc = tx.targetAccountId
+                    ? accounts.find(a => a.id === tx.targetAccountId)
+                    : null;
 
                   return (
-                    <tr key={t.id} className="hover:bg-slate-800/40 transition-colors">
-                      <td className="p-3.5 whitespace-nowrap text-slate-400">
-                        {formatDate(t.date)}
-                        {t.dueDate && (
-                          <div className="text-[10px] text-amber-400 flex items-center gap-1 mt-0.5">
-                            <Clock className="w-3 h-3" /> Vade: {formatDate(t.dueDate)}
-                          </div>
-                        )}
+                    <tr
+                      key={tx.id}
+                      className="hover:bg-slate-50/70 dark:hover:bg-slate-800/40 transition group"
+                    >
+                      <td className="py-3 px-4 text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                        {formatDate(tx.date)}
                       </td>
-                      <td className="p-3.5 whitespace-nowrap">
+                      {isAdmin && (
+                        <td className="py-3 px-4 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5">
+                            <div className="w-5 h-5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center text-[10px] font-bold border border-slate-200 dark:border-slate-700">
+                              {(tx.createdByName || tx.createdBy || 'S')[0].toUpperCase()}
+                            </div>
+                            <div>
+                              <span className="font-semibold text-slate-800 dark:text-slate-200 block text-[11px]">
+                                {tx.createdByName || tx.createdBy || 'Sistem'}
+                              </span>
+                              {tx.createdBy && tx.createdByName && tx.createdBy !== tx.createdByName && (
+                                <span className="text-[9px] text-slate-400 block font-mono">
+                                  @{tx.createdBy}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                      )}
+                      <td className="py-3 px-4 whitespace-nowrap">
                         <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold ${
-                            t.type === 'Gelir'
-                              ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/50'
-                              : t.type === 'Gider'
-                              ? 'bg-rose-950/80 text-rose-400 border border-rose-800/50'
-                              : t.type === 'Transfer'
-                              ? 'bg-sky-950/80 text-sky-400 border border-sky-800/50'
-                              : 'bg-amber-950/80 text-amber-400 border border-amber-800/50'
+                          className={`font-semibold inline-flex items-center gap-1 ${
+                            tx.type === 'Gelir'
+                              ? 'text-emerald-600 dark:text-emerald-400'
+                              : tx.type === 'Gider'
+                              ? 'text-rose-600 dark:text-rose-400'
+                              : tx.type === 'Mal Alımı'
+                              ? 'text-amber-600 dark:text-amber-400'
+                              : 'text-blue-600 dark:text-blue-400'
                           }`}
                         >
-                          {t.type}
+                          {tx.type === 'Gelir' && <ArrowDownRight className="w-3.5 h-3.5" />}
+                          {tx.type === 'Gider' && <ArrowUpRight className="w-3.5 h-3.5" />}
+                          {tx.type === 'Mal Alımı' && <ShoppingBag className="w-3.5 h-3.5" />}
+                          {tx.type === 'Transfer' && <ArrowRightLeft className="w-3.5 h-3.5" />}
+                          {tx.type}
                         </span>
                       </td>
-                      <td className="p-3.5 max-w-xs truncate font-medium text-white">
-                        {t.desc || t.description}
-                        {t.documentNo && (
-                          <span className="ml-2 text-[10px] text-slate-400 bg-slate-800 px-1.5 py-0.5 rounded">
-                            {t.documentNo}
+                      <td className="py-3 px-4 font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                        {tx.category}
+                      </td>
+                      <td className="py-3 px-4 text-slate-700 dark:text-slate-300 max-w-[150px] truncate">
+                        {tx.cariName || '-'}
+                      </td>
+                      <td className="py-3 px-4 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                        {tx.type === 'Transfer' ? (
+                          <span className="text-[11px]">
+                            {sourceAcc?.name} ➔ {targetAcc?.name}
+                          </span>
+                        ) : tx.type === 'Mal Alımı' ? (
+                          <span className="text-[11px] font-medium text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/70 border border-amber-200 dark:border-amber-800/60 px-2 py-0.5 rounded-md">
+                            Tedarikçi Borcu
+                          </span>
+                        ) : (
+                          sourceAcc?.name || '-'
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-slate-500 dark:text-slate-400 max-w-[260px]">
+                        <div className="flex flex-wrap items-center gap-1">
+                          <span className="truncate font-medium text-slate-800 dark:text-slate-200">{tx.desc || '-'}</span>
+                          {tx.isPosOffset && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-teal-50 dark:bg-teal-950/80 text-teal-700 dark:text-teal-300 border border-teal-200 dark:border-teal-800 shrink-0">
+                              POS Mahsup ➔ {tx.supplierCariName || 'Tedarikçi'}
+                            </span>
+                          )}
+                          {tx.pendingDeletion && (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700 flex items-center gap-1 shrink-0 animate-pulse">
+                              <AlertTriangle className="w-3 h-3 text-amber-500" />
+                              Silme Onayı Bekliyor
+                            </span>
+                          )}
+                          {tx.dueDate && tx.type === 'Mal Alımı' && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shrink-0">
+                              Vade: {formatDate(tx.dueDate)}
+                            </span>
+                          )}
+                          {tx.installmentIndex && tx.totalInstallments && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 dark:bg-indigo-950/70 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 shrink-0">
+                              {tx.installmentIndex}/{tx.totalInstallments} Taksit
+                            </span>
+                          )}
+                          {tx.status === 'Beklemede' && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 dark:bg-amber-950 text-amber-700 dark:text-amber-300 shrink-0">
+                              Beklemede
+                            </span>
+                          )}
+                        </div>
+                        {tx.documentNo && (
+                          <span className="text-[10px] text-slate-400 font-mono block">
+                            {tx.documentNo}
                           </span>
                         )}
                       </td>
-                      <td className="p-3.5 whitespace-nowrap text-slate-300">
-                        {t.cariName || '-'}
-                      </td>
-                      <td className="p-3.5 whitespace-nowrap text-slate-400">
-                        {acc?.name || '-'}
-                        {targetAcc && ` → ${targetAcc.name}`}
-                      </td>
-                      <td className="p-3.5 whitespace-nowrap text-slate-400">
-                        {t.category || '-'}
-                      </td>
                       <td
-                        className={`p-3.5 whitespace-nowrap text-right font-bold text-sm ${
-                          t.type === 'Gelir'
-                            ? 'text-emerald-400'
-                            : t.type === 'Gider' || t.type === 'Mal Alımı'
-                            ? 'text-rose-400'
-                            : 'text-sky-400'
+                        className={`py-3 px-4 text-right font-mono-num font-bold whitespace-nowrap ${
+                          tx.type === 'Gelir'
+                            ? 'text-emerald-600 dark:text-emerald-400'
+                            : tx.type === 'Mal Alımı'
+                            ? 'text-amber-600 dark:text-amber-400'
+                            : tx.type === 'Gider'
+                            ? 'text-rose-600 dark:text-rose-400'
+                            : 'text-blue-600 dark:text-blue-400'
                         }`}
                       >
-                        {t.type === 'Gelir' ? '+' : t.type === 'Transfer' ? '' : '-'}
-                        {formatCurrency(t.amount)}
+                        {tx.type === 'Gelir' ? '+' : tx.type === 'Gider' ? '-' : tx.type === 'Mal Alımı' ? '-' : ''}
+                        {formatCurrency(tx.amount)}
+                        {tx.type === 'Mal Alımı' && (
+                          <span className="block text-[10px] font-normal text-amber-500">Borç</span>
+                        )}
                       </td>
-                      <td className="p-3.5 text-center whitespace-nowrap">
-                        <button
-                          onClick={() => handleDelete(t.id, t.desc, t.amount)}
-                          className="p-1.5 text-slate-500 hover:text-rose-400 hover:bg-rose-950/40 rounded-lg transition-colors"
-                          title="Sil"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                      <td className="py-3 px-4 text-center whitespace-nowrap">
+                        <div className="flex items-center justify-center gap-1 opacity-80 group-hover:opacity-100 transition">
+                          <button
+                            onClick={() => handleDuplicate(tx)}
+                            title="Kopyala / Çoğalt"
+                            className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded transition"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => openTransactionModal(tx)}
+                            title="Düzenle"
+                            className="p-1 text-slate-400 hover:text-emerald-600 rounded transition"
+                          >
+                            <Edit2 className="w-3.5 h-3.5" />
+                          </button>
+                          {isAdmin ? (
+                            tx.pendingDeletion ? (
+                              <button
+                                onClick={() => setActiveTab('audit')}
+                                title="Bu işlem için silme onayı bekleniyor. İncelemek için Denetim sekmesine git"
+                                className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 transition shadow-xs"
+                              >
+                                <AlertTriangle className="w-3 h-3" />
+                                <span>Talebi İncele</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => handleDelete(tx.id)}
+                                title="İşlemi Kalıcı Olarak Sil (Yönetici)"
+                                className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )
+                          ) : (
+                            tx.pendingDeletion ? (
+                              <span
+                                title="Yönetici onayı bekleniyor"
+                                className="px-2 py-0.5 bg-amber-50 dark:bg-amber-950/70 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700 rounded-lg text-[10px] font-semibold flex items-center gap-1"
+                              >
+                                <Clock className="w-3 h-3" /> Onayda
+                              </span>
+                            ) : (
+                              <button
+                                onClick={() => handleRequestDelete(tx)}
+                                title="İşlemi İptal Et / Silme Talebi İlet (Admin Onayına)"
+                                className="p-1 text-slate-400 hover:text-amber-600 rounded transition"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-
-      <TransferModal
-        isOpen={isTransferModalOpen}
-        onClose={() => setIsTransferModalOpen(false)}
-      />
     </div>
   );
 };

@@ -10,6 +10,7 @@ import {
   FileBarChart2,
   Wallet,
   X,
+  CreditCard,
   ShieldCheck,
   ShieldAlert,
   Shield,
@@ -20,8 +21,10 @@ import {
   Smartphone,
   Monitor,
   RefreshCw,
-  Search,
   FileSpreadsheet,
+  Upload,
+  Search,
+  Table,
 } from 'lucide-react';
 import { formatCurrency } from '../../utils/formatters';
 
@@ -38,23 +41,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
     upcomingDues,
     accounts,
     isAdmin,
+    userRole,
     allUsers,
     deletionRequests,
     user,
     userProfile,
     stockItems,
     sales,
-    categoryHierarchy,
     isCloudSyncing,
-    openCommandPalette,
-    openDataImporter,
+    setIsCiroImportModalOpen,
   } = useFinance();
 
-  const navItems: { id: ActiveTab; label: string; icon: React.ReactNode }[] = [
+  const navItems: { id: ActiveTab; label: string; icon: React.ReactNode; badge?: number | string }[] = [
     {
-      id: 'reports',
+      id: 'ciro-matrix',
       label: 'Ciro & Finansal Matris',
-      icon: <FileSpreadsheet className="w-4 h-4 text-emerald-400" />,
+      icon: <Table className="w-4 h-4 text-emerald-400" />,
     },
     {
       id: 'dashboard',
@@ -65,21 +67,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       id: 'profit',
       label: 'Kâr Takip (Satışlar)',
       icon: <TrendingUp className="w-4 h-4 text-emerald-400" />,
+      badge: sales.length > 0 ? sales.length : undefined,
     },
     {
       id: 'stock',
       label: 'Mal Alım & Stok',
       icon: <Boxes className="w-4 h-4 text-sky-400" />,
+      badge: stockItems.length > 0 ? stockItems.length : undefined,
     },
     {
       id: 'transactions',
       label: 'Gelir / Gider (Kasa)',
       icon: <ArrowLeftRight className="w-4 h-4" />,
+      badge: transactions.length,
     },
     {
       id: 'accounts',
       label: 'Bankalar & Kasalar',
       icon: <Building2 className="w-4 h-4" />,
+      badge: accounts.length,
     },
     {
       id: 'currents',
@@ -95,6 +101,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       id: 'upcoming',
       label: 'Vade Takvimi',
       icon: <CalendarDays className="w-4 h-4" />,
+      badge: upcomingDues.filter(d => !d.isCompleted).length || undefined,
     },
     ...(isAdmin
       ? [
@@ -102,17 +109,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             id: 'audit' as ActiveTab,
             label: 'Denetim & Onaylar',
             icon: <ShieldAlert className="w-4 h-4 text-emerald-400" />,
+            badge:
+              deletionRequests.filter(r => r.status === 'pending').length > 0
+                ? `${deletionRequests.filter(r => r.status === 'pending').length} Onay`
+                : undefined,
           },
           {
             id: 'users' as ActiveTab,
             label: 'Personel & Roller',
             icon: <ShieldCheck className="w-4 h-4 text-amber-400" />,
+            badge: allUsers.length > 0 ? allUsers.length : undefined,
           },
         ]
       : []),
   ];
 
+  // Quick total balance & current month net calculation for sidebar
   const totalBalance = accounts.reduce((acc, curr) => acc + curr.balance, 0);
+
   const now = new Date();
   const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   const currentMonthNet = transactions
@@ -146,9 +160,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         {/* Brand Header */}
         <div className="p-4 flex items-center justify-between border-b border-slate-800/80">
           <div
-            onClick={() => handleSelectTab('reports')}
+            onClick={() => handleSelectTab('dashboard')}
             className="flex items-center gap-3 cursor-pointer group"
-            title="Ciro ve Finansal Analiz Matrisine Git"
+            title="Ana Özet Panele Dön"
           >
             <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
               <Wallet className="w-5 h-5 text-emerald-400" />
@@ -170,24 +184,21 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </button>
         </div>
 
-        {/* Quick Search in Sidebar */}
-        <div className="px-3 pt-3">
-          <button
-            onClick={openCommandPalette}
-            className="w-full flex items-center justify-between px-3 py-2 bg-slate-900/90 hover:bg-slate-850 border border-slate-800 rounded-xl text-xs text-slate-400 hover:text-slate-200 transition group"
-          >
+        {/* Hızlı Komut Paleti */}
+        <div className="mx-3.5 mt-2.5 mb-1.5">
+          <div className="flex items-center justify-between px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-400">
             <div className="flex items-center gap-2">
-              <Search className="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-400 transition-colors" />
+              <Search className="w-3.5 h-3.5 text-slate-400" />
               <span>Hızlı Komut Paleti</span>
             </div>
-            <kbd className="px-1.5 py-0.5 text-[10px] bg-slate-800 text-slate-400 rounded font-mono">
+            <kbd className="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded border border-slate-700 font-mono">
               Ctrl K
             </kbd>
-          </button>
+          </div>
         </div>
 
-        {/* Net Likit Mini-Card */}
-        <div className="mx-3.5 my-2.5 p-2.5 bg-slate-900/80 rounded-xl border border-slate-800/80">
+        {/* Quick Balance Mini-Card: Net Likit Varlık */}
+        <div className="mx-3.5 mb-2.5 p-2.5 bg-slate-900/80 rounded-xl border border-slate-800/80">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
               Net Likit Varlık
@@ -215,51 +226,65 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               <button
                 key={item.id}
                 onClick={() => handleSelectTab(item.id)}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all group ${
+                className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition group ${
                   isActive
-                    ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 font-semibold shadow-xs'
-                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-900/80 border border-transparent'
+                    ? 'bg-emerald-600 text-white shadow-sm'
+                    : 'text-slate-400 hover:text-slate-100 hover:bg-slate-900'
                 }`}
               >
-                <span
-                  className={
-                    isActive
-                      ? 'text-emerald-400 shrink-0'
-                      : 'text-slate-400 group-hover:text-emerald-400 transition-colors shrink-0'
-                  }
-                >
-                  {item.icon}
-                </span>
-                <span className="truncate">{item.label}</span>
+                <div className="flex items-center gap-2.5">
+                  <span
+                    className={
+                      isActive
+                        ? 'text-white'
+                        : 'text-slate-400 group-hover:text-emerald-400 transition-colors'
+                    }
+                  >
+                    {item.icon}
+                  </span>
+                  <span className="truncate">{item.label}</span>
+                </div>
+                {item.badge !== undefined && (
+                  <span
+                    className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-medium shrink-0 ${
+                      isActive
+                        ? 'bg-emerald-700/80 text-white'
+                        : 'bg-slate-800 text-slate-400'
+                    }`}
+                  >
+                    {item.badge}
+                  </span>
+                )}
               </button>
             );
           })}
 
-          {/* Ciro Excel İçe Aktar Butonu */}
-          <div className="pt-2 mt-2 border-t border-slate-800/80 space-y-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-3">
-              Veri & Ciro Sihirbazı
-            </span>
+          {/* VERİ & CİRO SİHİRBAZI */}
+          <div className="pt-3 pb-1 border-t border-slate-900 mt-2">
+            <div className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+              VERİ & CİRO SİHİRBAZI
+            </div>
             <button
               onClick={() => {
-                openDataImporter('ciro');
+                setIsCiroImportModalOpen(true);
                 onClose();
               }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-400 hover:text-white hover:bg-emerald-950/40 border border-emerald-500/20 transition group"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/40 border border-emerald-900/40 transition group"
             >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-400 group-hover:scale-110 transition-transform" />
-              <span className="truncate">Ciro Excel İçe Aktar</span>
+              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+              <span>Ciro Excel İçe Aktar</span>
             </button>
           </div>
         </nav>
 
         {/* Sidebar Footer */}
         <div className="p-3 border-t border-slate-800/80 text-xs text-slate-500 flex flex-col gap-2">
-          {/* OFİS - MOBİL Entegrasyon */}
+          {/* OFİS - MOBİL Bulut Entegrasyon / Senkronizasyon Göstergesi (Kullanıcı profilinin hemen üstünde) */}
           <div className="bg-gradient-to-r from-emerald-950/70 via-slate-900 to-slate-900 border border-emerald-500/30 rounded-xl p-2.5 shadow-inner">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-1.5">
                 <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                 </span>
                 <span className="font-bold text-white text-[11px] tracking-wider">
@@ -271,20 +296,26 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 <span>SENKRON</span>
               </span>
             </div>
+
             <div className="flex items-center justify-between text-[10px] text-slate-300">
               <span className="flex items-center gap-1">
                 <Monitor className="w-3 h-3 text-emerald-400" />
                 <span>Ofis PC</span>
               </span>
-              <span className="text-emerald-400 font-bold">⇌</span>
+              <span className="text-emerald-400 font-bold">⇄</span>
               <span className="flex items-center gap-1">
                 <Smartphone className="w-3 h-3 text-emerald-400" />
                 <span>Cep Telefonu</span>
               </span>
             </div>
+
+            <div className="text-[9px] text-slate-400 mt-1.5 flex items-center justify-between pt-1 border-t border-slate-800/80">
+              <span>Bulut Entegrasyonu:</span>
+              <span className="text-emerald-300 font-medium font-mono">Aktif • 7/24</span>
+            </div>
           </div>
 
-          {/* Kullanıcı Profili */}
+          {/* Kullanıcı Profili Kutusu */}
           {user && (
             <div className="bg-slate-900/90 rounded-xl p-2.5 border border-slate-800 flex items-center justify-between">
               <div className="min-w-0 pr-2">
@@ -292,7 +323,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                   {userProfile?.displayName || user.displayName || userProfile?.username || user.email?.split('@')[0]}
                 </span>
                 <span className="text-[10px] text-slate-400 block truncate">
-                  {userProfile?.username ? `@${userProfile.username}` : user.email}
+                  {userProfile?.username ? `Personel: @${userProfile.username}` : user.email}
                 </span>
               </div>
               {isAdmin ? (
@@ -306,6 +337,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
               )}
             </div>
           )}
+
+          <div className="flex items-center justify-between text-[10px] px-1 text-slate-500">
+            <span>Kartakip Sürüm 2.4</span>
+            <span className="font-mono text-emerald-400 font-semibold">Arslan ERP</span>
+          </div>
         </div>
       </aside>
     </>

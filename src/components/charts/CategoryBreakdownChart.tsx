@@ -24,12 +24,14 @@ export const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({
 }) => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
+  // Filter transactions for the current month or all
   const filtered = transactions.filter(
-    t => (t.type === type || (type === 'Gider' && t.type === 'Mal Alım')) && t.status !== 'İptal'
+    t => t.type === type && t.status !== 'İptal'
   );
 
   const total = filtered.reduce((acc, curr) => acc + curr.amount, 0);
 
+  // Group by category
   const categoryMap: { [cat: string]: number } = {};
   filtered.forEach(t => {
     categoryMap[t.category] = (categoryMap[t.category] || 0) + t.amount;
@@ -44,6 +46,7 @@ export const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({
     }))
     .sort((a, b) => b.amount - a.amount);
 
+  // Donut geometry
   const size = 180;
   const strokeWidth = 24;
   const radius = (size - strokeWidth) / 2;
@@ -60,7 +63,7 @@ export const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({
             {type === 'Gider' ? 'Gider Kategorileri' : 'Gelir Kategorileri'} Dağılımı
           </h4>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Harcama kalemlerine göre oransal bakiye
+            Harcama kalemlerine göre oransal bütçe yükü
           </p>
         </div>
         <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
@@ -70,10 +73,11 @@ export const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({
 
       {total === 0 ? (
         <div className="h-48 flex items-center justify-center text-slate-400 text-xs">
-          Bu dönem için {type.toLowerCase()} kaydı bulunamadı
+          Bu dönem için {type.toLowerCase()} kaydı bulunamadı.
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
+          {/* Donut SVG */}
           <div className="md:col-span-5 flex justify-center relative">
             <svg width={size} height={size} className="transform -rotate-90">
               <circle
@@ -85,10 +89,11 @@ export const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({
                 strokeWidth={strokeWidth}
                 className="text-slate-100 dark:text-slate-800/80"
               />
-              {categories.map(cat => {
+              {categories.map((cat, idx) => {
                 const strokeDasharray = `${(cat.percentage / 100) * circumference} ${circumference}`;
                 const strokeDashoffset = -((accumulatedPercent / 100) * circumference);
                 accumulatedPercent += cat.percentage;
+
                 const isSelected = selectedCategory === cat.name;
 
                 return (
@@ -109,11 +114,13 @@ export const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({
                 );
               })}
             </svg>
+
+            {/* Inner Center Label */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
               <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider">
                 {selectedCategory || 'Toplam'}
               </span>
-              <span className="text-sm font-bold font-mono text-slate-900 dark:text-white mt-0.5">
+              <span className="text-sm font-bold font-mono-num text-slate-900 dark:text-white mt-0.5">
                 {selectedCategory
                   ? formatCurrency(categoryMap[selectedCategory] || 0)
                   : formatCurrency(total)}
@@ -121,6 +128,7 @@ export const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({
             </div>
           </div>
 
+          {/* Category Legend list */}
           <div className="md:col-span-7 space-y-2 max-h-52 overflow-y-auto pr-1">
             {categories.map(cat => {
               const isSelected = selectedCategory === cat.name;
@@ -145,10 +153,10 @@ export const CategoryBreakdownChart: React.FC<CategoryBreakdownChartProps> = ({
                     </span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="font-mono text-slate-900 dark:text-slate-100 font-medium">
+                    <span className="font-mono-num text-slate-900 dark:text-slate-100 font-medium">
                       {formatCurrency(cat.amount)}
                     </span>
-                    <span className="text-[10px] text-slate-400 font-mono w-10 text-right">
+                    <span className="text-[10px] text-slate-400 font-mono-num w-10 text-right">
                       %{cat.percentage.toFixed(1)}
                     </span>
                   </div>

@@ -1,0 +1,6 @@
+{
+  "summary": "Arslan Mobilya ERP 3 Seviyeli Kategori Hiyerarşisi (Ana Kategori > Alt Kategori > Ürün Grubu) Mimari Uygulama Planı.\n- Tam 13 ana blok ve 80+ ürün grubunun sisteme eksiksiz işlenmesi\n- Tanımlamalar sekmesinde 3 seviyeli bağlantılı sekme ve ağaç (tree) görünümü\n- Stok, Mal Alım, Satış (Kâr Takip) ve Excel içe aktarım formlarında 3'lü kademeli (cascading) seçim\n- Veri modellerinin ve eski örnek stokların 3 seviyeli yapıya uygun olarak güncellenmesi",
+  "updatedAt": "2026-10-18T19:08:59.170065030Z",
+  "requestFeedback": true,
+  "userFacing": true
+}

@@ -1,21 +1,6 @@
 import React, { useEffect } from 'react';
 import { useFinance } from '../../context/FinanceContext';
-import {
-  Menu,
-  Plus,
-  Bell,
-  RefreshCw,
-  LogOut,
-  Smartphone,
-  Shield,
-  UserCheck,
-  Eye,
-  Sun,
-  Moon,
-  Coins,
-  Search,
-  FileSpreadsheet,
-} from 'lucide-react';
+import { Menu, Plus, Bell, Cloud, RefreshCw, LogOut, Smartphone, TrendingUp, Shield, UserCheck, Eye, Search, Upload, FileSpreadsheet } from 'lucide-react';
 import { ActiveTab } from '../../types/finance';
 import { useLiveCurrency } from '../../services/currencyService';
 
@@ -24,17 +9,21 @@ interface HeaderProps {
 }
 
 const TAB_TITLES: Record<ActiveTab, { title: string; subtitle: string }> = {
+  'ciro-matrix': {
+    title: 'Ciro ve Finansal Analiz Matrisi',
+    subtitle: '12 aylık marka/kategori ciro analizi, aktif ortalama, 2025 büyümesi ve brüt kârlar',
+  },
   dashboard: {
-    title: 'Genel Finansal Özet & Kasa',
-    subtitle: 'Nakit akışı, dönemsel kâr-zarar tablosu ve şirket mali durumu',
+    title: 'Genel Finansal Özet & Kârlılık',
+    subtitle: 'Nakit akışı, dönemlik kâr-zarar tablosu ve şirket mali durumu',
   },
   profit: {
     title: 'Kâr Takip (Satışlar & Kârlılık)',
-    subtitle: 'Peşin, kredi kartı ve senetli satış takibi, vade farkı maliyetleri ve kârlılık',
+    subtitle: 'Peşin, kredi kartı ve senetli satış takibi, vade farkı maliyetleri ve personel performansı',
   },
   stock: {
     title: 'Mal Alım & Stok Yönetimi',
-    subtitle: '3 seviyeli kategori hiyerarşisi, yalın 2 sütunlu Excel alım entegrasyonu ve stok takibi',
+    subtitle: 'Tedarikçi borçlandırması, ürün stok girişleri ve toplu Excel alım entegrasyonu',
   },
   transactions: {
     title: 'Gelir ve Gider Hareketleri (Kasa)',
@@ -42,23 +31,23 @@ const TAB_TITLES: Record<ActiveTab, { title: string; subtitle: string }> = {
   },
   accounts: {
     title: 'Banka Hesapları & Kasalar',
-    subtitle: 'Kasa, banka ve POS hesapları, dönemsel hareket ekstreleri ve transferler',
+    subtitle: 'Kasa, banka ve POS hesapları, dönemlik hareket ekstreleri ve transferler',
   },
   currents: {
-    title: 'Cari Hesaplar',
-    subtitle: 'Müşteri ve tedarikçi cari hesap bakiyeleri ve hareket ekstreleri',
+    title: 'Cari Hesap Yönetimi',
+    subtitle: 'Ortak müşteri ve tedarikçi borç/alacak takibi ve ekstreler',
   },
   definitions: {
-    title: 'Tanımlamalar',
-    subtitle: '3 Seviyeli kategori hiyerarşisi, markalar, fiyat listeleri ve vade oranları',
+    title: 'Tanımlamalar & Fiyat Listeleri',
+    subtitle: 'Beyaz eşya & mobilya kategorileri, alt kategoriler, markalar, vade oranları ve fiyat listeleri',
   },
   upcoming: {
     title: 'Vade & Ödeme Takvimi',
     subtitle: 'Gelecek ödemeler, vadesi gelen çekler, senetler ve tedarikçi borçları',
   },
   reports: {
-    title: 'Ciro ve Finansal Analiz Matrisi',
-    subtitle: '12 aylık marka/kategori ciro analizi, aktif ortalama, 2025 büyümesi ve brüt kârlar',
+    title: 'Mali Raporlar & Kategori Dağılımı',
+    subtitle: 'Kategorilere göre stok payı ve kâr analizi, aylık masraf detayları',
   },
   audit: {
     title: 'İşlem Denetim Raporu & Onaylar',
@@ -74,26 +63,26 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const {
     activeTab,
     openTransactionModal,
-    openDataImporter,
     upcomingDues,
     setActiveTab,
     user,
+    userProfile,
+    userRole,
     isAdmin,
     isRoleSimulated,
     toggleRoleSimulation,
     isCloudSyncing,
     loginWithGoogle,
     logout,
-    openCommandPalette,
-    openCurrencyConverter,
-    isDarkMode,
-    toggleDarkMode,
+    setIsCiroImportModalOpen,
   } = useFinance();
 
-  const { usd, eur } = useLiveCurrency();
+  const { usd, eur, lastUpdated, isLive, isLoading: isRatesLoading, refreshRates } = useLiveCurrency();
 
+  // Listen to keyboard shortcut "N" to quickly open modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if typing in an input or textarea
       const target = e.target as HTMLElement;
       if (
         target.tagName === 'INPUT' ||
@@ -102,11 +91,13 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
       ) {
         return;
       }
+
       if (e.key === 'n' || e.key === 'N') {
         e.preventDefault();
         openTransactionModal();
       }
     };
+
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [openTransactionModal]);
@@ -114,130 +105,89 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
   const pendingDuesCount = upcomingDues.filter(d => !d.isCompleted).length;
 
   return (
-    <header className="bg-slate-950/90 backdrop-blur-md border-b border-slate-850 px-4 md:px-6 py-2.5 flex items-center justify-between sticky top-0 z-30 shadow-xs">
+    <header className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 md:px-8 py-2.5 flex items-center justify-between sticky top-0 z-30 shadow-xs backdrop-blur-md">
       {/* Left: Mobile hamburger & Dynamic Title */}
       <div className="flex items-center gap-3">
         <button
           onClick={onToggleSidebar}
-          className="md:hidden text-slate-400 hover:text-white p-1.5 rounded-xl border border-slate-800 bg-slate-900/60 transition"
-          aria-label="Menü"
+          className="md:hidden text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 p-1.5 rounded-lg border border-slate-200 dark:border-slate-700"
+          aria-label="Menüyü Aç"
         >
           <Menu className="w-5 h-5" />
         </button>
 
         <div
-          onClick={() => setActiveTab('reports')}
+          onClick={() => setActiveTab('dashboard')}
           className="cursor-pointer group"
-          title="Raporlar ve Ciro Matrisine Dön"
+          title="Ana Özet Panele Dön"
         >
-          <div className="flex items-center gap-1.5">
-            <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider hidden sm:inline">
-              Arslan Mobilya ERP
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">
+              ARSLAN MOBİLYA ERP /
             </span>
-            <span className="text-slate-700 hidden sm:inline">/</span>
-            <h1 className="text-sm md:text-base font-bold text-white leading-tight group-hover:text-emerald-400 transition-colors">
+            <h1 className="text-sm md:text-base font-bold text-slate-900 dark:text-white leading-tight group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
               {TAB_TITLES[activeTab].title}
             </h1>
           </div>
-          <p className="text-[11px] text-slate-400 hidden lg:block">
+          <p className="text-[11px] text-slate-400 hidden sm:block">
             {TAB_TITLES[activeTab].subtitle}
           </p>
         </div>
       </div>
 
-      {/* Center: Quick Search */}
-      <div className="hidden md:flex items-center">
-        <button
-          onClick={openCommandPalette}
-          className="flex items-center gap-2.5 px-3 py-1.5 bg-slate-900/80 hover:bg-slate-850 border border-slate-800 hover:border-slate-700 rounded-xl text-xs text-slate-400 transition shadow-xs group"
-          title="Hızlı Komut Paleti (Ctrl+K)"
-        >
-          <Search className="w-3.5 h-3.5 text-slate-500 group-hover:text-emerald-400 transition-colors" />
-          <span className="text-slate-300">Hızlı işlem veya arama yap...</span>
-          <kbd className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] font-mono font-semibold bg-slate-950 text-slate-400 rounded border border-slate-800 shadow-2xs">
-            Ctrl K
-          </kbd>
-        </button>
-      </div>
-
-      {/* Right: Currency Rates, Theme Switcher, Cloud Sync & Primary Action */}
-      <div className="flex items-center gap-2 md:gap-2.5">
-        {/* Live Currency Rates */}
-        <button
-          onClick={openCurrencyConverter}
-          className="hidden sm:flex items-center gap-2 px-2.5 py-1 bg-slate-900/80 hover:bg-slate-850 border border-slate-800 rounded-xl text-[11px] font-mono font-medium text-slate-300 shadow-2xs transition"
-          title={`Canlı Döviz: USD ₺${usd.toFixed(2)} | EUR ₺${eur.toFixed(2)}`}
-        >
-          <Coins className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-          <div className="flex items-center gap-1">
-            <span className="text-slate-500">USD:</span>
-            <span className="font-bold text-white">₺{usd.toFixed(2)}</span>
-          </div>
-          <span className="text-slate-750">|</span>
-          <div className="flex items-center gap-1">
-            <span className="text-slate-500">EUR:</span>
-            <span className="font-bold text-white">₺{eur.toFixed(2)}</span>
-          </div>
-        </button>
-
-        {/* Theme Toggle */}
-        <button
-          onClick={toggleDarkMode}
-          className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-850 border border-transparent hover:border-slate-800 transition"
-          title={isDarkMode ? 'Açık Temaya Geç' : 'Koyu Temaya Geç'}
-          aria-label="Tema Değiştir"
-        >
-          {isDarkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-400" />}
-        </button>
-
-        {/* Pending Alerts */}
-        <button
-          onClick={() => setActiveTab('upcoming')}
-          className="relative p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-850 border border-transparent hover:border-slate-800 transition"
-          title={`${pendingDuesCount} bekleyen ödeme veya tahsilat`}
-        >
-          <Bell className="w-4 h-4" />
-          {pendingDuesCount > 0 && (
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-slate-950" />
-          )}
-        </button>
-
-        {/* User / Sync Badge */}
+      {/* Right: Cloud Sync, Currency Rates & Actions */}
+      <div className="flex items-center gap-2 md:gap-3">
+        {/* Cloud Sync Status / Button */}
         {user ? (
-          <div className="flex items-center gap-1.5 bg-slate-900/90 border border-emerald-500/30 rounded-xl px-2 py-1 text-xs text-emerald-300 shadow-xs">
+          <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 rounded-xl px-2.5 py-1 text-xs text-emerald-800 dark:text-emerald-300">
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <Smartphone className="w-3.5 h-3.5 text-emerald-400 hidden sm:inline" />
-              {isCloudSyncing && <RefreshCw className="w-3 h-3 animate-spin text-emerald-400" />}
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              <Smartphone className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 hidden sm:inline" />
+              <span className="font-semibold hidden sm:inline">Ofis & Telefon Eşit</span>
+              {isCloudSyncing && <RefreshCw className="w-3 h-3 animate-spin text-emerald-600" />}
             </div>
+
+            <div className="h-3 w-px bg-emerald-200 dark:bg-emerald-800 hidden sm:block" />
+
+            {/* Role Badge in Header */}
             {isRoleSimulated ? (
               <button
                 onClick={toggleRoleSimulation}
-                className="flex items-center gap-1 text-[10px] font-bold bg-purple-600 hover:bg-purple-500 text-white px-2 py-0.5 rounded-full transition shadow-xs"
-                title="Standart kullanıcı simülasyonunu sonlandır"
+                className="flex items-center gap-1 text-[11px] font-bold bg-purple-600 hover:bg-purple-500 text-white px-2 py-0.5 rounded-full transition shadow-xs animate-pulse"
+                title="Standart kullanıcı simülasyonunu sonlandır ve Yöneticiye dön"
               >
-                <Eye className="w-3 h-3" /> Test
+                <Eye className="w-3 h-3" /> Test Modu (Geri Al)
               </button>
             ) : isAdmin ? (
               <button
                 onClick={() => setActiveTab('users')}
-                className="flex items-center gap-1 text-[10px] font-bold text-amber-300 bg-amber-950/80 border border-amber-800/80 px-2 py-0.5 rounded-full hover:bg-amber-900 transition"
-                title="Sistem Yöneticisi"
+                className="flex items-center gap-1 text-[11px] font-bold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/80 border border-amber-300 dark:border-amber-700 px-2 py-0.5 rounded-full hover:bg-amber-200 transition"
+                title="Yetki: Sistem Yöneticisi (Admin). Kullanıcı yönetimini açmak için tıklayın"
               >
-                <Shield className="w-3 h-3 text-amber-400" /> Admin
+                <Shield className="w-3 h-3 text-amber-500" /> Admin
               </button>
             ) : (
               <span
-                className="flex items-center gap-1 text-[10px] font-bold text-sky-300 bg-sky-950/80 border border-sky-800/80 px-2 py-0.5 rounded-full"
-                title="Personel"
+                className="flex items-center gap-1 text-[11px] font-bold text-blue-700 dark:text-blue-300 bg-blue-100 dark:bg-blue-950/80 border border-blue-300 dark:border-blue-700 px-2 py-0.5 rounded-full"
+                title="Yetki: Standart Kullanıcı (Kısıtlı Yetkili)"
               >
-                <UserCheck className="w-3 h-3 text-sky-400" /> Standart
+                <UserCheck className="w-3 h-3 text-blue-500" /> Normal Kullanıcı
               </span>
             )}
+
+            <div className="h-3 w-px bg-emerald-200 dark:bg-emerald-800 hidden md:block" />
+
+            <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300 max-w-[140px] truncate hidden md:inline">
+              {userProfile?.displayName || user.displayName || (userProfile?.username ? `@${userProfile.username}` : user.email)}
+            </span>
+
             <button
               onClick={logout}
               title="Oturumu Kapat"
-              className="text-slate-400 hover:text-rose-400 p-0.5 rounded transition ml-1"
+              className="text-emerald-700 hover:text-rose-600 dark:text-emerald-400 dark:hover:text-rose-400 p-0.5 rounded transition"
             >
               <LogOut className="w-3.5 h-3.5" />
             </button>
@@ -245,31 +195,99 @@ export const Header: React.FC<HeaderProps> = ({ onToggleSidebar }) => {
         ) : (
           <button
             onClick={loginWithGoogle}
-            className="flex items-center gap-1.5 bg-slate-900 hover:bg-slate-850 border border-slate-700 text-slate-100 px-2.5 py-1.5 rounded-xl text-xs font-semibold transition shadow-xs active:scale-95"
+            className="flex items-center gap-2 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 px-3 py-1.5 rounded-xl text-xs font-semibold transition shadow-xs hover:shadow active:scale-95"
+            title="Google hesabınızla giriş yaparak verilerinizi ofis PC ve telefonunuz arasında anlık senkronize edin"
           >
-            <span>Giriş Yap</span>
+            <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24">
+              <path
+                fill="#4285F4"
+                d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+              />
+              <path
+                fill="#34A853"
+                d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+              />
+              <path
+                fill="#FBBC05"
+                d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+              />
+              <path
+                fill="#EA4335"
+                d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+              />
+            </svg>
+            <span className="font-semibold whitespace-nowrap">Google ile Giriş Yap</span>
           </button>
         )}
 
-        {/* Primary Action Button: Data Importer */}
-        <button
-          onClick={() => openDataImporter('ciro')}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 md:py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm active:scale-95 shrink-0 border border-indigo-500/30 cursor-pointer"
-          title="Ciro Excel İçe Aktarma"
+        {/* Hızlı Arama Kutusu */}
+        <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs text-slate-400 border border-slate-200 dark:border-slate-700 w-52">
+          <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+          <span className="truncate">Hızlı işlem veya arama yap...</span>
+          <kbd className="text-[10px] bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 px-1 py-0.5 rounded font-mono ml-auto">
+            Ctrl K
+          </kbd>
+        </div>
+
+        {/* Live Currency Rates Ticker */}
+        <div
+          className="hidden md:flex items-center gap-2 px-2.5 py-1 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 rounded-xl text-[11px] font-mono-num font-medium text-slate-700 dark:text-slate-300 shadow-xs"
+          title={`Canlı Döviz Kuru (Güncellenme: ${lastUpdated || 'Anlık'}). Tıklayarak yenileyebilirsiniz.`}
         >
-          <FileSpreadsheet className="w-4 h-4" />
+          <div className="flex items-center gap-1.5">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+            </span>
+            <span className="text-slate-400 font-bold">USD:</span>
+            <span className="font-semibold text-slate-900 dark:text-white">₺{usd.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
+          <span className="text-slate-300 dark:text-slate-700">·</span>
+          <div className="flex items-center gap-1">
+            <span className="text-slate-400 font-bold">EUR:</span>
+            <span className="font-semibold text-slate-900 dark:text-white">₺{eur.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
+          <button
+            onClick={() => refreshRates(true)}
+            className="text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 ml-0.5 p-0.5 rounded transition"
+            title="Döviz Kurlarını Şimdi Güncelle"
+          >
+            <RefreshCw className={`w-3 h-3 ${isRatesLoading ? 'animate-spin text-emerald-500' : ''}`} />
+          </button>
+        </div>
+
+        {/* Notifications / Pending Alert button */}
+        <button
+          onClick={() => setActiveTab('upcoming')}
+          className="relative p-2 rounded-xl text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+          title={`${pendingDuesCount} bekleyen ödeme veya tahsilat`}
+        >
+          <Bell className="w-4 h-4" />
+          {pendingDuesCount > 0 && (
+            <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-white dark:ring-slate-900 animate-pulse" />
+          )}
+        </button>
+
+        {/* Ciro İçe Aktar Butonu (Mor buton) */}
+        <button
+          onClick={() => setIsCiroImportModalOpen(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 md:py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-semibold transition shadow-sm active:scale-95 shrink-0"
+          title="Excel Ciro Matrisi İçe Aktar"
+        >
+          <Upload className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Ciro İçe Aktar</span>
         </button>
 
-        {/* Yeni İşlem Ekle */}
+        {/* Primary Action Button: + Yeni İşlem (Yeşil buton) */}
         <button
           onClick={() => openTransactionModal()}
-          className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 md:py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm active:scale-95 shrink-0 border border-emerald-500/30"
+          className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 md:px-3.5 py-1.5 md:py-2 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 shadow-sm active:scale-95 shrink-0"
         >
           <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">Yeni İşlem</span>
+          <span>+ Yeni İşlem</span>
         </button>
       </div>
     </header>
   );
 };
+
