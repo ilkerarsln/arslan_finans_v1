@@ -309,6 +309,7 @@ export interface PriceListEntry {
   title: string;
   categoryName?: string;
   itemsCount: number;
+  type?: 'Toptan' | 'Perakende';
   fileUrl?: string;
   notes?: string;
 }
@@ -324,6 +325,7 @@ export type ActiveTab =
   | 'upcoming'
   | 'reports'
   | 'definitions'
+  | 'data-transfer'
   | 'audit'
   | 'users';
 

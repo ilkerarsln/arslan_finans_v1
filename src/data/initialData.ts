@@ -240,8 +240,9 @@ export const INITIAL_VADE_RATES: VadeRateEntry[] = [
 
 // Aylık Fiyat Listeleri
 export const INITIAL_PRICE_LISTS: PriceListEntry[] = [
-  { id: 'pl-1', monthKey: '2026-10', title: 'Ekim 2026 Perakende Fiyat Listesi', categoryName: 'Tüm Kategoriler', itemsCount: 42, notes: 'Güncel bayi ve perakende satış fiyatları' },
-  { id: 'pl-2', monthKey: '2026-09', title: 'Eylül 2026 Beyaz Eşya Fiyat Listesi', categoryName: 'Beyaz Eşya', itemsCount: 28, notes: 'Bosch & Altus bayi tavsiye fiyatları' },
+  { id: 'pl-1', monthKey: '2026-10', title: 'Ekim 2026 Perakende Fiyat Listesi', categoryName: 'Tüm Kategoriler', itemsCount: 42, type: 'Perakende', notes: 'Güncel bayi ve perakende satış fiyatları' },
+  { id: 'pl-2', monthKey: '2026-10', title: 'Ekim 2026 Toptan Bayi Fiyat Listesi', categoryName: 'Tüm Kategoriler', itemsCount: 42, type: 'Toptan', notes: 'İskontolu toptan alım-satım liste fiyatları' },
+  { id: 'pl-3', monthKey: '2026-09', title: 'Eylül 2026 Beyaz Eşya Fiyat Listesi', categoryName: 'Beyaz Eşya', itemsCount: 28, type: 'Perakende', notes: 'Bosch & Altus bayi tavsiye fiyatları' },
 ];
 
 // Ortak Cari Hesaplar

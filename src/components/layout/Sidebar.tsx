@@ -18,6 +18,7 @@ import {
   TrendingUp,
   Boxes,
   SlidersHorizontal,
+  ArrowDownUp,
   Smartphone,
   Monitor,
   RefreshCw,
@@ -97,6 +98,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
       id: 'definitions',
       label: 'Tanımlamalar',
       icon: <SlidersHorizontal className="w-4 h-4 text-amber-400" />,
+    },
+    {
+      id: 'data-transfer' as ActiveTab,
+      label: 'Veri Aktar',
+      icon: <ArrowDownUp className="w-4 h-4 text-teal-400" />,
     },
     {
       id: 'upcoming',

@@ -209,6 +209,8 @@ interface FinanceContextType {
   addMatrixYear: (year: number) => void;
   isCiroImportModalOpen: boolean;
   setIsCiroImportModalOpen: (open: boolean) => void;
+  isCiroWizardOpen: boolean;
+  setIsCiroWizardOpen: (open: boolean) => void;
   // Cloud Sync & Multi-device state
   user: User | null;
   isAuthLoading: boolean;
@@ -432,6 +434,7 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
   });
 
   const [isCiroImportModalOpen, setIsCiroImportModalOpen] = useState<boolean>(false);
+  const [isCiroWizardOpen, setIsCiroWizardOpen] = useState<boolean>(false);
 
   // Sync state to localStorage
   useEffect(() => {
@@ -2308,6 +2311,8 @@ export const FinanceProvider: React.FC<{ children: React.ReactNode }> = ({ child
         addMatrixYear,
         isCiroImportModalOpen,
         setIsCiroImportModalOpen,
+        isCiroWizardOpen,
+        setIsCiroWizardOpen,
         user,
         isAuthLoading,
         isCloudConnected: !!user,

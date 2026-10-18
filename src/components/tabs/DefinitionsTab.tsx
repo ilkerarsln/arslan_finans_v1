@@ -64,12 +64,22 @@ export const DefinitionsTab: React.FC = () => {
     addCari,
     isAdmin,
     setActiveTab,
+    setIsCiroWizardOpen,
   } = useFinance();
 
-  // Active section tab
+  // Active top-level section: 'categories' | 'vaderates' | 'pricelists' | 'suppliers'
   const [activeSection, setActiveSection] = useState<
-    'tree' | 'categories' | 'subcategories' | 'productgroups' | 'brands' | 'suppliers' | 'vaderates' | 'pricelists'
-  >('tree');
+    'categories' | 'vaderates' | 'pricelists' | 'suppliers'
+  >('categories');
+
+  // Categories Sub-Tab: 'categories' (Ana Kategori) | 'subcategories' (Alt Kategori) | 'productgroups' (Ürün Grubu) | 'brands' (Markalar) | 'tree' (Ağaç Görünümü)
+  const [categorySubTab, setCategorySubTab] = useState<
+    'categories' | 'subcategories' | 'productgroups' | 'brands' | 'tree'
+  >('categories');
+
+  // Price lists sub-tab: 'Toptan' | 'Perakende' | 'ALL'
+  const [priceListFilter, setPriceListFilter] = useState<'Toptan' | 'Perakende' | 'ALL'>('Toptan');
+  const [priceListType, setPriceListType] = useState<'Toptan' | 'Perakende'>('Toptan');
 
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -301,6 +311,7 @@ export const DefinitionsTab: React.FC = () => {
       title: priceListTitle.trim(),
       categoryName: priceListCategory,
       itemsCount: Number(priceListItemsCount) || 0,
+      type: priceListType,
       notes: priceListNotes.trim() || undefined,
     });
     setPriceListTitle('');
@@ -358,6 +369,15 @@ export const DefinitionsTab: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsCiroWizardOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition shadow-md shadow-emerald-600/20 active:scale-95"
+            title="Veri Ciro Sihirbazı ile hızlı hedefleme ve dağıtım yapın"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Veri Ciro Sihirbazı</span>
+          </button>
           {isAdmin && (
             <button
               onClick={handleConfirmReset}
@@ -378,100 +398,136 @@ export const DefinitionsTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Navigation Sub-Tabs */}
+      {/* Top-Level Navigation Sub-Tabs */}
       <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700/80 text-xs font-semibold">
         <button
-          onClick={() => setActiveSection('tree')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
-            activeSection === 'tree'
-              ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <FolderTree className="w-4 h-4 text-emerald-500" />
-          <span>Ağaç Görünümü (Tree View)</span>
-        </button>
-        <button
           onClick={() => setActiveSection('categories')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition ${
             activeSection === 'categories'
               ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 shadow-xs'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <Layers className="w-4 h-4 text-emerald-500" />
-          <span>1. Seviye: Ana Kategori ({productCategories.length})</span>
+          <span>Kategoriler</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono">
+            {productCategories.length + productSubCategories.length + productGroups.length + productBrands.length}
+          </span>
         </button>
-        <button
-          onClick={() => setActiveSection('subcategories')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
-            activeSection === 'subcategories'
-              ? 'bg-white dark:bg-slate-700 text-sky-700 dark:text-sky-300 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <FolderTree className="w-4 h-4 text-sky-500" />
-          <span>2. Seviye: Alt Kategori ({productSubCategories.length})</span>
-        </button>
-        <button
-          onClick={() => setActiveSection('productgroups')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
-            activeSection === 'productgroups'
-              ? 'bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <Boxes className="w-4 h-4 text-purple-500" />
-          <span>3. Seviye: Ürün Grubu ({productGroups.length})</span>
-        </button>
-        <button
-          onClick={() => setActiveSection('brands')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
-            activeSection === 'brands'
-              ? 'bg-white dark:bg-slate-700 text-violet-700 dark:text-violet-300 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <Tag className="w-4 h-4 text-violet-500" />
-          <span>Markalar ({productBrands.length})</span>
-        </button>
-        <button
-          onClick={() => setActiveSection('suppliers')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
-            activeSection === 'suppliers'
-              ? 'bg-white dark:bg-slate-700 text-amber-700 dark:text-amber-300 shadow-xs'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-          }`}
-        >
-          <Building className="w-4 h-4 text-amber-500" />
-          <span>Ortak Tedarikçiler ({suppliers.length})</span>
-        </button>
+
         <button
           onClick={() => setActiveSection('vaderates')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition ${
             activeSection === 'vaderates'
               ? 'bg-white dark:bg-slate-700 text-rose-700 dark:text-rose-300 shadow-xs'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <Percent className="w-4 h-4 text-rose-500" />
-          <span>Vade Oranları ({vadeRates.length})</span>
+          <span>Vade Oranları</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono">
+            {vadeRates.length}
+          </span>
         </button>
+
         <button
           onClick={() => setActiveSection('pricelists')}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-xl transition ${
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition ${
             activeSection === 'pricelists'
               ? 'bg-white dark:bg-slate-700 text-indigo-700 dark:text-indigo-300 shadow-xs'
               : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
           }`}
         >
           <FileSpreadsheet className="w-4 h-4 text-indigo-500" />
-          <span>Fiyat Listeleri ({priceLists.length})</span>
+          <span>Fiyat Listeleri</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono">
+            {priceLists.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveSection('suppliers')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition ${
+            activeSection === 'suppliers'
+              ? 'bg-white dark:bg-slate-700 text-amber-700 dark:text-amber-300 shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+          }`}
+        >
+          <Building className="w-4 h-4 text-amber-500" />
+          <span>Ortak Tedarikçiler</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono">
+            {suppliers.length}
+          </span>
         </button>
       </div>
 
+      {/* Sub-Bar for Categories: Ana Kategoriler, Alt Kategoriler, Ürün Grupları, Markalar */}
+      {activeSection === 'categories' && (
+        <div className="flex flex-wrap items-center gap-1.5 p-1 bg-slate-100/80 dark:bg-slate-800/60 rounded-xl border border-slate-200 dark:border-slate-700/80 text-xs font-semibold">
+          <button
+            onClick={() => setCategorySubTab('categories')}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition ${
+              categorySubTab === 'categories'
+                ? 'bg-white dark:bg-slate-700 text-emerald-700 dark:text-emerald-300 shadow-xs font-bold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Layers className="w-3.5 h-3.5 text-emerald-500" />
+            <span>1. Ana Kategoriler ({productCategories.length})</span>
+          </button>
+
+          <button
+            onClick={() => setCategorySubTab('subcategories')}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition ${
+              categorySubTab === 'subcategories'
+                ? 'bg-white dark:bg-slate-700 text-sky-700 dark:text-sky-300 shadow-xs font-bold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <FolderTree className="w-3.5 h-3.5 text-sky-500" />
+            <span>2. Alt Kategoriler ({productSubCategories.length})</span>
+          </button>
+
+          <button
+            onClick={() => setCategorySubTab('productgroups')}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition ${
+              categorySubTab === 'productgroups'
+                ? 'bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs font-bold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Boxes className="w-3.5 h-3.5 text-purple-500" />
+            <span>3. Ürün Grupları ({productGroups.length})</span>
+          </button>
+
+          <button
+            onClick={() => setCategorySubTab('brands')}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition ${
+              categorySubTab === 'brands'
+                ? 'bg-white dark:bg-slate-700 text-violet-700 dark:text-violet-300 shadow-xs font-bold'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Tag className="w-3.5 h-3.5 text-violet-500" />
+            <span>4. Markalar ({productBrands.length})</span>
+          </button>
+
+          <button
+            onClick={() => setCategorySubTab('tree')}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition ml-auto ${
+              categorySubTab === 'tree'
+                ? 'bg-slate-800 text-emerald-400 shadow-xs font-bold'
+                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+            }`}
+          >
+            <FolderTree className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Ağaç Görünümü (Tree View)</span>
+          </button>
+        </div>
+      )}
+
       {/* SECTION 0: TREE VIEW */}
-      {activeSection === 'tree' && (
+      {activeSection === 'categories' && categorySubTab === 'tree' && (
         <div className="space-y-4">
           <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-sky-500/10 to-purple-500/10 border border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-2.5">
@@ -690,7 +746,7 @@ export const DefinitionsTab: React.FC = () => {
       )}
 
       {/* SECTION 1: Ana Kategoriler */}
-      {activeSection === 'categories' && (
+      {activeSection === 'categories' && categorySubTab === 'categories' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
@@ -840,7 +896,7 @@ export const DefinitionsTab: React.FC = () => {
       )}
 
       {/* SECTION 2: Alt Kategoriler (2. Seviye) */}
-      {activeSection === 'subcategories' && (
+      {activeSection === 'categories' && categorySubTab === 'subcategories' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
@@ -1012,7 +1068,7 @@ export const DefinitionsTab: React.FC = () => {
       )}
 
       {/* SECTION 3: Ürün Grupları (3. Seviye) */}
-      {activeSection === 'productgroups' && (
+      {activeSection === 'categories' && categorySubTab === 'productgroups' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
@@ -1253,7 +1309,7 @@ export const DefinitionsTab: React.FC = () => {
       )}
 
       {/* SECTION 4: Markalar */}
-      {activeSection === 'brands' && (
+      {activeSection === 'categories' && categorySubTab === 'brands' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
             <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
@@ -1525,132 +1581,261 @@ export const DefinitionsTab: React.FC = () => {
         </div>
       )}
 
-      {/* SECTION 7: Fiyat Listeleri */}
+      {/* SECTION 7: Fiyat Listeleri (Toptan & Perakende) */}
       {activeSection === 'pricelists' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-            <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
-              <Plus className="w-4 h-4 text-indigo-600" />
-              Aylık Fiyat Listesi Kaydı
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400">
-              Her aya ait perakende ve bayi tavsiye fiyat listesi kayıtları saklayın.
-            </p>
-            <form onSubmit={handleAddPriceList} className="space-y-3 pt-2">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Dönem (Ay / Yıl) *
-                </label>
-                <input
-                  type="month"
-                  required
-                  value={priceListMonth}
-                  onChange={e => setPriceListMonth(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Liste Başlığı *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={priceListTitle}
-                  onChange={e => setPriceListTitle(e.target.value)}
-                  placeholder="Örn: Ekim 2026 Beyaz Eşya Fiyat Listesi"
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Kategori Kapsamı
-                </label>
-                <select
-                  value={priceListCategory}
-                  onChange={e => setPriceListCategory(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
-                >
-                  <option value="Tüm Kategoriler">Tüm Kategoriler</option>
-                  {productCategories.map(c => (
-                    <option key={c.id} value={c.name}>
-                      {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  İçerilen Kalem Sayısı
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={priceListItemsCount}
-                  onChange={e => setPriceListItemsCount(parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100 font-mono-num"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                  Not / Açıklama
-                </label>
-                <input
-                  type="text"
-                  value={priceListNotes}
-                  onChange={e => setPriceListNotes(e.target.value)}
-                  placeholder="Bayi tavsiye satış fiyatları"
-                  className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
-                />
-              </div>
+        <div className="space-y-4">
+          {/* Sub-bar for Toptan vs Perakende Fiyat Listesi */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-2 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700/80">
+            <div className="flex items-center gap-1.5 text-xs font-semibold">
               <button
-                type="submit"
-                className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition active:scale-95 shadow-sm"
+                type="button"
+                onClick={() => {
+                  setPriceListFilter('Toptan');
+                  setPriceListType('Toptan');
+                }}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl transition ${
+                  priceListFilter === 'Toptan'
+                    ? 'bg-amber-600 text-white shadow-xs font-bold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
               >
-                Fiyat Listesini Kaydet
+                <span>Toptan Fiyat Listesi</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-amber-500/30 text-white font-mono">
+                  {priceLists.filter(p => p.type === 'Toptan' || (!p.type && p.title.toLowerCase().includes('toptan'))).length}
+                </span>
               </button>
-            </form>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPriceListFilter('Perakende');
+                  setPriceListType('Perakende');
+                }}
+                className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl transition ${
+                  priceListFilter === 'Perakende'
+                    ? 'bg-indigo-600 text-white shadow-xs font-bold'
+                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                }`}
+              >
+                <span>Perakende Fiyat Listesi</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-md bg-indigo-500/30 text-white font-mono">
+                  {priceLists.filter(p => p.type === 'Perakende' || (!p.type && !p.title.toLowerCase().includes('toptan'))).length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setPriceListFilter('ALL')}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl transition ${
+                  priceListFilter === 'ALL'
+                    ? 'bg-slate-700 text-white shadow-xs font-bold'
+                    : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                }`}
+              >
+                <span>Tüm Listeler ({priceLists.length})</span>
+              </button>
+            </div>
+
+            <span className="text-xs text-slate-500 dark:text-slate-400 pr-2">
+              Seçili Kısım: <strong className="text-slate-900 dark:text-white">{priceListFilter === 'Toptan' ? 'Toptan Fiyat Listeleri' : priceListFilter === 'Perakende' ? 'Perakende Fiyat Listeleri' : 'Tümü'}</strong>
+            </span>
           </div>
 
-          <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
-            <h3 className="font-bold text-slate-900 dark:text-white text-sm">
-              Tanımlı Aylık Fiyat Listeleri ({priceLists.length})
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {priceLists.map(pl => (
-                <div
-                  key={pl.id}
-                  className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-2 flex flex-col justify-between"
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300">
-                        {pl.monthKey}
-                      </span>
-                      <h4 className="font-bold text-xs text-slate-900 dark:text-white mt-1.5">
-                        {pl.title}
-                      </h4>
-                      <p className="text-xs text-slate-400">
-                        {pl.categoryName} • {pl.itemsCount} ürün kalemi
-                      </p>
-                      {pl.notes && (
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
-                          {pl.notes}
-                        </p>
-                      )}
-                    </div>
-                    {isAdmin && (
-                      <button
-                        onClick={() => deletePriceList(pl.id)}
-                        className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
-                        title="Sil"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Form */}
+            <div className="lg:col-span-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+              <h3 className="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-2">
+                <Plus className="w-4 h-4 text-indigo-600" />
+                Yeni {priceListType} Fiyat Listesi Ekle
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Toptan bayi veya perakende tüketici tavsiye fiyat listesi kaydı oluşturun.
+              </p>
+              <form onSubmit={handleAddPriceList} className="space-y-3 pt-2">
+                {/* Liste Türü Seçimi */}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Liste Türü *
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPriceListType('Toptan')}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold transition border text-center ${
+                        priceListType === 'Toptan'
+                          ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-700 ring-2 ring-amber-500/20'
+                          : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                      }`}
+                    >
+                      Toptan Fiyat Listesi
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPriceListType('Perakende')}
+                      className={`py-2 px-3 rounded-xl text-xs font-bold transition border text-center ${
+                        priceListType === 'Perakende'
+                          ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700 ring-2 ring-indigo-500/20'
+                          : 'bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700'
+                      }`}
+                    >
+                      Perakende Fiyat Listesi
+                    </button>
                   </div>
                 </div>
-              ))}
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Dönem (Ay / Yıl) *
+                  </label>
+                  <input
+                    type="month"
+                    required
+                    value={priceListMonth}
+                    onChange={e => setPriceListMonth(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Liste Başlığı *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={priceListTitle}
+                    onChange={e => setPriceListTitle(e.target.value)}
+                    placeholder={priceListType === 'Toptan' ? 'Örn: Ekim 2026 Toptan Bayi Fiyat Listesi' : 'Örn: Ekim 2026 Beyaz Eşya Perakende Listesi'}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Kategori Kapsamı
+                  </label>
+                  <select
+                    value={priceListCategory}
+                    onChange={e => setPriceListCategory(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
+                  >
+                    <option value="Tüm Kategoriler">Tüm Kategoriler</option>
+                    {productCategories.map(c => (
+                      <option key={c.id} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    İçerilen Kalem Sayısı
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={priceListItemsCount}
+                    onChange={e => setPriceListItemsCount(parseInt(e.target.value) || 0)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100 font-mono-num"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    Not / Açıklama
+                  </label>
+                  <input
+                    type="text"
+                    value={priceListNotes}
+                    onChange={e => setPriceListNotes(e.target.value)}
+                    placeholder={priceListType === 'Toptan' ? 'İskonto ve vade şartları' : 'Perakende tavsiye satış fiyatları'}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs outline-none focus:ring-2 focus:ring-indigo-500 text-slate-800 dark:text-slate-100"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-semibold transition active:scale-95 shadow-sm"
+                >
+                  {priceListType} Fiyat Listesini Kaydet
+                </button>
+              </form>
+            </div>
+
+            {/* List Display */}
+            <div className="lg:col-span-8 bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                  {priceListFilter === 'Toptan' ? 'Toptan Fiyat Listeleri' : priceListFilter === 'Perakende' ? 'Perakende Fiyat Listeleri' : 'Tüm Fiyat Listeleri'} ({
+                    priceLists.filter(pl => {
+                      if (priceListFilter === 'Toptan') return pl.type === 'Toptan' || (!pl.type && pl.title.toLowerCase().includes('toptan'));
+                      if (priceListFilter === 'Perakende') return pl.type === 'Perakende' || (!pl.type && !pl.title.toLowerCase().includes('toptan'));
+                      return true;
+                    }).length
+                  })
+                </h3>
+              </div>
+
+              {priceLists.filter(pl => {
+                if (priceListFilter === 'Toptan') return pl.type === 'Toptan' || (!pl.type && pl.title.toLowerCase().includes('toptan'));
+                if (priceListFilter === 'Perakende') return pl.type === 'Perakende' || (!pl.type && !pl.title.toLowerCase().includes('toptan'));
+                return true;
+              }).length === 0 ? (
+                <div className="p-8 text-center border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-xs text-slate-400">
+                  Bu kategoride henüz kayıtlı fiyat listesi bulunmuyor. Sol formdan yeni bir liste ekleyebilirsiniz.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {priceLists
+                    .filter(pl => {
+                      if (priceListFilter === 'Toptan') return pl.type === 'Toptan' || (!pl.type && pl.title.toLowerCase().includes('toptan'));
+                      if (priceListFilter === 'Perakende') return pl.type === 'Perakende' || (!pl.type && !pl.title.toLowerCase().includes('toptan'));
+                      return true;
+                    })
+                    .map(pl => {
+                      const isToptan = pl.type === 'Toptan' || (!pl.type && pl.title.toLowerCase().includes('toptan'));
+                      return (
+                        <div
+                          key={pl.id}
+                          className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 space-y-2 flex flex-col justify-between"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                                  isToptan
+                                    ? 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300'
+                                    : 'bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300'
+                                }`}>
+                                  {isToptan ? 'Toptan' : 'Perakende'}
+                                </span>
+                                <span className="text-[10px] font-mono font-semibold text-slate-500">
+                                  {pl.monthKey}
+                                </span>
+                              </div>
+                              <h4 className="font-bold text-xs text-slate-900 dark:text-white mt-1.5">
+                                {pl.title}
+                              </h4>
+                              <p className="text-xs text-slate-400">
+                                {pl.categoryName} • {pl.itemsCount} ürün kalemi
+                              </p>
+                              {pl.notes && (
+                                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                                  {pl.notes}
+                                </p>
+                              )}
+                            </div>
+                            {isAdmin && (
+                              <button
+                                onClick={() => deletePriceList(pl.id)}
+                                className="p-1 text-slate-400 hover:text-rose-600 rounded transition"
+                                title="Sil"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -18,6 +18,7 @@ import { TransferModal } from './components/modals/TransferModal';
 import { CariModal } from './components/modals/CariModal';
 import { CariDetailModal } from './components/modals/CariDetailModal';
 import { CiroImportModal } from './components/modals/CiroImportModal';
+import { CiroWizardModal } from './components/modals/CiroWizardModal';
 
 // Tabs
 import { DashboardTab } from './components/tabs/DashboardTab';
@@ -30,6 +31,7 @@ import { CiroMatrixTab } from './components/tabs/CiroMatrixTab';
 import { ProfitTab } from './components/tabs/ProfitTab';
 import { StockTab } from './components/tabs/StockTab';
 import { DefinitionsTab } from './components/tabs/DefinitionsTab';
+import { DataTransferTab } from './components/tabs/DataTransferTab';
 import { AuditTab } from './components/tabs/AuditTab';
 import { UsersTab } from './components/tabs/UsersTab';
 
@@ -133,6 +135,7 @@ const AppContent: React.FC = () => {
           {activeTab === 'upcoming' && <UpcomingDuesTab />}
           {activeTab === 'reports' && <ReportsTab />}
           {activeTab === 'definitions' && <DefinitionsTab />}
+          {activeTab === 'data-transfer' && <DataTransferTab />}
           {activeTab === 'audit' && <AuditTab />}
           {activeTab === 'users' && <UsersTab />}
         </main>
@@ -142,6 +145,7 @@ const AppContent: React.FC = () => {
       <TransactionModal />
       <InstallmentModal />
       <CiroImportModal />
+      <CiroWizardModal />
 
       <AccountModal
         isOpen={isAccountModalOpen}
