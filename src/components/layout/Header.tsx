@@ -49,6 +49,10 @@ const TAB_TITLES: Record<ActiveTab, { title: string; subtitle: string }> = {
     title: 'Mali Raporlar & Kategori Dağılımı',
     subtitle: 'Kategorilere göre stok payı ve kâr analizi, aylık masraf detayları',
   },
+  'data-transfer': {
+    title: 'Veri Aktarım & Entegrasyon Merkezi',
+    subtitle: 'Ciro matrisi, satış fişleri ve kasa ödeme hareketlerinin toplu Excel/JSON aktarımı',
+  },
   audit: {
     title: 'İşlem Denetim Raporu & Onaylar',
     subtitle: 'Kullanıcı işlem kayıtları, denetim izi ve silme onay talepleri',

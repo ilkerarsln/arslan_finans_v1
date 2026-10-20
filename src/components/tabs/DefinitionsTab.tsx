@@ -603,7 +603,8 @@ export const DefinitionsTab: React.FC = () => {
                       <button
                         onClick={() => {
                           setSelectedParentCatId(cat.id);
-                          setActiveSection('subcategories');
+                          setActiveSection('categories');
+                          setCategorySubTab('subcategories');
                         }}
                         className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition active:scale-95"
                       >
@@ -658,7 +659,8 @@ export const DefinitionsTab: React.FC = () => {
                                     onClick={() => {
                                       setSelectedGroupParentCatId(cat.id);
                                       setSelectedGroupSubCatId(sub.id);
-                                      setActiveSection('productgroups');
+                                      setActiveSection('categories');
+                                      setCategorySubTab('productgroups');
                                     }}
                                     className="flex items-center gap-1 px-2 py-1 rounded bg-sky-50 dark:bg-sky-950/50 hover:bg-sky-100 text-sky-700 dark:text-sky-300 text-[11px] font-semibold transition"
                                   >

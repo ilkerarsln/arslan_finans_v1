@@ -153,7 +153,7 @@ export const DataTransferTab: React.FC = () => {
     try {
       const yearData = ciroMatrixData.find(y => y.year === ciroYear);
       if (!yearData || yearData.rows.length === 0) {
-        showToast(`${ciroYear} yılı için dışa aktarılacak ciro verisi bulunamadı.`, 'warning');
+        showToast(`${ciroYear} yılı için dışa aktarılacak ciro verisi bulunamadı.`, 'info');
         return;
       }
       const headers = ['GRUP', 'Kategori / Marka', 'Ort. Kârlılık (%)', ...MONTH_NAMES, 'YILLIK TOPLAM'];
@@ -259,7 +259,9 @@ export const DataTransferTab: React.FC = () => {
             productGroup,
             brand,
             saleType,
-            productCost: cost,
+            quantity: 1,
+            costPrice: cost,
+            totalCost: cost,
             effectiveCost: cost,
             salePrice: totalSaleAmount,
             totalSaleAmount,
@@ -300,7 +302,7 @@ export const DataTransferTab: React.FC = () => {
   const handleExportSalesExcel = () => {
     try {
       if (sales.length === 0) {
-        showToast('Dışa aktarılacak satış kaydı bulunmuyor.', 'warning');
+        showToast('Dışa aktarılacak satış kaydı bulunmuyor.', 'info');
         return;
       }
       const headers = [
@@ -423,7 +425,7 @@ export const DataTransferTab: React.FC = () => {
             type: typeStr as any,
             category: cat,
             amount,
-            description: desc || `${cat} hareketi`,
+            desc: desc || `${cat} hareketi`,
             cariName: cariName || undefined,
             status: 'Tamamlandı',
           });
@@ -459,7 +461,7 @@ export const DataTransferTab: React.FC = () => {
   const handleExportPaymentsExcel = () => {
     try {
       if (transactions.length === 0) {
-        showToast('Dışa aktarılacak işlem bulunmuyor.', 'warning');
+        showToast('Dışa aktarılacak işlem bulunmuyor.', 'info');
         return;
       }
       const headers = ['ID', 'Tarih', 'Hesap', 'Tür', 'Kategori', 'Tutar (₺)', 'Cari', 'Durum', 'Açıklama'];
@@ -474,7 +476,7 @@ export const DataTransferTab: React.FC = () => {
           t.amount,
           t.cariName || '-',
           t.status,
-          t.description,
+          t.desc,
         ];
       });
 

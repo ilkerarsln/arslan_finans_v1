@@ -103,7 +103,7 @@ export const CiroWizardModal: React.FC = () => {
   const handleToggleBrand = (brandName: string) => {
     if (selectedBrands.includes(brandName)) {
       if (selectedBrands.length === 1) {
-        showToast('En az bir marka seçili olmalıdır.', 'warning');
+        showToast('En az bir marka seçili olmalıdır.', 'info');
         return;
       }
       const updated = selectedBrands.filter(b => b !== brandName);
