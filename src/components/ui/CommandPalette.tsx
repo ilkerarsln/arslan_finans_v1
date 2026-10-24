@@ -94,12 +94,12 @@ export const CommandPalette: React.FC = () => {
       {
         id: 'act-ciro-import',
         category: 'Hızlı Eylemler',
-        title: 'Ciro Excel İçe Aktar (Data Importer)',
-        subtitle: 'Yıllık ciro Excel tablosunu sisteme toplu yükle',
-        icon: <FileSpreadsheet className="w-4 h-4 text-indigo-400" />,
+        title: 'Veri Aktar Merkezi (Ciro, Satış, Ödeme)',
+        subtitle: 'Excel içe aktarma ve dışa aktarma işlemlerini yönet',
+        icon: <FileSpreadsheet className="w-4 h-4 text-emerald-400" />,
         action: () => {
           closeCommandPalette();
-          openDataImporter('ciro');
+          setActiveTab('data-transfer');
         },
       },
       {
@@ -271,6 +271,16 @@ export const CommandPalette: React.FC = () => {
         icon: <Building2 className="w-4 h-4 text-slate-400" />,
         action: () => {
           setActiveTab('accounts');
+          closeCommandPalette();
+        },
+      },
+      {
+        id: 'nav-data-transfer',
+        category: 'Modüllere Git',
+        title: 'Veri Aktar (Ciro, Satış, Ödeme İçe & Dışa Aktarım)',
+        icon: <ArrowRightLeft className="w-4 h-4 text-emerald-400" />,
+        action: () => {
+          setActiveTab('data-transfer');
           closeCommandPalette();
         },
       },

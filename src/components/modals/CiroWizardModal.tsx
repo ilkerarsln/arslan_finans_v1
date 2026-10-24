@@ -81,8 +81,6 @@ export const CiroWizardModal: React.FC = () => {
     BOSCH: 25,
   });
 
-  if (!isCiroWizardOpen) return null;
-
   const handleClose = () => {
     setIsCiroWizardOpen(false);
   };
@@ -217,6 +215,8 @@ export const CiroWizardModal: React.FC = () => {
       showToast('Excel dışa aktarılamadı.', 'error');
     }
   };
+
+  if (!isCiroWizardOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-xs p-4 overflow-y-auto">

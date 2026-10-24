@@ -265,6 +265,13 @@ export interface StockPurchaseRecord {
 // 3 Seviyeli Zorunlu Kategori Hiyerarşisi
 // 1. Ana Kategori -> 2. Alt Kategori -> 3. Ürün Grubu
 // ----------------------------------------------------------------------
+export interface CategoryHierarchyItem {
+  id: string;
+  anaKategori: string;
+  altKategori: string;
+  urunGrubu: string;
+}
+
 export interface ProductCategory {
   id: string;
   name: string; // 'MOBİLYA' | 'BEYAZ EŞYA'

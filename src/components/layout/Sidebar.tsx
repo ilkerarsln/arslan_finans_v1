@@ -265,20 +265,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
             );
           })}
 
-          {/* VERİ & CİRO SİHRBAZI */}
+          {/* VERİ AKTARIM MERKEZİ */}
           <div className="pt-3 pb-1 border-t border-slate-900 mt-2">
             <div className="px-3 text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
-              VERİ & CİRO SİHİRBAZI
+              VERİ AKTAR
             </div>
             <button
               onClick={() => {
-                setIsCiroImportModalOpen(true);
+                setActiveTab('data-transfer');
                 onClose();
               }}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/40 border border-emerald-900/40 transition group"
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-emerald-400 hover:text-emerald-300 hover:bg-emerald-950/40 border border-emerald-900/40 transition group cursor-pointer"
             >
-              <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
-              <span>Ciro Excel İçe Aktar</span>
+              <ArrowDownUp className="w-4 h-4 text-emerald-400" />
+              <span>Veri Aktarım Merkezi</span>
             </button>
           </div>
         </nav>

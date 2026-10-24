@@ -23,6 +23,7 @@ export const INITIAL_CATEGORY_HIERARCHY: CategoryHierarchyItem[] = [
   { id: 'cat-17', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS ASPİR' },
   { id: 'cat-18', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS BULAŞIK MAKİNELERİ' },
   { id: 'cat-19', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS ÇMŞİR MAKİNELERİ' },
+  { id: 'cat-19b', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS ÇAMAŞIR MAKİNELERİ' },
   { id: 'cat-20', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS ÇEKMECELİ DERİN DONDURUCU' },
   { id: 'cat-21', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS ÇİFT KAPILI BUZDOLAPLARI' },
   { id: 'cat-22', anaKategori: 'BEYAZ EŞYA', altKategori: 'ALTUS', urunGrubu: 'ALTUS ÇİFT KAPILI NF BUZDOLAPLARI' },
@@ -56,6 +57,7 @@ export const INITIAL_CATEGORY_HIERARCHY: CategoryHierarchyItem[] = [
   { id: 'cat-42', anaKategori: 'BEYAZ EŞYA', altKategori: 'UGUR', urunGrubu: 'UGUR ANKASTRE OCAK' },
   { id: 'cat-43', anaKategori: 'BEYAZ EŞYA', altKategori: 'UGUR', urunGrubu: 'UGUR BUZDOLABI' },
   { id: 'cat-44', anaKategori: 'BEYAZ EŞYA', altKategori: 'UGUR', urunGrubu: 'UGUR CEKMECELI DONDURUCU' },
+  { id: 'cat-44b', anaKategori: 'BEYAZ EŞYA', altKategori: 'UGUR', urunGrubu: 'UGUR CEKMECELİ DONDURUCU' },
   { id: 'cat-45', anaKategori: 'BEYAZ EŞYA', altKategori: 'UGUR', urunGrubu: 'UGUR ÇMŞİR MAK' },
   { id: 'cat-46', anaKategori: 'BEYAZ EŞYA', altKategori: 'UGUR', urunGrubu: 'UGUR KURUTMA MAK' },
   { id: 'cat-47', anaKategori: 'BEYAZ EŞYA', altKategori: 'UGUR', urunGrubu: 'UGUR NF CEKMECELİ DONDURUCU' },
@@ -77,6 +79,7 @@ export const INITIAL_CATEGORY_HIERARCHY: CategoryHierarchyItem[] = [
 
   // 9. MOBİLYA -> YATAK
   { id: 'cat-61', anaKategori: 'MOBİLYA', altKategori: 'YATAK', urunGrubu: 'BEDLIFE CİBO' },
+  { id: 'cat-61b', anaKategori: 'MOBİLYA', altKategori: 'YATAK', urunGrubu: 'BEDLIFE CIBO' },
   { id: 'cat-62', anaKategori: 'MOBİLYA', altKategori: 'YATAK', urunGrubu: 'FİENTO' },
 
   // 10. MOBİLYA -> MASA
